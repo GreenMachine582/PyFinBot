@@ -2,6 +2,7 @@ import logging
 import os
 import re
 import traceback
+from datetime import datetime, UTC
 from os import path as os_path
 
 import psycopg2
@@ -96,8 +97,8 @@ def injectAuditColumns(cursor):
     audit_columns = {
         'create_datetime': "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL",
         'write_datetime': "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL",
-        'create_user_id': "INTEGER REFERENCES users(id)",
-        'write_user_id': "INTEGER REFERENCES users(id)"
+        'create_uid': "INTEGER REFERENCES users(id)",
+        'write_uid': "INTEGER REFERENCES users(id)"
     }
 
     # Get all user tables except versioning
@@ -366,3 +367,47 @@ def getSchemaVersion(cur):
     except Exception as e:
         _logger.error(f"Error while fetching the database version: {e}")
         raise DatabaseError("Failed to get database version.")
+
+
+def insertRecord(cursor, table_name: str, data: dict, user_id: int = None) -> int:
+    """Generic insert into a table, automatically handling audit fields."""
+    fields = list(data.keys())
+    values = list(data.values())
+
+    # Add audit fields
+    fields += ['create_datetime', 'write_datetime']
+    values += [datetime.now(UTC), datetime.now(UTC)]
+
+    if user_id is not None:
+        fields += ['create_uid', 'write_uid']
+        values += [user_id, user_id]
+
+    placeholders = ', '.join(['%s'] * len(values))
+    columns = ', '.join(fields)
+
+    sql = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders}) RETURNING id;"
+    cursor.execute(sql, values)
+
+    return cursor.fetchone()[0]
+
+
+def updateRecord(cursor, table_name: str, record_id: int, data: dict, user_id: int = None):
+    """Generic update to a table, automatically handling audit fields."""
+    fields = list(data.keys())
+    values = list(data.values())
+
+    # Always update write_datetime
+    fields.append('write_datetime')
+    values.append(datetime.now(UTC))
+
+    if user_id is not None:
+        fields.append('write_uid')
+        values.append(user_id)
+
+    set_clause = ', '.join([f"{field} = %s" for field in fields])
+
+    sql = f"UPDATE {table_name} SET {set_clause} WHERE id = %s;"
+    values.append(record_id)
+
+    cursor.execute(sql, values)
+
