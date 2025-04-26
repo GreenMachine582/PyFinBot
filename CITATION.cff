@@ -1,0 +1,8 @@
+cff-version: "0.0.1"
+date-released: 2025-04
+message: "If you use this software, please cite it using these metadata."
+title: "PyFinBot: Financial tracker for managing stock transactions and calculating holdings and capital gains."
+url: "https://github.com/GreenMachine582/PyFinBot"
+authors:
+  - family-names: Johnson
+    given-names: Matthew
