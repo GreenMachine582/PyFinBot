@@ -1,5 +1,5 @@
 # PyFinBot
-[![Build Status](https://github.com/GreenMachine582/PyFinBot/actions/workflows/project_tests.yml/badge.svg?branch=main)](https://github.com/GreenMachine582/PyFinBot/actions/workflows/project_tests.yml)
+[![Build Status](https://github.com/GreenMachine582/PyFinBot/actions/workflows/general_tests.yml/badge.svg?branch=main)](https://github.com/GreenMachine582/PyFinBot/actions/workflows/project_tests.yml)
 ![Python version](https://img.shields.io/badge/python-3.10%20--%203.12-blue.svg)
 ![GitHub release](https://img.shields.io/github/v/release/GreenMachine582/PyFinBot?include_prereleases)
 
