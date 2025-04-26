@@ -2,7 +2,7 @@ import logging
 import os
 import re
 import traceback
-from datetime import datetime, UTC
+from datetime import datetime
 from os import path as os_path
 
 import psycopg2
@@ -376,7 +376,7 @@ def insertRecord(cursor, table_name: str, data: dict, user_id: int = None) -> in
 
     # Add audit fields
     fields += ['create_datetime', 'write_datetime']
-    values += [datetime.now(UTC), datetime.now(UTC)]
+    values += [datetime.now(), datetime.now()]
 
     if user_id is not None:
         fields += ['create_uid', 'write_uid']
@@ -398,7 +398,7 @@ def updateRecord(cursor, table_name: str, record_id: int, data: dict, user_id: i
 
     # Always update write_datetime
     fields.append('write_datetime')
-    values.append(datetime.now(UTC))
+    values.append(datetime.now())
 
     if user_id is not None:
         fields.append('write_uid')
