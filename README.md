@@ -46,5 +46,21 @@ To run the tests, navigate to the project root directory and execute the followi
 python -m unittest discover -s tests
 ```
 
+
+Create a virtual environment and install the required dependencies:
+```bash
+alembic init src/pyfinbot/alembic
+```
+
+Create a new migration script for the initial schema:
+```bash
+alembic revision --autogenerate -m "Initial schema"
+```
+
+```bash
+alembic upgrade head
+```
+
+
 ## License
 PyFinBot is licensed under the MIT License, see [LICENSE](LICENSE) for more information.

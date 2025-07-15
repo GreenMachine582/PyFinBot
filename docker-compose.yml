@@ -1,0 +1,20 @@
+version: '3.9'
+
+services:
+
+  pyfinbot:
+    build: .
+    container_name: pyfinbot
+    command: uvicorn src.pyfinbot.pyfinbot:app --host 0.0.0.0 --port 8001 --reload
+    volumes:
+      - .:/app
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    networks:
+      - greentechhub_network
+
+networks:
+  greentechhub_network:
+    external: true
