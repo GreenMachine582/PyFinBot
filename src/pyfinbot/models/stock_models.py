@@ -17,6 +17,9 @@ class Stock(SQLModel, table=True):
     create_datetime: datetime = Field(default_factory=datetime.now)
     write_datetime: datetime = Field(default_factory=datetime.now)
 
+    is_active: bool = Field(default=True)
+    archived_at: Optional[datetime] = None
+
     @classmethod
     async def search(
             cls, session: AsyncSession, *, market: str, symbol: str

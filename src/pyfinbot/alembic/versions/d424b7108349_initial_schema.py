@@ -29,6 +29,8 @@ def upgrade() -> None:
     sa.Column('name', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('create_datetime', sa.DateTime(), nullable=False),
     sa.Column('write_datetime', sa.DateTime(), nullable=False),
+    sa.Column('is_active', sa.Boolean(), nullable=False),
+    sa.Column('archived_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('symbol', 'market', name='unique_symbol_market')
     )

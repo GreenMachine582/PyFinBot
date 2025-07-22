@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Union
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -8,8 +9,9 @@ from fastapi_pagination.ext.sqlmodel import paginate
 from sqlalchemy.exc import IntegrityError
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from ..core.market_sync import syncMarket, MARKET_FETCHERS
 from ..models.stock_models import Stock
-from ..schemas.stock_schemas import StockCreate, StockRead, StockUpdate
+from ..schemas.stock_schemas import StockCreate, StockRead, StockUpdate, SyncResult
 from ..db.session import get_session
 
 router = APIRouter(prefix="/stocks", tags=["Stocks"])
@@ -78,6 +80,10 @@ async def update_stock(
     for key, value in stock_update.model_dump(exclude_unset=True).items():
         setattr(stock, key, value)
 
+    # Set archive_at when not provided
+    if not stock.is_active and not stock.archive_at:
+        stock.archive_at = datetime.now(timezone.utc)
+
     session.add(stock)
     try:
         await session.commit()
@@ -97,3 +103,34 @@ async def delete_stock(stock_id: Union[int, str], session: AsyncSession = Depend
 
     await session.delete(stock)
     await session.commit()
+
+
+@router.post(
+    "/sync/{market}",
+    response_model=SyncResult,
+    status_code=status.HTTP_200_OK,
+    summary="Sync all companies in a given market (e.g. ASX)"
+)
+async def sync_stocks_for_market(
+    market: str,
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    - MARKET = "ASX" will pull the official ASX-listed CSV
+    (soft‑creates, updates names, archives delisted).
+    """
+    m = market.upper()
+
+    if m in MARKET_FETCHERS:
+        created, updated, archived = await syncMarket(session, "ASX")
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Sync for market '{market}' is not supported"
+        )
+
+    return SyncResult(
+        created=created,
+        updated=updated,
+        archived=archived
+    )
