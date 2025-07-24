@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi_pagination import Page
+from fastapi_pagination.ext.sqlmodel import paginate
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -36,10 +38,9 @@ async def create_transaction(transaction_in: TransactionCreate, session: AsyncSe
     return new_transaction
 
 
-@router.get("/", response_model=list[TransactionRead])
+@router.get("/", response_model=Page[TransactionRead])
 async def list_transactions(session: AsyncSession = Depends(get_session)):
-    result = await session.exec(select(Transaction))
-    return result.all()
+    return await paginate(session, Transaction)
 
 
 @router.get("/{transaction_id}", response_model=TransactionRead)
