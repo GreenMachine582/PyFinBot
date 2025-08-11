@@ -1,25 +1,38 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
-from typing import Union
+from typing import Optional, Union
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlmodel import paginate
 from sqlalchemy.exc import IntegrityError
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..core.market_sync import syncMarket, MARKET_FETCHERS
+from ..core.sorting import buildSortOrderBy
+from ..core.sa_filters_compat import buildWhereFromSAFSpec
 from ..models.stock_models import Stock
 from ..schemas.stock_schemas import StockCreate, StockRead, StockUpdate, SyncResult
 from ..db.session import get_session
 
 router = APIRouter(prefix="/stocks", tags=["Stocks"])
 
+# Allowed field map (external -> model attribute). Add more as needed.
+ALLOWED_FILTERING_FIELDS = {
+    "id": "id",
+    "market": "market",
+    "symbol": "symbol",
+    "name": "name",
+    "is_active": "is_active",
+}
 
-async def _searchForStock(session, stock_id: Union[int, str]) -> Stock:
+
+async def _searchForStock(session: AsyncSession, stock_id: int | str) -> Optional[Stock]:
     """Search for a stock by ID or market:symbol format."""
-    if isinstance(stock_id, int) or stock_id.isdigit():
+    if isinstance(stock_id, int) or (isinstance(stock_id, str) and stock_id.isdigit()):
         return await session.get(Stock, int(stock_id))
     try:
         market, symbol = stock_id.split(":")
@@ -55,8 +68,36 @@ async def create_stock(stock_in: StockCreate, session: AsyncSession = Depends(ge
 
 
 @router.get("/", response_model=Page[StockRead])
-async def list_stocks(session: AsyncSession = Depends(get_session)):
-    return await paginate(session, Stock)
+async def list_stocks(
+    session: AsyncSession = Depends(get_session),
+
+    # Complex filters: sqlalchemy-filters schema (JSON string)
+    filters: Optional[str] = Query(None, description="sqlalchemy-filters JSON spec"),
+
+    # Tabulator sends sorters as JSON list; keep 'sort' too for compatibility
+    sorters: Optional[str] = Query(None, description="Tabulator sorters JSON"),
+    sort: Optional[str] = Query("market,symbol", description="Comma list of fields, '-' for desc"),
+):
+    stmt = select(Stock)
+
+    # Build WHERE from sqlalchemy-filters spec
+    if filters:
+        try:
+            filters_spec = json.loads(filters)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid 'filters' JSON")
+
+        where_expr = buildWhereFromSAFSpec(model=Stock, spec=filters_spec, allowed_fields=ALLOWED_FILTERING_FIELDS)
+        if where_expr is not None:
+            stmt = stmt.where(where_expr)
+
+    # Sorting (Tabulator sorters > fallback 'sort')
+    order_by = buildSortOrderBy(Stock, ALLOWED_FILTERING_FIELDS, sorters, sort)
+    if order_by:
+        stmt = stmt.order_by(*order_by)
+
+    # Let fastapi_pagination handle page/size params
+    return await paginate(session, stmt)
 
 
 @router.get("/{stock_id}", response_model=StockRead)

@@ -11,7 +11,6 @@ from ..models.stock_models import Stock
 
 
 ASX_CSV_URL = "https://asx.api.markitdigital.com/asx-research/1.0/companies/directory/file"
-ASX_CSV_URL = "C:\\Users\\Chad\\Downloads\\ASX_Listed_Companies_22-07-2025_04-51-59_AEST.csv"
 
 
 def fetchASXListed() -> Dict[str, str]:
