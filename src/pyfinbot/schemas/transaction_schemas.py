@@ -1,15 +1,15 @@
 from datetime import datetime, date
 from typing import Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ..models.transaction_models import TypeEnum
 
 
 class TransactionBase(BaseModel):
-    user_id: int
-    stock_id: int
-    transaction_date: Optional[date] = date.today
+    user_id: Optional[str] = None
+    stock_id: int | str
+    transaction_date: Optional[date] = Field(default_factory=date.today)
     type: TypeEnum
     units: float
     price: float

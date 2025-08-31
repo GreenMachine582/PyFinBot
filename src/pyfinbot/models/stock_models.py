@@ -1,8 +1,8 @@
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import SQLModel, Field, UniqueConstraint, select
+from sqlmodel import SQLModel, Field, UniqueConstraint, select, Relationship
 
 
 class Stock(SQLModel, table=True):
@@ -19,6 +19,9 @@ class Stock(SQLModel, table=True):
 
     is_active: bool = Field(default=True)
     archived_at: Optional[datetime] = None
+
+    # relationships
+    transactions: List["Transaction"] = Relationship(back_populates="stock")
 
     @classmethod
     async def search(

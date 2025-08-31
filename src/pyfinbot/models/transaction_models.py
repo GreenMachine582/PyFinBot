@@ -1,10 +1,17 @@
+from __future__ import annotations
 
 from datetime import datetime, date
+from decimal import Decimal
 from enum import Enum
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
-from sqlalchemy import Column, Integer, ForeignKey
-from sqlmodel import SQLModel, Field
+from sqlalchemy import Numeric
+from sqlmodel import SQLModel, Field, Relationship
+
+if TYPE_CHECKING:
+    # only for type checkers; avoids runtime import cycles
+    from .stock_models import Stock
+    from .user_models import User
 
 
 class TypeEnum(str, Enum):
@@ -22,41 +29,53 @@ class TypeEnum(str, Enum):
 
 class Transaction(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(
-        sa_column=Column(Integer, ForeignKey("user.id", ondelete="CASCADE")),
-        description="FK to user; cascades on delete"
-    )
-    stock_id: int = Field(
-        sa_column=Column(Integer, ForeignKey("stock.id")),
-        description="FK to stock; no cascade"
-    )
+    user_id: str = Field(foreign_key="user.id", ondelete="CASCADE", index=True,
+                         description="FK to user; cascades on delete")
+    stock_id: int = Field(foreign_key="stock.id", description="FK to stock; no cascade")
 
     transaction_date: date = Field(default_factory=date.today, description="Transaction date")
     type: TypeEnum = Field(description="Transaction type")
-    units: float = Field(description="Transaction units", decimal_places=2)
-    price: float = Field(description="Transaction price", decimal_places=3)
-    total_value: float = Field(default=0.0, description="Transaction total value", decimal_places=6)
-    fees: float = Field(default=0.0, description="Transaction fees", decimal_places=2)
-    cost: float = Field(default=0.0, description="Transaction cost", decimal_places=6)
+
+    units: Decimal = Field(sa_type=Numeric(18, 6), description="Transaction units")
+    price: Decimal = Field(sa_type=Numeric(18, 6), description="Price per unit")
+    total_value: Decimal = Field(default=Decimal("0"), sa_type=Numeric(18, 6), description="units * price")
+    fees: Decimal = Field(default=Decimal("0"), sa_type=Numeric(18, 6), description="Brokerage/fees")
+    cost: Decimal = Field(default=Decimal("0"), sa_type=Numeric(18, 6),
+                          description="Net cash movement (+sell -fees | -buy +fees)")
     notes: Optional[str] = Field(default=None, description="Transaction notes")
+
+    # FY (AU: FY ends Jun 30 → July = new FY)
     fy: int = Field(default=0, description="Fiscal year")
 
+    # Timestamps (UTC)
     create_datetime: datetime = Field(default_factory=datetime.now)
     write_datetime: datetime = Field(default_factory=datetime.now)
 
+    # relationships
+    stock: Stock = Relationship(back_populates="transactions")
+    user: User = Relationship(back_populates="transactions")
+
     def model_post_init(self, __context):
-        """Compute remaining fields after initialisation."""
-        if callable(self.transaction_date):
-            self.transaction_date = self.transaction_date()
+        """Compute derived fields after (de)serialization."""
+        if self.transaction_date is None:
+            self.transaction_date = date.today()
+        elif isinstance(self.transaction_date, datetime):
+            self.transaction_date = self.transaction_date.date()
+
+        # Ensure Decimal coercion
+        self.units = Decimal(self.units)
+        self.price = Decimal(self.price)
+        self.fees = Decimal(self.fees)
 
         # Compute total_value
-        self.total_value = round(self.units * self.price, 6)
+        self.total_value = (self.units * self.price).quantize(Decimal("0.000001"))
 
-        # Compute cost
+        # Compute cost: BUY is cash outflow (negative), SELL is inflow (positive)
         if self.type == TypeEnum.BUY:
-            self.cost = round(-self.total_value + self.fees)
+            self.cost = (-self.total_value - self.fees).quantize(Decimal("0.000001"))
         else:
-            self.cost = round(self.total_value - self.fees, 6)
+            self.cost = (self.total_value - self.fees).quantize(Decimal("0.000001"))
 
-        # Fiscal year
-        self.fy = self.transaction_date.year-1 if self.transaction_date.month <= 6 else self.transaction_date.year
+        # Compute fiscal year (AU: FY ends June 30)
+        td: date = self.transaction_date
+        self.fy = td.year - 1 if td.month <= 6 else td.year
