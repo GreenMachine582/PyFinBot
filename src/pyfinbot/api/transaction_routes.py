@@ -11,7 +11,6 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-
 from ..api.stock_routes import _searchForStock
 from ..core.sa_filters_compat import buildWhereFromSAFSpec
 from ..core.sorting import buildSortOrderBy
