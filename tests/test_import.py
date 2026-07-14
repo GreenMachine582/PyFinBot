@@ -91,6 +91,46 @@ class TestImportCSV:
         assert data["created"] == 1
         assert data["skipped"] == 1
 
+    async def test_reupload_same_file_skips_duplicates(self, client):
+        await _create_stock(client)
+        csv = CSV_HEADER + "2024-08-01,ASX:BHP,Buy,10,25.50,9.95,Test import\n"
+        first = await client.post("/api/transactions/import",
+                                  files=_csv_file(csv), headers=USER_HEADERS)
+        assert first.status_code == 200
+        assert first.json()["created"] == 1
+
+        second = await client.post("/api/transactions/import",
+                                   files=_csv_file(csv), headers=USER_HEADERS)
+        assert second.status_code == 200
+        data = second.json()
+        assert data["created"] == 0
+        assert data["skipped"] == 1
+        assert "duplicate" in data["errors"][0].lower()
+
+    async def test_duplicate_rows_within_same_file_skips_second(self, client):
+        await _create_stock(client)
+        csv = (CSV_HEADER
+               + "2024-08-01,ASX:BHP,Buy,10,25.50,9.95,\n"
+               + "2024-08-01,ASX:BHP,Buy,10,25.50,9.95,\n")
+        resp = await client.post("/api/transactions/import",
+                                 files=_csv_file(csv), headers=USER_HEADERS)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["created"] == 1
+        assert data["skipped"] == 1
+
+    async def test_different_fees_not_treated_as_duplicate(self, client):
+        await _create_stock(client)
+        csv = (CSV_HEADER
+               + "2024-08-01,ASX:BHP,Buy,10,25.50,9.95,\n"
+               + "2024-08-01,ASX:BHP,Buy,10,25.50,4.95,\n")
+        resp = await client.post("/api/transactions/import",
+                                 files=_csv_file(csv), headers=USER_HEADERS)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["created"] == 2
+        assert data["skipped"] == 0
+
     async def test_missing_required_column_returns_422(self, client):
         csv = "date,stock,units,price\n2024-08-01,ASX:BHP,10,25.50\n"  # missing type
         resp = await client.post("/api/transactions/import",

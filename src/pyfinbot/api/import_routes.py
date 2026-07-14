@@ -21,6 +21,7 @@ import pandas as pd
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..api.stock_routes import _searchForStock
@@ -87,6 +88,22 @@ async def _ensure_user(session: AsyncSession, user_id: str) -> None:
             await session.commit()
         except IntegrityError:
             await session.rollback()
+
+
+async def _is_duplicate(session: AsyncSession, txn: Transaction) -> bool:
+    """Whether a transaction with the same content already exists (this
+    upload or a prior one) — notes/id/derived fields are not part of identity."""
+    stmt = select(Transaction).where(
+        Transaction.user_id == txn.user_id,
+        Transaction.stock_id == txn.stock_id,
+        Transaction.transaction_date == txn.transaction_date,
+        Transaction.type == txn.type,
+        Transaction.units == txn.units,
+        Transaction.price == txn.price,
+        Transaction.fees == txn.fees,
+    )
+    result = await session.exec(stmt)
+    return result.first() is not None
 
 
 @router.post(
@@ -184,6 +201,12 @@ async def import_transactions(
                 fees=float(getattr(row, "fees", 0) or 0),
                 notes=str(getattr(row, "notes", "") or "").strip() or None,
             )
+
+            if await _is_duplicate(session, txn):
+                errors.append(f"{row_label}: Duplicate transaction (matches an existing one), skipped")
+                skipped += 1
+                continue
+
             session.add(txn)
             await session.flush()  # catch DB errors per row
             created += 1
