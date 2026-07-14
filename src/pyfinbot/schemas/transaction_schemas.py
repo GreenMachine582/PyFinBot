@@ -39,7 +39,6 @@ class StockRef(BaseModel):
 class TransactionBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    user_id: Optional[str] = None
     stock_id: int | str
     transaction_date: Optional[date] = Field(default_factory=date.today)
     type: TypeEnum
