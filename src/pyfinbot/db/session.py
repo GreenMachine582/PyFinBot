@@ -22,7 +22,7 @@ def _get_engine():
         url = settings.ASYNC_DATABASE_URL
         if not url:
             raise RuntimeError("ASYNC_DATABASE_URL is not configured")
-        _engine = create_async_engine(url, echo=True)
+        _engine = create_async_engine(url, echo=settings.DB_ECHO)
         _session_maker = sessionmaker(
             bind=_engine,
             class_=AsyncSession,
