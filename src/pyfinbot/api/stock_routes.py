@@ -121,9 +121,8 @@ async def update_stock(
     for key, value in stock_update.model_dump(exclude_unset=True).items():
         setattr(stock, key, value)
 
-    # Set archive_at when not provided
-    if not stock.is_active and not stock.archive_at:
-        stock.archive_at = datetime.now(timezone.utc)
+    if not stock.is_active and not stock.archived_at:
+        stock.archived_at = datetime.now(timezone.utc)
 
     session.add(stock)
     try:
