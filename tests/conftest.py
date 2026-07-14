@@ -4,8 +4,12 @@ from unittest.mock import AsyncMock, patch
 
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy import event
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import SQLModel
+
+from pyfinbot import models  # noqa: F401  # registers model tables on SQLModel.metadata
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -13,6 +17,18 @@ async def engine(tmp_path_factory):
     tmp_path = tmp_path_factory.mktemp("db")
     db_url = f"sqlite+aiosqlite:///{tmp_path / 'test.db'}"
     _engine = create_async_engine(db_url)
+
+    # pysqlite (via aiosqlite) autocommits outside of explicit DML transactions,
+    # which breaks SAVEPOINT-based per-test rollback unless disabled like this.
+    # https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#serializable-isolation-savepoints-transactional-ddl
+    @event.listens_for(_engine.sync_engine, "connect")
+    def _do_connect(dbapi_connection, connection_record):
+        dbapi_connection.isolation_level = None
+
+    @event.listens_for(_engine.sync_engine, "begin")
+    def _do_begin(conn):
+        conn.exec_driver_sql("BEGIN")
+
     async with _engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
     yield _engine
