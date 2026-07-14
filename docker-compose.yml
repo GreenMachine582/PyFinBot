@@ -12,9 +12,3 @@ services:
       - "8001:8001"
     env_file:
       - .env
-    networks:
-      - greentechhub_network
-
-networks:
-  greentechhub_network:
-    external: true
