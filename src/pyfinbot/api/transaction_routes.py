@@ -168,7 +168,7 @@ async def list_transactions(
     return await paginate(session, stmt)
 
 
-@router.get("/{transaction_id}", response_model=TransactionRead)
+@router.get("/{transaction_id:int}", response_model=TransactionRead)
 async def get_transaction(
     transaction_id: int,
     session: AsyncSession = Depends(get_session),
@@ -184,7 +184,7 @@ async def get_transaction(
     return transaction
 
 
-@router.put("/{transaction_id}", response_model=TransactionRead)
+@router.put("/{transaction_id:int}", response_model=TransactionRead)
 async def update_transaction(
     transaction_id: int,
     transaction_update: TransactionUpdate,
@@ -212,7 +212,7 @@ async def update_transaction(
     return transaction
 
 
-@router.delete("/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{transaction_id:int}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_transaction(
     transaction_id: int,
     session: AsyncSession = Depends(get_session),
