@@ -67,3 +67,16 @@ async def client(connection):
             yield c
 
     app.dependency_overrides.clear()
+
+
+async def register_and_login(client: AsyncClient, user_id: str, password: str = "hunter2!") -> dict[str, str]:
+    """Register a user (id + password) and log in, returning an Authorization header dict."""
+    resp = await client.post("/api/users/", json={"id": user_id, "password": password})
+    assert resp.status_code == 201, resp.text
+
+    resp = await client.post(
+        "/api/auth/login", data={"username": user_id, "password": password}
+    )
+    assert resp.status_code == 200, resp.text
+    token = resp.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
