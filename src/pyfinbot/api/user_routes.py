@@ -5,6 +5,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from ..core.dependencies import get_current_user
+from ..core.security import hash_password
 from ..models.user_models import User
 from ..schemas.user_schemas import UserBase, UserCreate, UserUpdate
 from ..db.session import get_session
@@ -17,7 +19,7 @@ async def create_user(user_in: UserCreate, session: AsyncSession = Depends(get_s
     if await session.get(User, user_in.id):
         raise HTTPException(status_code=400, detail="User already registered")
 
-    new_user = User(id=user_in.id, active=True)
+    new_user = User(id=user_in.id, active=True, password_hash=hash_password(user_in.password))
     session.add(new_user)
     try:
         await session.commit()
@@ -30,13 +32,23 @@ async def create_user(user_in: UserCreate, session: AsyncSession = Depends(get_s
 
 
 @router.get("/", response_model=list[UserBase])
-async def list_users(session: AsyncSession = Depends(get_session)):
+async def list_users(
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
     result = await session.exec(select(User))
     return result.all()
 
 
 @router.get("/{user_id}", response_model=UserBase)
-async def get_user(user_id: str, session: AsyncSession = Depends(get_session)):
+async def get_user(
+    user_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not allowed to access this user")
+
     user = await session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -48,12 +60,20 @@ async def update_user(
     user_id: str,
     user_update: UserUpdate,
     session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not allowed to modify this user")
+
     user = await session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    for key, value in user_update.model_dump(exclude_unset=True).items():
+    update_data = user_update.model_dump(exclude_unset=True)
+    password = update_data.pop("password", None)
+    if password is not None:
+        user.password_hash = hash_password(password)
+    for key, value in update_data.items():
         setattr(user, key, value)
 
     session.add(user)
@@ -68,7 +88,14 @@ async def update_user(
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(user_id: str, session: AsyncSession = Depends(get_session)):
+async def delete_user(
+    user_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not allowed to delete this user")
+
     user = await session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
