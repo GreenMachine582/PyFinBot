@@ -34,7 +34,7 @@ tracking.
 * 📆 Holdings Snapshot: Query real-time or historical stock units held as of any given date.
 * 💰 Capital Gain/Loss Calculation: Determine net gains/losses per stock by financial year using average cost basis.
 * 🔗 Relational Database Design: Clean, normalized schema to ensure data integrity and efficient queries.
-* 🔐 Multi-user Support (optional): Track transactions per user if needed.
+* 🔐 Multi-user Support: JWT-authenticated accounts — each user only sees their own transactions and reports.
 * 📦 Modular Architecture: Built to be extended with additional features like tax reports, visualizations, or API integration.
 
 ## Tech Stack
@@ -75,7 +75,9 @@ Create a `.env` file in the project root with your database connection strings:
 ```
 DATABASE_URL=postgresql+psycopg2://user:password@localhost:5432/pyfinbot
 ASYNC_DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/pyfinbot
+SECRET_KEY=<a long random string>
 ```
+`SECRET_KEY` signs JWT access tokens. If unset, a random key is generated on every process start (fine for local dev, but every restart invalidates all issued tokens) — set it explicitly for any deployment that needs to survive a restart.
 
 ### Database Migrations
 Apply the schema to your database:
@@ -94,11 +96,12 @@ docker compose up
 Once running, interactive API docs are available at `http://localhost:8000/docs` (or port `8001` under Docker Compose).
 
 ## API Overview
-All routes are mounted under `/api`. See `/docs` for full request/response schemas.
+All routes are mounted under `/api`. See `/docs` for full request/response schemas. Every route except `POST /api/users/` (registration) and `POST /api/auth/login` requires a `Bearer` token — register a user, log in to get a token, then pass `Authorization: Bearer <token>` on subsequent requests.
 
 | Router | Prefix | Purpose |
 |---|---|---|
-| Users | `/api/users` | Create and manage users |
+| Auth | `/api/auth` | `POST /login` — exchange a user id + password for a JWT access token |
+| Users | `/api/users` | Create (register) and manage users |
 | Stocks | `/api/stocks` | CRUD for tracked stocks, plus market sync |
 | Transactions | `/api/transactions` | CRUD for Buy/Sell transactions |
 | Import | `/api/transactions/import` | Bulk-import transactions from CSV/Excel |

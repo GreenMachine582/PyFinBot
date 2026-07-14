@@ -22,11 +22,16 @@ Cross-session backlog. Check items off as completed, add new ones as they're dis
 
 ## Phase 2 — Auth & security
 
-- [ ] Decide on an auth approach (session/JWT/OAuth2) for multi-user support
-- [ ] Wire up the existing but unused `hash_password` / `verify_password` in `core/security.py`
-- [ ] Add login/token issuance endpoints
-- [ ] Replace the spoofable `X-User-ID` header mechanism with enforced authentication on user/transaction routes
-- [ ] Add CORS and env-mode (dev/prod) settings to `core/settings.py`
+- [x] Decide on an auth approach (session/JWT/OAuth2) for multi-user support — JWT bearer tokens via `OAuth2PasswordBearer` (FastAPI's own idiomatic pattern): stateless, no session-store infra needed, free `/docs` Swagger "Authorize" button
+- [x] Wire up the existing but unused `hash_password` / `verify_password` in `core/security.py` — now called from `user_routes.py` (register/change password) and `auth_routes.py` (login)
+- [x] Add login/token issuance endpoints — `POST /api/auth/login` (`auth_routes.py`), `OAuth2PasswordRequestForm`, issues a JWT signed with `SECRET_KEY` (`ALGORITHM = "HS256"`, `ACCESS_TOKEN_EXPIRE_MINUTES = 1440`). Registration reuses the existing `POST /users/` rather than a separate `/auth/register` — `UserCreate.password`/`UserUpdate.password` added instead of a parallel endpoint
+- [x] Replace the spoofable `X-User-ID` header mechanism with enforced authentication on user/transaction routes — `x_user_id_dep` removed entirely; `get_current_user` (`core/dependencies.py`) decodes the JWT and loads the real `User`, used across all 8 former call sites (`transaction_routes.py` ×5, `report_routes.py` ×2, `import_routes.py` ×1) plus newly added to `user_routes.py`'s own CRUD (previously had zero ownership checks). Also closed a real spoofing gap: `create_transaction` used to trust a client-supplied `transaction_in.user_id` over the header — `user_id` is now removed from `TransactionBase` entirely and always comes from the authenticated token. The `_ensureUser`/`_ensure_user` auto-create-on-first-transaction functions were removed (dead once every route requires an already-registered, authenticated user)
+- [ ] Add CORS and env-mode (dev/prod) settings to `core/settings.py` — excluded from the auth pass above, unrelated to auth mechanics
+
+### Accepted scope boundaries / risks from the auth implementation
+- `GET /users/` (`list_users`) requires *a* valid token but returns every user unfiltered — no admin/RBAC system was built; deliberate scope boundary, not an oversight
+- Stateless JWT, 24h expiry, no refresh/revocation — a leaked token is valid for up to 24h with no way to force-logout. Acceptable for a personal-use app; would need a token blocklist or short-lived+refresh tokens to harden
+- `SECRET_KEY` defaults to a random value generated fresh on every process start (not a hardcoded/empty fallback, which would be a silent security hole) — a real deployment that needs tokens to survive a restart must set `SECRET_KEY` explicitly in `.env` (a startup warning fires when it's unset)
 
 ## Phase 3 — Testing & CI
 
