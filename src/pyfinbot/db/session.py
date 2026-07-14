@@ -1,14 +1,19 @@
+import asyncio
+from pathlib import Path
 from typing import Any, AsyncGenerator, Optional
 
+from alembic import command
+from alembic.config import Config
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..core.settings import settings
 
 _engine: Optional[AsyncEngine] = None
 _session_maker = None
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 def _get_engine():
@@ -26,10 +31,19 @@ def _get_engine():
     return _engine, _session_maker
 
 
+def _run_migrations() -> None:
+    # script_location/prepend_sys_path in alembic.ini are relative to the
+    # process's CWD, which the documented CLI workflow always runs from the
+    # project root. Override both with absolute paths here so startup works
+    # regardless of the CWD the app itself was launched from.
+    cfg = Config(str(_PROJECT_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(_PROJECT_ROOT / "src" / "pyfinbot" / "alembic"))
+    cfg.set_main_option("prepend_sys_path", str(_PROJECT_ROOT))
+    command.upgrade(cfg, "head")
+
+
 async def init_db():
-    engine, _ = _get_engine()
-    async with engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.create_all)
+    await asyncio.to_thread(_run_migrations)
 
 
 async def get_session() -> AsyncGenerator[Any, Any]:
