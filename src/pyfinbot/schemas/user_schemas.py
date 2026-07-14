@@ -1,13 +1,19 @@
 from datetime import datetime
+from typing import Optional
+
 from pydantic import BaseModel
 
 
 class UserBase(BaseModel):
-    external_id: int
+    id: str
     active: bool
     create_datetime: datetime
     write_datetime: datetime
 
 
 class UserCreate(BaseModel):
-    external_id: int
+    id: str
+
+
+class UserUpdate(BaseModel):
+    active: Optional[bool] = None
