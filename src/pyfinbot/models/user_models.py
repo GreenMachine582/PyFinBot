@@ -1,7 +1,11 @@
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime
 
 from sqlmodel import SQLModel, Field, Relationship
+
+if TYPE_CHECKING:
+    # only for type checkers; avoids runtime import cycles
+    from .transaction_models import Transaction
 
 
 class User(SQLModel, table=True):

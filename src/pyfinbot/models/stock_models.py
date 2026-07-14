@@ -1,8 +1,12 @@
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime
 
 from sqlmodel import SQLModel, Field, UniqueConstraint, select, Relationship
 from sqlmodel.ext.asyncio.session import AsyncSession
+
+if TYPE_CHECKING:
+    # only for type checkers; avoids runtime import cycles
+    from .transaction_models import Transaction
 
 
 class Stock(SQLModel, table=True):

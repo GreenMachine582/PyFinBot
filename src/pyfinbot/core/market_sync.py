@@ -1,6 +1,6 @@
 
 import asyncio
-from datetime import datetime, UTC
+from datetime import datetime
 from typing import Callable, Dict, Tuple, List
 
 import pandas as pd

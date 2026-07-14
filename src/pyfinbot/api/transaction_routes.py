@@ -102,7 +102,7 @@ async def create_transaction(
     try:
         await session.commit()
         await session.refresh(new_transaction, attribute_names=["stock"])
-    except IntegrityError as e:
+    except IntegrityError:
         await session.rollback()
         raise HTTPException(status_code=400, detail="Failed to create transaction")
 
