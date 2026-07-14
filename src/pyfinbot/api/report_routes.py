@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ..core.dependacies import x_user_id_dep
+from ..core.dependencies import x_user_id_dep
 from ..db.session import get_session
 from ..models.transaction_models import Transaction, TypeEnum
 

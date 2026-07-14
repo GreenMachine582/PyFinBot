@@ -15,7 +15,7 @@ from ..api.stock_routes import _searchForStock
 from ..core.sa_filters_compat import buildWhereFromSAFSpec
 from ..core.sorting import buildSortOrderBy
 from ..models.user_models import User
-from ..core.dependacies import x_user_id_dep
+from ..core.dependencies import x_user_id_dep
 from ..models.transaction_models import Transaction
 from ..schemas.transaction_schemas import TransactionCreate, TransactionRead, TransactionUpdate
 from ..db.session import get_session
