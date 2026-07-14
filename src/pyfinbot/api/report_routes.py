@@ -11,50 +11,15 @@ from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..core.dependencies import x_user_id_dep
 from ..db.session import get_session
 from ..models.transaction_models import Transaction, TypeEnum
+from ..schemas.report_schemas import CapitalGainsItem, CapitalGainsReport, HoldingItem, HoldingsReport
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
-
-
-# ---------------------------------------------------------------------------
-# Schemas
-# ---------------------------------------------------------------------------
-
-class HoldingItem(BaseModel):
-    stock_id: int
-    market: str
-    symbol: str
-    name: str
-    units_held: float
-    avg_cost_basis: float  # average price paid per unit across all buys
-
-
-class HoldingsReport(BaseModel):
-    as_of: date
-    holdings: list[HoldingItem]
-
-
-class CapitalGainsItem(BaseModel):
-    stock_id: int
-    market: str
-    symbol: str
-    name: str
-    units_sold: float
-    avg_cost_basis: float   # weighted avg buy price at time of each sell
-    proceeds: float         # total sell value (units * price) - fees
-    gain_loss: float        # proceeds - cost_basis_total
-
-
-class CapitalGainsReport(BaseModel):
-    fy: int
-    total_gain_loss: float
-    items: list[CapitalGainsItem]
 
 
 # ---------------------------------------------------------------------------

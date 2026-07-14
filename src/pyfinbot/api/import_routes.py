@@ -19,7 +19,6 @@ from typing import Optional
 
 import pandas as pd
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -29,6 +28,7 @@ from ..core.dependencies import x_user_id_dep
 from ..db.session import get_session
 from ..models.transaction_models import Transaction, TypeEnum
 from ..models.user_models import User
+from ..schemas.import_schemas import ImportSummary
 from ..schemas.transaction_schemas import parse_transaction_date
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
@@ -44,13 +44,6 @@ _COLUMN_ALIASES: dict[str, list[str]] = {
     "fees": ["fees", "fee", "commission", "brokerage"],
     "notes": ["notes", "note", "comment", "comments"],
 }
-
-
-class ImportSummary(BaseModel):
-    total_rows: int
-    created: int
-    skipped: int
-    errors: list[str]
 
 
 def _normalise_columns(df: pd.DataFrame) -> pd.DataFrame:
