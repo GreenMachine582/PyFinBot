@@ -1,66 +1,128 @@
 # PyFinBot
-[![Build Status](https://github.com/GreenMachine582/PyFinBot/actions/workflows/general_tests.yml/badge.svg?branch=main)](https://github.com/GreenMachine582/PyFinBot/actions/workflows/project_tests.yml)
-![Python version](https://img.shields.io/badge/python-3.10%20--%203.12-blue.svg)
+
+[![Build Status](https://github.com/GreenMachine582/PyFinBot/actions/workflows/general_tests.yml/badge.svg?branch=main)](https://github.com/GreenMachine582/PyFinBot/actions/workflows/general_tests.yml)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![SQLModel](https://img.shields.io/badge/SQLModel-SQLAlchemy%202.0-red.svg)](https://sqlmodel.tiangolo.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![GitHub release](https://img.shields.io/github/v/release/GreenMachine582/PyFinBot?include_prereleases)
 
 ## Table of Contents
 - [Introduction](#introduction)
 - [Key Features](#-key-features)
-- [Planned Milestones](#-planned-milestones)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [API Overview](#api-overview)
 - [Testing](#testing)
+- [Roadmap](#-roadmap)
 - [License](#license)
+- [Citation](#citation)
 
 ---
 
 ## Introduction
-PyFinBot is a lightweight, extensible financial tracking tool built in Python, designed to help users manage and 
-analyze their stock trading activity. By leveraging relational database design and SQL-based reporting, PyFinBot 
-offers precise insights into holdings, transaction history, and capital gains or losses per financial year. Ideal for 
-personal investors or hobbyist traders, it serves as a transparent and customizable alternative to spreadsheet-based 
+PyFinBot is a lightweight, extensible financial tracking tool built in Python, designed to help users manage and
+analyze their stock trading activity. By leveraging relational database design and SQL-based reporting, PyFinBot
+offers precise insights into holdings, transaction history, and capital gains or losses per financial year. Ideal for
+personal investors or hobbyist traders, it serves as a transparent and customizable alternative to spreadsheet-based
 tracking.
 
 ## 🚀 Key Features
 * 📊 Transaction Recording: Track Buy/Sell orders with support for fees, prices, values, and financial year grouping.
-* 📆 Holdings Snapshot: Query real-time or historical stock units held as of any given date. 
+* 📥 CSV/Excel Import: Bulk-import transactions from a spreadsheet, with per-row validation and error reporting.
+* 📆 Holdings Snapshot: Query real-time or historical stock units held as of any given date.
 * 💰 Capital Gain/Loss Calculation: Determine net gains/losses per stock by financial year using average cost basis.
 * 🔗 Relational Database Design: Clean, normalized schema to ensure data integrity and efficient queries.
 * 🔐 Multi-user Support (optional): Track transactions per user if needed.
 * 📦 Modular Architecture: Built to be extended with additional features like tax reports, visualizations, or API integration.
 
-## 🎯 Planned Milestones
-1. ✅ MVP – Schema design, basic transaction insertion, and SQL-based queries.
-2. 🔄 Import System – CSV or Excel import of stock transactions.
-3. 📈 Reporting Module – Generate FY-based reports for holdings and capital gains.
-4. 🧮 FIFO Method Support – Accurate gain/loss computation based on FIFO accounting.
-5. 🌐 CLI Interface – Interact via command line with exportable summaries.
-6. 🖥️ Web Dashboard (optional) – View and interact with data through a simple Flask or Django front end.
+## Tech Stack
+* **API**: [FastAPI](https://fastapi.tiangolo.com/) + [Uvicorn](https://www.uvicorn.org/)
+* **ORM / Models**: [SQLModel](https://sqlmodel.tiangolo.com/) on top of SQLAlchemy 2.0 (async)
+* **Migrations**: [Alembic](https://alembic.sqlalchemy.org/)
+* **Database**: PostgreSQL (`asyncpg` / `psycopg2`) in production, SQLite (`aiosqlite`) for tests
+* **Import/Reporting**: pandas, openpyxl
+* **Testing**: pytest, pytest-asyncio, httpx
 
-## Testing
-PyFinBot includes a comprehensive suite of unit tests to ensure the reliability and stability of its features. Tests 
-cover various aspects of the core functionality.
-
-### Running Tests
-To run the tests, navigate to the project root directory and execute the following command:
-
-```bash
-python -m unittest discover -s tests
+## Project Structure
+```
+src/pyfinbot/
+├── api/       # FastAPI routers — users, stocks, transactions, import, reports (auto-registered under /api)
+├── core/      # Settings, auth dependencies, sorting/filtering helpers, market sync
+├── db/        # Async SQLAlchemy engine/session setup
+├── models/    # SQLModel ORM models (User, Stock, Transaction)
+├── schemas/   # Pydantic request/response schemas
+├── alembic/   # Database migrations
+└── pyfinbot.py  # FastAPI app factory / entrypoint
 ```
 
+## Getting Started
 
-Create a virtual environment and install the required dependencies:
+### Prerequisites
+* Python 3.10+
+* A PostgreSQL database (or SQLite for local experimentation)
+
+### Installation
 ```bash
-alembic init src/pyfinbot/alembic
+git clone https://github.com/GreenMachine582/PyFinBot.git
+cd PyFinBot
+pip install -r requirements.txt
 ```
 
-Create a new migration script for the initial schema:
-```bash
-alembic revision --autogenerate -m "Initial schema"
+### Configuration
+Create a `.env` file in the project root with your database connection strings:
+```
+DATABASE_URL=postgresql+psycopg2://user:password@localhost:5432/pyfinbot
+ASYNC_DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/pyfinbot
 ```
 
+### Database Migrations
+Apply the schema to your database:
 ```bash
 alembic upgrade head
 ```
 
+### Running the App
+```bash
+uvicorn src.pyfinbot.pyfinbot:app --reload
+```
+Or with Docker Compose:
+```bash
+docker compose up
+```
+Once running, interactive API docs are available at `http://localhost:8000/docs` (or port `8001` under Docker Compose).
+
+## API Overview
+All routes are mounted under `/api`. See `/docs` for full request/response schemas.
+
+| Router | Prefix | Purpose |
+|---|---|---|
+| Users | `/api/users` | Create and manage users |
+| Stocks | `/api/stocks` | CRUD for tracked stocks, plus market sync |
+| Transactions | `/api/transactions` | CRUD for Buy/Sell transactions |
+| Import | `/api/transactions/import` | Bulk-import transactions from CSV/Excel |
+| Reports | `/api/reports` | Holdings snapshots and FY capital-gains reports |
+
+## Testing
+PyFinBot includes a pytest suite covering all routers, models/schemas, and core utilities.
+
+```bash
+pytest
+```
+
+## 🎯 Roadmap
+1. ✅ MVP – Schema design, transaction insertion, and SQL-based queries.
+2. ✅ Import System – CSV or Excel import of stock transactions.
+3. ✅ Reporting Module – FY-based reports for holdings and capital gains.
+4. 🧮 FIFO Method Support – Accurate gain/loss computation based on FIFO accounting.
+5. 🌐 CLI Interface – Interact via command line with exportable summaries.
+6. 🖥️ Web Dashboard (optional) – View and interact with data through a simple front end.
+
+Day-to-day and in-progress work is tracked in [`todo.md`](todo.md), which serves as the project's living backlog across sessions.
 
 ## License
 PyFinBot is licensed under the MIT License, see [LICENSE](LICENSE) for more information.
+
+## Citation
+If you use this software, please cite it using the metadata in [`CITATION.cff`](CITATION.cff).
