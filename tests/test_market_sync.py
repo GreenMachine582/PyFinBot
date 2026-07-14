@@ -1,5 +1,4 @@
 """Unit tests for market sync logic (mocked fetcher, no HTTP calls)."""
-import pytest
 from sqlmodel import select
 
 from pyfinbot.core.market_sync import syncMarket

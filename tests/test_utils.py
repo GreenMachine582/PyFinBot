@@ -1,8 +1,6 @@
 """Unit tests for sorting and filter helper utilities."""
 import json
 
-import pytest
-from sqlmodel import select
 
 from pyfinbot.core.sorting import buildSortOrderBy
 from pyfinbot.core.sa_filters_compat import buildWhereFromSAFSpec

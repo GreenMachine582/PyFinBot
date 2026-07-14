@@ -1,7 +1,6 @@
 """Integration tests for /api/transactions/import endpoint."""
 import io
 
-import pytest
 
 
 USER_HEADERS = {"X-User-ID": "importer-user"}

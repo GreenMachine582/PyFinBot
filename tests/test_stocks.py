@@ -1,5 +1,4 @@
 """Integration tests for /api/stocks routes."""
-import pytest
 
 
 STOCK_PAYLOAD = {"symbol": "BHP", "market": "ASX", "name": "BHP Group Limited"}

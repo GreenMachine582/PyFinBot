@@ -1,5 +1,4 @@
 """Integration tests for /api/users routes."""
-import pytest
 
 
 async def _create_user(client, user_id="user-123"):
