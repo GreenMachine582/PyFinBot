@@ -6,9 +6,9 @@ Cross-session backlog. Check items off as completed, add new ones as they're dis
 
 - [x] Commit the currently uncommitted work: `tests/`, `pytest.ini`, `import_routes.py`, `report_routes.py`, the squashed alembic migration, and the modified core/api/schema files
 - [x] Fix route prefix collision: `transaction_routes.py` and `import_routes.py` both register `APIRouter(prefix="/transactions")` — added `:int` path converters to `transaction_routes.py`'s `{transaction_id}` routes so they can never shadow `/transactions/import`. Verified: full pytest suite green (105 passed) using the project's `.venv` (Python 3.14)
-- [ ] Rename `core/dependacies.py` → `core/dependencies.py` (typo)
-- [ ] Fix `Dockerfile` CMD — points at `server.wsgi:application` (Django-style, doesn't exist); should run the FastAPI app like `docker-compose.yml` does (`uvicorn src.pyfinbot.pyfinbot:app`)
-- [ ] Fix `Dockerfile` bind address typo `000.0.0.0:8001` → `0.0.0.0:8001`
+- [x] Rename `core/dependacies.py` → `core/dependencies.py` (typo)
+- [x] Fix `Dockerfile` CMD — points at `server.wsgi:application` (Django-style, doesn't exist); now runs `uvicorn src.pyfinbot.pyfinbot:app`, matching `docker-compose.yml`
+- [x] Fix `Dockerfile` bind address typo `000.0.0.0:8001` → `0.0.0.0:8001` (fixed as part of the CMD rewrite above)
 
 ## Phase 1 — Data integrity & correctness
 

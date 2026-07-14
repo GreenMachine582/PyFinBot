@@ -23,4 +23,4 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 COPY . .
 
 # Default command
-CMD ["gunicorn", "server.wsgi:application", "--bind", "000.0.0.0:8001", "--reload"]
+CMD ["uvicorn", "src.pyfinbot.pyfinbot:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
