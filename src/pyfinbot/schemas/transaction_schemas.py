@@ -8,6 +8,27 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator
 from ..models.transaction_models import TypeEnum
 
 
+def parse_transaction_date(v):
+    """Accepts a date/None as-is, otherwise parses dd/MM/yyyy or yyyy-MM-dd strings."""
+    if v is None or isinstance(v, date):
+        return v
+    if isinstance(v, str):
+        # Try dd/MM/yyyy first
+        if "/" in v:
+            try:
+                return datetime.strptime(v, "%d/%m/%Y").date()
+            except ValueError:
+                pass
+        # Fallback to ISO (yyyy-MM-dd)
+        try:
+            return datetime.strptime(v, "%Y-%m-%d").date()
+        except ValueError:
+            raise ValueError(
+                f"Invalid date format: {v}. Expected dd/MM/yyyy or yyyy-MM-dd."
+            )
+    return v
+
+
 class StockRef(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     market: str
@@ -27,26 +48,7 @@ class TransactionBase(BaseModel):
     fees: Optional[float] = 0.0
     notes: Optional[str] = None
 
-    @field_validator("transaction_date", mode="before")
-    @classmethod
-    def parse_transaction_date(cls, v):
-        if v is None or isinstance(v, date):
-            return v
-        if isinstance(v, str):
-            # Try dd/MM/yyyy first
-            if "/" in v:
-                try:
-                    return datetime.strptime(v, "%d/%m/%Y").date()
-                except ValueError:
-                    pass
-            # Fallback to ISO (yyyy-MM-dd)
-            try:
-                return datetime.strptime(v, "%Y-%m-%d").date()
-            except ValueError:
-                raise ValueError(
-                    f"Invalid date format: {v}. Expected dd/MM/yyyy or yyyy-MM-dd."
-                )
-        return v
+    _parse_transaction_date = field_validator("transaction_date", mode="before")(parse_transaction_date)
 
 
 class TransactionCreate(TransactionBase):

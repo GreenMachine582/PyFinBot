@@ -28,6 +28,7 @@ from ..core.dependacies import x_user_id_dep
 from ..db.session import get_session
 from ..models.transaction_models import Transaction, TypeEnum
 from ..models.user_models import User
+from ..schemas.transaction_schemas import parse_transaction_date
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
@@ -70,7 +71,12 @@ def _parse_dataframe(content: bytes, filename: str) -> pd.DataFrame:
     else:
         # Try CSV; tolerate BOM
         df = pd.read_csv(io.BytesIO(content), encoding="utf-8-sig")
-    return _normalise_columns(df)
+    df = _normalise_columns(df)
+    # Empty cells surface as NaN (truthy, unlike None), which breaks the
+    # `value or default` fallbacks below and NOT NULL columns like `fees`.
+    # Numeric columns silently coerce None back to NaN unless cast to
+    # object dtype first, since float64 arrays have no Python-None slot.
+    return df.astype(object).where(pd.notna(df), None)
 
 
 async def _ensure_user(session: AsyncSession, user_id: str) -> None:
@@ -159,11 +165,19 @@ async def import_transactions(
                 skipped += 1
                 continue
 
+            # Parse date
+            try:
+                tx_date = parse_transaction_date(str(getattr(row, "date", "")).strip())
+            except ValueError as exc:
+                errors.append(f"{row_label}: {exc}")
+                skipped += 1
+                continue
+
             # Build transaction
             txn = Transaction(
                 user_id=header_user_id,
                 stock_id=stock.id,
-                transaction_date=getattr(row, "date", None),
+                transaction_date=tx_date,
                 type=tx_type,
                 units=float(getattr(row, "units")),
                 price=float(getattr(row, "price")),
