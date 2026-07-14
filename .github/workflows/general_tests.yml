@@ -1,33 +1,58 @@
-#name: General Tests
-#
-#on:
-#  push:
-#    branches:
-#      - "**"
-#
-#jobs:
-#  build:
-#    runs-on: ubuntu-latest
-#    strategy:
-#      matrix:
-#        python-version: ['3.10', '3.13']
-#
-#    steps:
-#    - name: Check out repository
-#      uses: actions/checkout@v2
-#      with:
-#        fetch-depth: 2
-#
-#    - name: Set up Python
-#      uses: actions/setup-python@v2
-#      with:
-#        python-version: ${{ matrix.python-version }}
-#
-#    - name: Install dependencies
-#      run: |
-#        python -m pip install --upgrade pip
-#        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-#
-#    - name: Run tests
-#      run: |
-#        python -m unittest discover -s tests
+name: General Tests
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.13']
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Run tests
+      run: pytest
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Ruff
+      run: ruff check src tests
+
+    - name: Mypy (advisory — SQLModel's typing has known false positives; not yet a blocking gate)
+      run: mypy src/pyfinbot
+      continue-on-error: true
