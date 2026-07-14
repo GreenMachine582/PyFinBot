@@ -15,16 +15,14 @@ Expected columns (case-insensitive, whitespace-stripped):
 from __future__ import annotations
 
 import io
-from typing import Optional
 
 import pandas as pd
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..api.stock_routes import _searchForStock
-from ..core.dependencies import x_user_id_dep
+from ..core.dependencies import get_current_user
 from ..db.session import get_session
 from ..models.transaction_models import Transaction, TypeEnum
 from ..models.user_models import User
@@ -73,16 +71,6 @@ def _parse_dataframe(content: bytes, filename: str) -> pd.DataFrame:
     return df.astype(object).where(pd.notna(df), None)
 
 
-async def _ensure_user(session: AsyncSession, user_id: str) -> None:
-    user = await session.get(User, user_id)
-    if not user:
-        session.add(User(id=user_id, active=True))
-        try:
-            await session.commit()
-        except IntegrityError:
-            await session.rollback()
-
-
 async def _is_duplicate(session: AsyncSession, txn: Transaction) -> bool:
     """Whether a transaction with the same content already exists (this
     upload or a prior one) — notes/id/derived fields are not part of identity."""
@@ -108,7 +96,7 @@ async def _is_duplicate(session: AsyncSession, txn: Transaction) -> bool:
 async def import_transactions(
     file: UploadFile = File(...),
     session: AsyncSession = Depends(get_session),
-    header_user_id: Optional[str] = Depends(x_user_id_dep),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Upload a CSV or Excel file to bulk-import transactions.
@@ -118,9 +106,6 @@ async def import_transactions(
 
     Returns a summary of rows created, skipped, and any per-row errors.
     """
-    if not header_user_id:
-        raise HTTPException(status_code=400, detail="X-User-ID header is required")
-
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
@@ -138,8 +123,6 @@ async def import_transactions(
             detail=f"Missing required columns: {sorted(missing)}. "
                    f"Got: {sorted(df.columns.tolist())}",
         )
-
-    await _ensure_user(session, header_user_id)
 
     created = 0
     skipped = 0
@@ -185,7 +168,7 @@ async def import_transactions(
 
             # Build transaction
             txn = Transaction(
-                user_id=header_user_id,
+                user_id=current_user.id,
                 stock_id=stock.id,
                 transaction_date=tx_date,
                 type=tx_type,
@@ -208,8 +191,6 @@ async def import_transactions(
             await session.rollback()
             errors.append(f"{row_label}: {exc}")
             skipped += 1
-            # Re-ensure user after rollback
-            await _ensure_user(session, header_user_id)
             continue
 
     try:

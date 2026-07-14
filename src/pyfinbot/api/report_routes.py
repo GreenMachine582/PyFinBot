@@ -10,13 +10,14 @@ from datetime import date
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ..core.dependencies import x_user_id_dep
+from ..core.dependencies import get_current_user
 from ..db.session import get_session
 from ..models.transaction_models import Transaction, TypeEnum
+from ..models.user_models import User
 from ..schemas.report_schemas import CapitalGainsItem, CapitalGainsReport, HoldingItem, HoldingsReport
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
@@ -30,7 +31,7 @@ router = APIRouter(prefix="/reports", tags=["Reports"])
 async def get_holdings(
     as_of: Optional[date] = Query(default=None, description="Snapshot date (default: today)"),
     session: AsyncSession = Depends(get_session),
-    header_user_id: Optional[str] = Depends(x_user_id_dep),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Return all stocks with a positive unit balance as of `as_of` date.
@@ -39,14 +40,11 @@ async def get_holdings(
     including `as_of`. Average cost basis is the weighted average buy price
     across all qualifying buy transactions.
     """
-    if not header_user_id:
-        raise HTTPException(status_code=400, detail="X-User-ID header is required")
-
     snapshot = as_of or date.today()
 
     stmt = (
         select(Transaction)
-        .where(Transaction.user_id == header_user_id)
+        .where(Transaction.user_id == current_user.id)
         .where(Transaction.transaction_date <= snapshot)
     )
     result = await session.exec(stmt)
@@ -109,7 +107,7 @@ async def get_holdings(
 async def get_capital_gains(
     fy: int = Query(..., description="AU fiscal year (e.g. 2024 = FY ending 30 Jun 2025)"),
     session: AsyncSession = Depends(get_session),
-    header_user_id: Optional[str] = Depends(x_user_id_dep),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Realised capital gain/loss for a fiscal year using average cost basis.
@@ -122,15 +120,12 @@ async def get_capital_gains(
 
     A positive gain_loss means profit; negative means a loss.
     """
-    if not header_user_id:
-        raise HTTPException(status_code=400, detail="X-User-ID header is required")
-
     # Load all transactions up to end of the FY (30 Jun of fy+1)
     fy_end = date(fy + 1, 6, 30)
 
     stmt = (
         select(Transaction)
-        .where(Transaction.user_id == header_user_id)
+        .where(Transaction.user_id == current_user.id)
         .where(Transaction.transaction_date <= fy_end)
         .order_by(Transaction.transaction_date, Transaction.id)
     )
