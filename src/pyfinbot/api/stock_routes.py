@@ -6,7 +6,7 @@ from typing import Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi_pagination import Page
-from fastapi_pagination.ext.sqlmodel import paginate
+from fastapi_pagination.ext.sqlmodel import apaginate
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -97,7 +97,7 @@ async def list_stocks(
         stmt = stmt.order_by(*order_by)
 
     # Let fastapi_pagination handle page/size params
-    return await paginate(session, stmt)
+    return await apaginate(session, stmt)
 
 
 @router.get("/{stock_id}", response_model=StockRead)

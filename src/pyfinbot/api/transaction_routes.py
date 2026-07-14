@@ -5,7 +5,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi_pagination import Page
-from fastapi_pagination.ext.sqlmodel import paginate
+from fastapi_pagination.ext.sqlmodel import apaginate
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
@@ -165,7 +165,7 @@ async def list_transactions(
     if order_by:
         stmt = stmt.order_by(*order_by)
 
-    return await paginate(session, stmt)
+    return await apaginate(session, stmt)
 
 
 @router.get("/{transaction_id:int}", response_model=TransactionRead)

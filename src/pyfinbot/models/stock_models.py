@@ -1,8 +1,8 @@
 from typing import Optional, List
 from datetime import datetime
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import SQLModel, Field, UniqueConstraint, select, Relationship
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 
 class Stock(SQLModel, table=True):
@@ -29,5 +29,5 @@ class Stock(SQLModel, table=True):
     ) -> Optional["Stock"]:
         """Search for a stock by market and symbol."""
         stmt = select(cls).where((cls.market == market) & (cls.symbol == symbol))
-        result = await session.execute(stmt)
-        return result.scalar_one_or_none()
+        result = await session.exec(stmt)
+        return result.one_or_none()
