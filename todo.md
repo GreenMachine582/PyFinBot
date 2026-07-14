@@ -50,6 +50,7 @@ Mirrors and supersedes the README's "Planned Milestones" list, which is now out 
 
 ## Phase 5 — Documentation polish
 
-- [ ] Update README's Planned Milestones section to match Phase 4 above (Import/Reporting are done, not "planned")
-- [ ] Update README's Testing section — replace `python -m unittest discover -s tests` with the pytest invocation
-- [ ] Note in README that `todo.md` is the live project backlog
+- [x] Update README's Planned Milestones section to match Phase 4 above (Import/Reporting are done, not "planned")
+- [x] Update README's Testing section — replace `python -m unittest discover -s tests` with the pytest invocation
+- [x] Note in README that `todo.md` is the live project backlog
+- [x] Broader README pass: fixed the dead CI badge link, added License/Python/FastAPI/SQLModel badges, and added Tech Stack, Project Structure, Getting Started, and API Overview sections (previously had no setup instructions at all)
