@@ -6,3 +6,6 @@ python_version = "3.12"
 ignore_missing_imports = true
 exclude = ["src/pyfinbot/alembic", "tests"]
 plugins = ["sqlalchemy.ext.mypy.plugin"]
+
+[tool.coverage.run]
+concurrency = ["greenlet", "thread"]
