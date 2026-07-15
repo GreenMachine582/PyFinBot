@@ -1,7 +1,7 @@
 # PyFinBot
 
 [![Build Status](https://github.com/GreenMachine582/PyFinBot/actions/workflows/general_tests.yml/badge.svg?branch=main)](https://github.com/GreenMachine582/PyFinBot/actions/workflows/general_tests.yml)
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![SQLModel](https://img.shields.io/badge/SQLModel-SQLAlchemy%202.0-red.svg)](https://sqlmodel.tiangolo.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -60,7 +60,7 @@ src/pyfinbot/
 ## Getting Started
 
 ### Prerequisites
-* Python 3.10+
+* Python 3.12+
 * A PostgreSQL database (or SQLite for local experimentation)
 
 ### Installation

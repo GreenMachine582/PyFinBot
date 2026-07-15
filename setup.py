@@ -37,11 +37,11 @@ setup(
         "Natural Language :: English",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
         "Topic :: Software Development :: Finance :: Database",
     ],
     keywords="python, finance, database",
-    python_requires=">=3.10.0",
+    python_requires=">=3.12.0",
     install_requires=install_requires,
 )
