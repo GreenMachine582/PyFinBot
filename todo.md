@@ -78,3 +78,10 @@ Mirrors and supersedes the README's "Planned Milestones" list, which is now out 
 - [x] Add `core/dividend_sync.py` — `MARKET_TO_YF_SUFFIX` registry (ASX only, matching `market_sync.py`'s existing market-coverage limitation), `fetchDividendsForSymbol` (yfinance `Ticker.dividends`), `syncDividends` upsert keyed on `(stock_id, ex_date)`, following `market_sync.py`'s injectable-fetcher pattern
 - [x] Add `POST /api/dividends/sync` (`api/dividend_routes.py`, optional `?stock_id=`) — defaults to every stock the calling user has ever transacted (not the full `Stock` table, to avoid a slow/rate-limited full-market yfinance fetch)
 - [x] Add `tests/test_dividend_sync.py` (7 tests: create/update/no-op/isolation/error handling, mocked fetcher) and `tests/test_dividends.py` (4 tests: endpoint integration, stock-id targeting). Verified: full pytest suite green
+
+## Phase 8 — Dividend reporting
+
+- [x] Extract `au_fiscal_year` into `core/fiscal_year.py`; `Transaction.model_post_init` now calls it instead of an inline calc — mechanical, no behavior change, verified against the existing `test_models.py`/`test_transactions.py` suite
+- [x] Add `GET /api/reports/dividends?fy=` (`report_routes.py`) — for each `Dividend` belonging to a stock the user has ever transacted, computes units held on the ex-date and the resulting amount received; FY-scoped by `au_fiscal_year(ex_date)` when `fy` given, all-time otherwise. New `DividendItem`/`DividendsReport` schemas in `schemas/report_schemas.py`, mirroring `get_capital_gains`'s FY-scoping style
+- [x] Add `total_dividends_received` to `HoldingItem`/`HoldingsReport` — sum of dividends with `ex_date <= as_of`, each weighted by units held on its specific ex-date; additive/backward-compatible field (defaults to `0.0`, not null)
+- [x] Extend `tests/test_reports.py` with `TestDividendsReport` (9 tests: before/mid/after-holding weighting, FY filter, multi-stock totals, per-user scoping) and 2 new dividend cases in `TestHoldings`. Verified: full pytest suite green (`test_reports.py` now 26 tests)

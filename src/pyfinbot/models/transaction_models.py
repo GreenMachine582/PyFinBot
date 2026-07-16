@@ -8,6 +8,8 @@ from typing import Optional, TYPE_CHECKING
 from sqlalchemy import Numeric
 from sqlmodel import SQLModel, Field, Relationship
 
+from ..core.fiscal_year import au_fiscal_year
+
 if TYPE_CHECKING:
     # only for type checkers; avoids runtime import cycles
     from .stock_models import Stock
@@ -77,5 +79,4 @@ class Transaction(SQLModel, table=True):
             self.cost = (self.total_value - self.fees).quantize(Decimal("0.000001"))
 
         # Compute fiscal year (AU: FY ends June 30)
-        td: date = self.transaction_date
-        self.fy = td.year - 1 if td.month <= 6 else td.year
+        self.fy = au_fiscal_year(self.transaction_date)

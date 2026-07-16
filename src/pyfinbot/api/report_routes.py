@@ -15,10 +15,20 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..core.dependencies import get_current_user
+from ..core.fiscal_year import au_fiscal_year
+from ..core.holdings import units_held_as_of
 from ..db.session import get_session
+from ..models.dividend_models import Dividend
 from ..models.transaction_models import Transaction, TypeEnum
 from ..models.user_models import User
-from ..schemas.report_schemas import CapitalGainsItem, CapitalGainsReport, HoldingItem, HoldingsReport
+from ..schemas.report_schemas import (
+    CapitalGainsItem,
+    CapitalGainsReport,
+    DividendItem,
+    DividendsReport,
+    HoldingItem,
+    HoldingsReport,
+)
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
@@ -66,10 +76,22 @@ async def get_holdings(
     stock_rows = await session.exec(select(Stock).where(Stock.id.in_(list(stock_ids))))
     stock_map = {s.id: s for s in stock_rows.all()}
 
+    # Batch-load dividends (ex_date <= snapshot) for all involved stocks, to
+    # compute total_dividends_received per holding without a query per stock.
+    div_rows = await session.exec(
+        select(Dividend)
+        .where(Dividend.stock_id.in_(list(stock_ids)))
+        .where(Dividend.ex_date <= snapshot)
+    )
+    dividends_by_stock: dict[int, list[Dividend]] = {}
+    for d in div_rows.all():
+        dividends_by_stock.setdefault(d.stock_id, []).append(d)
+
     holdings: list[HoldingItem] = []
     for sid in stock_ids:
         buy_txns = buys.get(sid, [])
         sell_txns = sells.get(sid, [])
+        stock_txns = buy_txns + sell_txns
 
         buy_units = sum(Decimal(str(t.units)) for t in buy_txns)
         sell_units = sum(Decimal(str(t.units)) for t in sell_txns)
@@ -86,6 +108,12 @@ async def get_holdings(
         if not stock:
             continue
 
+        div_total = sum(
+            (units_held_as_of(stock_txns, d.ex_date) * Decimal(str(d.amount_per_share))
+             for d in dividends_by_stock.get(sid, [])),
+            start=Decimal("0"),
+        )
+
         holdings.append(HoldingItem(
             stock_id=sid,
             market=stock.market,
@@ -93,6 +121,7 @@ async def get_holdings(
             name=stock.name,
             units_held=float(units_held),
             avg_cost_basis=float(avg_cost.quantize(Decimal("0.000001"))),
+            total_dividends_received=float(div_total.quantize(Decimal("0.000001"))),
         ))
 
     holdings.sort(key=lambda h: (h.market, h.symbol))
@@ -193,3 +222,67 @@ async def get_capital_gains(
         total_gain_loss=float(total.quantize(Decimal("0.000001"))),
         items=items,
     )
+
+
+# ---------------------------------------------------------------------------
+# Dividends
+# ---------------------------------------------------------------------------
+
+@router.get("/dividends", response_model=DividendsReport)
+async def get_dividends_report(
+    fy: Optional[int] = Query(default=None, description="AU fiscal year filter (by ex_date); omit for all-time"),
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    For each Dividend belonging to a stock the user has ever transacted,
+    compute units held on the ex_date and the resulting amount received.
+    """
+    txn_stmt = (
+        select(Transaction)
+        .where(Transaction.user_id == current_user.id)
+        .order_by(Transaction.transaction_date, Transaction.id)
+    )
+    txns = (await session.exec(txn_stmt)).all()
+
+    txns_by_stock: dict[int, list[Transaction]] = {}
+    for t in txns:
+        txns_by_stock.setdefault(t.stock_id, []).append(t)
+
+    if not txns_by_stock:
+        return DividendsReport(fy=fy, total_dividends_received=0.0, items=[])
+
+    div_stmt = select(Dividend).where(Dividend.stock_id.in_(list(txns_by_stock.keys())))
+    dividends = (await session.exec(div_stmt)).all()
+
+    from ..models.stock_models import Stock
+    stock_rows = await session.exec(select(Stock).where(Stock.id.in_(list(txns_by_stock.keys()))))
+    stock_map = {s.id: s for s in stock_rows.all()}
+
+    items: list[DividendItem] = []
+    total = Decimal("0")
+    for d in dividends:
+        if fy is not None and au_fiscal_year(d.ex_date) != fy:
+            continue
+        units = units_held_as_of(txns_by_stock.get(d.stock_id, []), d.ex_date)
+        if units <= 0:
+            continue
+        amount = (units * Decimal(str(d.amount_per_share))).quantize(Decimal("0.000001"))
+        stock = stock_map.get(d.stock_id)
+        if not stock:
+            continue
+        items.append(DividendItem(
+            stock_id=d.stock_id,
+            market=stock.market,
+            symbol=stock.symbol,
+            name=stock.name,
+            ex_date=d.ex_date,
+            pay_date=d.pay_date,
+            amount_per_share=float(d.amount_per_share),
+            units_held_at_ex_date=float(units),
+            amount_received=float(amount),
+        ))
+        total += amount
+
+    items.sort(key=lambda i: (i.ex_date, i.market, i.symbol))
+    return DividendsReport(fy=fy, total_dividends_received=float(total), items=items)
