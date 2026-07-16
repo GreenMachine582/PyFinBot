@@ -70,7 +70,7 @@ async def client(connection):
 
 
 async def register_and_login(client: AsyncClient, user_id: str, password: str = "hunter2!") -> dict[str, str]:
-    """Register a user (id + password) and log in, returning an Authorization header dict."""
+    """Register a user (id + password) and log in, returning an Authorisation header dict."""
     resp = await client.post("/api/users/", json={"id": user_id, "password": password})
     assert resp.status_code == 201, resp.text
 

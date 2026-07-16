@@ -58,7 +58,7 @@ class Transaction(SQLModel, table=True):
     user: User = Relationship(back_populates="transactions")
 
     def model_post_init(self, __context):
-        """Compute derived fields after (de)serialization."""
+        """Compute derived fields after (de)serialisation."""
         if self.transaction_date is None:
             self.transaction_date = date.today()
         elif isinstance(self.transaction_date, datetime):
