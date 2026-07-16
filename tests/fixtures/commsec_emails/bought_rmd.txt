@@ -1,0 +1,10 @@
+From: bounceback@commsec.com.au
+Reply-To: shares@commsec.com.au
+To: user@example.com
+Subject: CommSec - Bought 50 units of RMD
+Date: Fri, 10 Jul 2026 09:31:00 +1000
+Content-Type: text/plain; charset="UTF-8"
+
+You've bought 50 units in RESMED INC (RMD) at a price of $29.80 per unit (not including brokerage), on trading account ****123 MR ABC DEF GHI.
+
+The total settlement amount, including brokerage, is $1,500.00. We'll debit this from your settlement account on 13 Jul 2026.

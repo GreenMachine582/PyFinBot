@@ -22,6 +22,16 @@ class Settings(BaseSettings):
     SECRET_KEY: str = ""
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
 
+    # Gmail IMAP (App Password auth, not OAuth) for Commsec email ingestion.
+    # An App Password is broader-scoped than a typical API credential (full
+    # mailbox read access) — recommend a dedicated Gmail label/account.
+    GMAIL_ADDRESS: str = ""
+    GMAIL_APP_PASSWORD: str = ""
+    GMAIL_IMAP_HOST: str = "imap.gmail.com"
+    GMAIL_IMAP_PORT: int = 993
+    GMAIL_MAILBOX: str = "INBOX"
+    COMMSEC_SENDER: str = "bounceback@commsec.com.au"
+
 settings = Settings()
 
 if not settings.SECRET_KEY:

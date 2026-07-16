@@ -18,10 +18,10 @@ import io
 
 import pandas as pd
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..api.stock_routes import _searchForStock
+from ..core.dedupe import is_duplicate_transaction as _is_duplicate
 from ..core.dependencies import get_current_user
 from ..db.session import get_session
 from ..models.transaction_models import Transaction, TypeEnum
@@ -69,22 +69,6 @@ def _parse_dataframe(content: bytes, filename: str) -> pd.DataFrame:
     # Numeric columns silently coerce None back to NaN unless cast to
     # object dtype first, since float64 arrays have no Python-None slot.
     return df.astype(object).where(pd.notna(df), None)
-
-
-async def _is_duplicate(session: AsyncSession, txn: Transaction) -> bool:
-    """Whether a transaction with the same content already exists (this
-    upload or a prior one) — notes/id/derived fields are not part of identity."""
-    stmt = select(Transaction).where(
-        Transaction.user_id == txn.user_id,
-        Transaction.stock_id == txn.stock_id,
-        Transaction.transaction_date == txn.transaction_date,
-        Transaction.type == txn.type,
-        Transaction.units == txn.units,
-        Transaction.price == txn.price,
-        Transaction.fees == txn.fees,
-    )
-    result = await session.exec(stmt)
-    return result.first() is not None
 
 
 @router.post(

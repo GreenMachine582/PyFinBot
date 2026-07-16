@@ -1,0 +1,10 @@
+From: bounceback@commsec.com.au
+Reply-To: shares@commsec.com.au
+To: user@example.com
+Subject: CommSec - Sold 579 units of WOW
+Date: Thu, 05 Feb 2026 10:15:00 +1100
+Content-Type: text/plain; charset="UTF-8"
+
+You've sold 579 units in WOOLWORTHS GROUP LIMITED (WOW) at a price of $31.581 per unit (not including brokerage), on trading account ****123 MR ABC DEF GHI.
+
+The total settlement amount, including brokerage, is $18,255.31. We'll credit this to your settlement account on 09 Feb 2026.
