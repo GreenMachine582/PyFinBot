@@ -32,6 +32,17 @@ class Settings(BaseSettings):
     GMAIL_MAILBOX: str = "INBOX"
     COMMSEC_SENDER: str = "bounceback@commsec.com.au"
 
+    # "development" or "production". Controls the CORS default in pyfinbot.py:
+    # development allows all origins when CORS_ORIGINS is unset (frictionless
+    # local/Swagger testing); production allows none until CORS_ORIGINS is set.
+    ENVIRONMENT: str = "development"
+    CORS_ORIGINS: str = ""
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """CORS_ORIGINS as a list, split on commas with whitespace/empties stripped."""
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+
 settings = Settings()
 
 if not settings.SECRET_KEY:
@@ -44,3 +55,11 @@ if not settings.SECRET_KEY:
             "that needs to survive a restart.",
             stacklevel=2,
         )
+
+if settings.ENVIRONMENT == "production" and not settings.cors_origins_list:
+    warnings.warn(
+        "ENVIRONMENT is 'production' but CORS_ORIGINS is not set — no "
+        "cross-origin requests will be allowed until CORS_ORIGINS is set to "
+        "an explicit comma-separated allow-list.",
+        stacklevel=2,
+    )
