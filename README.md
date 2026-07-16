@@ -23,9 +23,9 @@
 
 ## Introduction
 PyFinBot is a lightweight, extensible financial tracking tool built in Python, designed to help users manage and
-analyze their stock trading activity. By leveraging relational database design and SQL-based reporting, PyFinBot
+analyse their stock trading activity. By leveraging relational database design and SQL-based reporting, PyFinBot
 offers precise insights into holdings, transaction history, and capital gains or losses per financial year. Ideal for
-personal investors or hobbyist traders, it serves as a transparent and customizable alternative to spreadsheet-based
+personal investors or hobbyist traders, it serves as a transparent and customisable alternative to spreadsheet-based
 tracking.
 
 ## 🚀 Key Features
@@ -33,9 +33,9 @@ tracking.
 * 📥 CSV/Excel Import: Bulk-import transactions from a spreadsheet, with per-row validation and error reporting.
 * 📆 Holdings Snapshot: Query real-time or historical stock units held as of any given date.
 * 💰 Capital Gain/Loss Calculation: Determine net gains/losses per stock by financial year using average cost basis.
-* 🔗 Relational Database Design: Clean, normalized schema to ensure data integrity and efficient queries.
+* 🔗 Relational Database Design: Clean, normalised schema to ensure data integrity and efficient queries.
 * 🔐 Multi-user Support: JWT-authenticated accounts — each user only sees their own transactions and reports.
-* 📦 Modular Architecture: Built to be extended with additional features like tax reports, visualizations, or API integration.
+* 📦 Modular Architecture: Built to be extended with additional features like tax reports, visualisations, or API integration.
 
 ## Tech Stack
 * **API**: [FastAPI](https://fastapi.tiangolo.com/) + [Uvicorn](https://www.uvicorn.org/)
@@ -71,19 +71,16 @@ pip install -r requirements.txt
 ```
 
 ### Configuration
-Create a `.env` file in the project root with your database connection strings:
+Copy [`.env.example`](.env.example) to `.env` in the project root and fill in your values:
+```bash
+cp .env.example .env
 ```
-DATABASE_URL=postgresql+psycopg2://user:password@localhost:5432/pyfinbot
-ASYNC_DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/pyfinbot
-SECRET_KEY=<a long random string>
 
-# Optional — only needed for POST /api/emails/sync-commsec
-GMAIL_ADDRESS=you@gmail.com
-GMAIL_APP_PASSWORD=<a Gmail App Password, not your regular password>
-```
 `SECRET_KEY` signs JWT access tokens. If unset, a random key is generated on every process start (fine for local dev, but every restart invalidates all issued tokens) — set it explicitly for any deployment that needs to survive a restart.
 
 `GMAIL_ADDRESS`/`GMAIL_APP_PASSWORD` are only required to use `POST /api/emails/sync-commsec`, which reads Commsec trade confirmation emails via IMAP. An [App Password](https://myaccount.google.com/apppasswords) grants full mailbox read access (not scoped to Commsec mail), so a dedicated Gmail account or label is recommended over your primary inbox.
+
+`ENVIRONMENT`/`CORS_ORIGINS` control cross-origin access: in `development` (the default), all origins are allowed when `CORS_ORIGINS` is unset, for frictionless local testing; in `production`, no cross-origin access is allowed unless `CORS_ORIGINS` is set to an explicit comma-separated allow-list.
 
 ### Database Migrations
 Apply the schema to your database:
