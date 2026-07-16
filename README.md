@@ -76,8 +76,14 @@ Create a `.env` file in the project root with your database connection strings:
 DATABASE_URL=postgresql+psycopg2://user:password@localhost:5432/pyfinbot
 ASYNC_DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/pyfinbot
 SECRET_KEY=<a long random string>
+
+# Optional — only needed for POST /api/emails/sync-commsec
+GMAIL_ADDRESS=you@gmail.com
+GMAIL_APP_PASSWORD=<a Gmail App Password, not your regular password>
 ```
 `SECRET_KEY` signs JWT access tokens. If unset, a random key is generated on every process start (fine for local dev, but every restart invalidates all issued tokens) — set it explicitly for any deployment that needs to survive a restart.
+
+`GMAIL_ADDRESS`/`GMAIL_APP_PASSWORD` are only required to use `POST /api/emails/sync-commsec`, which reads Commsec trade confirmation emails via IMAP. An [App Password](https://myaccount.google.com/apppasswords) grants full mailbox read access (not scoped to Commsec mail), so a dedicated Gmail account or label is recommended over your primary inbox.
 
 ### Database Migrations
 Apply the schema to your database:
@@ -105,7 +111,9 @@ All routes are mounted under `/api`. See `/docs` for full request/response schem
 | Stocks | `/api/stocks` | CRUD for tracked stocks, plus market sync |
 | Transactions | `/api/transactions` | CRUD for Buy/Sell transactions |
 | Import | `/api/transactions/import` | Bulk-import transactions from CSV/Excel |
-| Reports | `/api/reports` | Holdings snapshots and FY capital-gains reports |
+| Emails | `/api/emails` | Sync Commsec bought/sold confirmation emails into transactions |
+| Dividends | `/api/dividends` | Sync per-stock dividend history (yfinance) |
+| Reports | `/api/reports` | Holdings, FY capital-gains, and dividend-income reports |
 
 ## Testing
 PyFinBot includes a pytest suite covering all routers, models/schemas, and core utilities.
@@ -118,9 +126,11 @@ pytest
 1. ✅ MVP – Schema design, transaction insertion, and SQL-based queries.
 2. ✅ Import System – CSV or Excel import of stock transactions.
 3. ✅ Reporting Module – FY-based reports for holdings and capital gains.
-4. 🧮 FIFO Method Support – Accurate gain/loss computation based on FIFO accounting.
-5. 🌐 CLI Interface – Interact via command line with exportable summaries.
-6. 🖥️ Web Dashboard (optional) – View and interact with data through a simple front end.
+4. ✅ Commsec Email Ingestion – Parse bought/sold confirmation emails (Gmail IMAP) into transactions.
+5. ✅ Dividend Tracking – Pull per-stock dividend history (yfinance) and report income by FY.
+6. 🧮 FIFO Method Support – Accurate gain/loss computation based on FIFO accounting.
+7. 🌐 CLI Interface – Interact via command line with exportable summaries.
+8. 🖥️ Web Dashboard (optional) – View and interact with data through a simple front end.
 
 Day-to-day and in-progress work is tracked in [`todo.md`](todo.md), which serves as the project's living backlog across sessions.
 
