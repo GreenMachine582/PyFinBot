@@ -1,3 +1,4 @@
+from . import dividend_schemas as dividend_schemas
 from . import email_schemas as email_schemas
 from . import import_schemas as import_schemas
 from . import report_schemas as report_schemas

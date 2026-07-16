@@ -6,6 +6,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 if TYPE_CHECKING:
     # only for type checkers; avoids runtime import cycles
+    from .dividend_models import Dividend
     from .transaction_models import Transaction
 
 
@@ -26,6 +27,7 @@ class Stock(SQLModel, table=True):
 
     # relationships
     transactions: List["Transaction"] = Relationship(back_populates="stock")
+    dividends: List["Dividend"] = Relationship(back_populates="stock")
 
     @classmethod
     async def search(
