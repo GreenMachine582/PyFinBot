@@ -5,13 +5,13 @@ import warnings
 from os import path as os_path
 
 from dotenv import load_dotenv
-from pydantic_settings import BaseSettings
+from greentechhub_core.config import GTHBaseSettings
 
 
 load_dotenv(dotenv_path=os_path.join(os_path.dirname(__file__), "..", "..", "..", ".env"))
 
 
-class Settings(BaseSettings):
+class Settings(GTHBaseSettings):
     ASYNC_DATABASE_URL: str = ""
     DATABASE_URL: str = ""
     DB_ECHO: bool = False
@@ -19,21 +19,17 @@ class Settings(BaseSettings):
     # JWT signing secret. Defaults to a fresh random value each process start
     # (so tokens issued before a restart become invalid) unless overridden via
     # the environment/.env — set this explicitly in any persistent deployment.
-    SECRET_KEY: str = ""
+    # Overrides GTHBaseSettings' own secret_key (which has no default and
+    # would otherwise be a hard validation error at import time when unset)
+    # to keep that ephemeral-fallback behavior. Env var stays SECRET_KEY —
+    # GTHBaseSettings matches env vars case-insensitively.
+    secret_key: str = ""
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
 
     # AUTH_ADAPTER for greentechhub_fastapi.register_auth: "local" (default,
     # a locally-issued session JWT) or "forward_auth" (Authentik outpost —
     # not wired up yet, deferred).
     AUTH_ADAPTER: str = "local"
-
-    @property
-    def secret_key(self) -> str:
-        """Lowercase alias for SECRET_KEY — greentechhub_fastapi.register_auth
-        reads settings.secret_key directly (matching GTHBaseSettings' own
-        field naming), so this needs to exist regardless of whether Settings
-        itself subclasses GTHBaseSettings (it doesn't yet — see todo.md)."""
-        return self.SECRET_KEY
 
     # Gmail IMAP (App Password auth, not OAuth) for Commsec email ingestion.
     # An App Password is broader-scoped than a typical API credential (full
@@ -46,20 +42,18 @@ class Settings(BaseSettings):
     COMMSEC_SENDER: str = "bounceback@commsec.com.au"
 
     # "development" or "production". Controls the CORS default in pyfinbot.py:
-    # development allows all origins when CORS_ORIGINS is unset (frictionless
-    # local/Swagger testing); production allows none until CORS_ORIGINS is set.
+    # development allows all origins when CORS_ALLOWED_ORIGINS is unset
+    # (frictionless local/Swagger testing); production allows none until
+    # CORS_ALLOWED_ORIGINS is set. Read by greentechhub_fastapi.register_core
+    # (via its own tolerant read_list_setting, which has no such dev-mode
+    # default — the "*" fallback is applied in pyfinbot.py, not here).
     ENVIRONMENT: str = "development"
-    CORS_ORIGINS: str = ""
-
-    @property
-    def cors_origins_list(self) -> list[str]:
-        """CORS_ORIGINS as a list, split on commas with whitespace/empties stripped."""
-        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+    CORS_ALLOWED_ORIGINS: str = ""
 
 settings = Settings()
 
-if not settings.SECRET_KEY:
-    settings.SECRET_KEY = secrets.token_hex(32)
+if not settings.secret_key:
+    settings.secret_key = secrets.token_hex(32)
     if not os.environ.get("SECRET_KEY"):
         warnings.warn(
             "SECRET_KEY is not set in the environment/.env — using a random "
@@ -69,10 +63,10 @@ if not settings.SECRET_KEY:
             stacklevel=2,
         )
 
-if settings.ENVIRONMENT == "production" and not settings.cors_origins_list:
+if settings.ENVIRONMENT == "production" and not settings.CORS_ALLOWED_ORIGINS:
     warnings.warn(
-        "ENVIRONMENT is 'production' but CORS_ORIGINS is not set — no "
-        "cross-origin requests will be allowed until CORS_ORIGINS is set to "
-        "an explicit comma-separated allow-list.",
+        "ENVIRONMENT is 'production' but CORS_ALLOWED_ORIGINS is not set — no "
+        "cross-origin requests will be allowed until CORS_ALLOWED_ORIGINS is "
+        "set to an explicit comma-separated allow-list.",
         stacklevel=2,
     )

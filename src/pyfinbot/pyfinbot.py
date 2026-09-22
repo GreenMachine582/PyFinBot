@@ -7,10 +7,9 @@ import pkgutil
 
 import greentechhub_ui
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi_pagination import add_pagination
-from greentechhub_fastapi import register_auth
+from greentechhub_fastapi import register_auth, register_core
 
 from . import version, api
 from .core.settings import settings
@@ -34,24 +33,25 @@ app = FastAPI(
     version=version.VERSION
 )
 
-# CORS: development allows all origins when CORS_ORIGINS is unset (frictionless
-# local/Swagger testing); production allows none until CORS_ORIGINS is set.
-_cors_origins = settings.cors_origins_list
-if settings.ENVIRONMENT == "development" and not _cors_origins:
-    _cors_origins = ["*"]
+# CORS: development allows all origins when CORS_ALLOWED_ORIGINS is unset
+# (frictionless local/Swagger testing); production allows none until
+# CORS_ALLOWED_ORIGINS is set. register_core's own CORS wiring has no such
+# dev-friendly default (empty means empty), so it's applied here, before
+# calling it, the same way this dev-default logic always has.
+if settings.ENVIRONMENT == "development" and not settings.CORS_ALLOWED_ORIGINS:
+    settings.CORS_ALLOWED_ORIGINS = "*"
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Web UI: session-cookie auth (AUTH_ADAPTER=local for now — see
-# web-implementation-brief.md for the later forward_auth/Authentik swap) and
-# the greentechhub-ui static assets its templates reference.
+# request-id/timing/security-header/CORS/trusted-proxy middleware, and
+# session-cookie auth (AUTH_ADAPTER=local for now — see
+# web-implementation-brief.md for the later forward_auth/Authentik swap).
+# register_core before register_auth: forward_auth's trust gate depends on
+# register_core's ProxyHeadersMiddleware having already run (see
+# greentechhub-fastapi's docs/auth.md) — not load-bearing for AUTH_ADAPTER=
+# local today, but the right order to not need revisiting later.
+register_core(app, settings)
 register_auth(app, settings)
+
+# greentechhub-ui static assets its templates reference.
 app.mount("/gth-static", StaticFiles(directory=greentechhub_ui.theme_path), name="gth-static")
 app.mount("/gth-assets", StaticFiles(directory=greentechhub_ui.static_path), name="gth-assets")
 

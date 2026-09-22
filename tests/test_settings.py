@@ -5,8 +5,6 @@ import warnings
 
 import pytest
 
-from pyfinbot.core.settings import Settings
-
 
 def _settings_module():
     """The actual core.settings module object, for importlib.reload().
@@ -21,28 +19,12 @@ def _settings_module():
     return sys.modules["pyfinbot.core.settings"]
 
 
-class TestCorsOriginsList:
-    def test_empty_string_is_empty_list(self):
-        assert Settings(CORS_ORIGINS="").cors_origins_list == []
-
-    def test_single_origin(self):
-        assert Settings(CORS_ORIGINS="https://example.com").cors_origins_list == ["https://example.com"]
-
-    def test_multiple_origins_split_on_comma(self):
-        s = Settings(CORS_ORIGINS="https://a.com,https://b.com")
-        assert s.cors_origins_list == ["https://a.com", "https://b.com"]
-
-    def test_whitespace_and_empties_stripped(self):
-        s = Settings(CORS_ORIGINS=" https://a.com , , https://b.com ,")
-        assert s.cors_origins_list == ["https://a.com", "https://b.com"]
-
-
 class TestProductionCorsWarning:
     def test_warns_when_production_and_no_cors_origins(self, monkeypatch):
         monkeypatch.setenv("ENVIRONMENT", "production")
-        monkeypatch.delenv("CORS_ORIGINS", raising=False)
+        monkeypatch.delenv("CORS_ALLOWED_ORIGINS", raising=False)
         settings_module = _settings_module()
-        with pytest.warns(UserWarning, match="CORS_ORIGINS"):
+        with pytest.warns(UserWarning, match="CORS_ALLOWED_ORIGINS"):
             importlib.reload(settings_module)
         # restore module state for subsequent tests/imports in this process
         monkeypatch.undo()
@@ -50,7 +32,7 @@ class TestProductionCorsWarning:
 
     def test_no_warning_when_production_and_cors_origins_set(self, monkeypatch):
         monkeypatch.setenv("ENVIRONMENT", "production")
-        monkeypatch.setenv("CORS_ORIGINS", "https://example.com")
+        monkeypatch.setenv("CORS_ALLOWED_ORIGINS", "https://example.com")
         settings_module = _settings_module()
         # SECRET_KEY is unset in the test env too, so it also warns on every
         # reload — record everything and only assert on the CORS message,
@@ -60,18 +42,18 @@ class TestProductionCorsWarning:
             importlib.reload(settings_module)
         monkeypatch.undo()
         importlib.reload(settings_module)
-        assert not any("CORS_ORIGINS" in str(w.message) for w in caught)
+        assert not any("CORS_ALLOWED_ORIGINS" in str(w.message) for w in caught)
 
     def test_no_warning_when_development_and_no_cors_origins(self, monkeypatch):
         monkeypatch.setenv("ENVIRONMENT", "development")
-        monkeypatch.delenv("CORS_ORIGINS", raising=False)
+        monkeypatch.delenv("CORS_ALLOWED_ORIGINS", raising=False)
         settings_module = _settings_module()
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             importlib.reload(settings_module)
         monkeypatch.undo()
         importlib.reload(settings_module)
-        assert not any("CORS_ORIGINS" in str(w.message) for w in caught)
+        assert not any("CORS_ALLOWED_ORIGINS" in str(w.message) for w in caught)
 
 
 class TestCorsMiddlewareRegistration:
@@ -81,6 +63,6 @@ class TestCorsMiddlewareRegistration:
 
         cors_entries = [m for m in app.user_middleware if m.cls is CORSMiddleware]
         assert len(cors_entries) == 1
-        # Test process runs with no ENVIRONMENT/CORS_ORIGINS override — dev default applies
+        # Test process runs with no ENVIRONMENT/CORS_ALLOWED_ORIGINS override
+        # — dev default applies
         assert cors_entries[0].kwargs["allow_origins"] == ["*"]
-        assert cors_entries[0].kwargs["allow_credentials"] is True

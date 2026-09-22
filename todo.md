@@ -26,13 +26,13 @@ Roughly, in order:
       (`web/templates/`, extending `greentechhub_ui`'s `app.html`) + a
       placeholder dashboard also landed in the same pass, verified via
       `tests/test_web_auth.py` (full session-cookie login→dashboard→logout
-      round trip, 6 tests, 100% coverage on the new `web/` routes)
-  - [ ] Follow-up: `register_core` + `Settings` extending `GTHBaseSettings`
-        were deliberately skipped this pass (not needed for login to work,
-        and `register_core` is mainly a `forward_auth` prerequisite — see
-        below). Doing this later means renaming `CORS_ORIGINS`→
-        `CORS_ALLOWED_ORIGINS` and retiring the hand-rolled CORS middleware
-        + `cors_origins_list` (touches `tests/test_settings.py`)
+      round trip, 7 tests, 100% coverage on the new `web/` routes)
+  - [x] `register_core` + `Settings` extending `GTHBaseSettings` — done:
+        `Settings` now extends `GTHBaseSettings`, `CORS_ORIGINS` renamed to
+        `CORS_ALLOWED_ORIGINS` (matching what `register_core` reads), the
+        hand-rolled CORS middleware + `cors_origins_list` retired in favor
+        of `register_core(app, settings)` (also picks up request-id/timing/
+        security-header/trusted-proxy middleware for free)
 - [ ] Stocks + Transactions pages — `gth-table`/`gth-modal`/`gth-form`
 - [ ] Import page — upload + `gth-toast`
 - [ ] Emails + Dividends pages — manual sync triggers + `gth-toast`
