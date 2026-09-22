@@ -20,11 +20,19 @@ history rather than a checklist here.
 Full scope, architecture, and phasing: see `web-implementation-brief.md`.
 Roughly, in order:
 
-- [ ] Pin `greentechhub-fastapi`/`greentechhub-ui` as dependencies; have
-      `Settings` extend `GTHBaseSettings`; wire `register_core` +
-      `register_auth` (`AUTH_ADAPTER=local`) into `pyfinbot.py`
-- [ ] Web login route (credential check + `create_session_cookie`) + base
-      shell (`web/templates/`, extending `greentechhub_ui`'s `app.html`)
+- [x] Pin `greentechhub-fastapi`/`greentechhub-ui` as dependencies; wire
+      `register_auth` (`AUTH_ADAPTER=local`) into `pyfinbot.py` — done: web
+      login route (credential check + `create_session_cookie`) + base shell
+      (`web/templates/`, extending `greentechhub_ui`'s `app.html`) + a
+      placeholder dashboard also landed in the same pass, verified via
+      `tests/test_web_auth.py` (full session-cookie login→dashboard→logout
+      round trip, 6 tests, 100% coverage on the new `web/` routes)
+  - [ ] Follow-up: `register_core` + `Settings` extending `GTHBaseSettings`
+        were deliberately skipped this pass (not needed for login to work,
+        and `register_core` is mainly a `forward_auth` prerequisite — see
+        below). Doing this later means renaming `CORS_ORIGINS`→
+        `CORS_ALLOWED_ORIGINS` and retiring the hand-rolled CORS middleware
+        + `cors_origins_list` (touches `tests/test_settings.py`)
 - [ ] Stocks + Transactions pages — `gth-table`/`gth-modal`/`gth-form`
 - [ ] Import page — upload + `gth-toast`
 - [ ] Emails + Dividends pages — manual sync triggers + `gth-toast`

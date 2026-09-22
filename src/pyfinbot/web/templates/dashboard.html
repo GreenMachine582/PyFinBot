@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "stat_card.html" import gth_stat_card %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+
+<h2 class="mb-3">Dashboard</h2>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    {{ gth_stat_card("Holdings value", "Coming soon") }}
+  </div>
+  <div class="col-6 col-md-3">
+    {{ gth_stat_card("YTD gain/loss", "Coming soon") }}
+  </div>
+  <div class="col-6 col-md-3">
+    {{ gth_stat_card("Dividends received", "Coming soon") }}
+  </div>
+</div>
+
+<p class="text-secondary">
+  Logged in as <strong>{{ identity.username }}</strong>. Stocks, Transactions,
+  Import, Reports, and Dividends pages are coming in follow-up passes.
+</p>
+
+<form method="post" action="/logout" class="mt-3">
+  <button type="submit" class="btn btn-outline-secondary btn-sm">Log out</button>
+</form>
+
+{% endblock %}

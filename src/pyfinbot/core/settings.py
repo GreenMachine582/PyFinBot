@@ -22,6 +22,19 @@ class Settings(BaseSettings):
     SECRET_KEY: str = ""
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
 
+    # AUTH_ADAPTER for greentechhub_fastapi.register_auth: "local" (default,
+    # a locally-issued session JWT) or "forward_auth" (Authentik outpost —
+    # not wired up yet, deferred).
+    AUTH_ADAPTER: str = "local"
+
+    @property
+    def secret_key(self) -> str:
+        """Lowercase alias for SECRET_KEY — greentechhub_fastapi.register_auth
+        reads settings.secret_key directly (matching GTHBaseSettings' own
+        field naming), so this needs to exist regardless of whether Settings
+        itself subclasses GTHBaseSettings (it doesn't yet — see todo.md)."""
+        return self.SECRET_KEY
+
     # Gmail IMAP (App Password auth, not OAuth) for Commsec email ingestion.
     # An App Password is broader-scoped than a typical API credential (full
     # mailbox read access) — recommend a dedicated Gmail label/account.
