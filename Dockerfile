@@ -7,12 +7,14 @@ ENV PYTHONUNBUFFERED 1
 # Set work directory
 WORKDIR /app
 
-# Install system dependencies (for psycopg2, Pillow, etc.)
+# Install system dependencies (for psycopg2, Pillow, etc.; git is needed by
+# pip to resolve the greentechhub-* git+https dependencies below)
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
     libjpeg-dev \
     zlib1g-dev \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
