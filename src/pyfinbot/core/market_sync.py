@@ -1,6 +1,6 @@
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Callable, Dict, Tuple, List
 
 import pandas as pd
@@ -51,7 +51,7 @@ async def syncMarket(session: AsyncSession, market: str, fetch_data: Callable = 
     existing: Dict[str, Stock] = {s.symbol: s for s in stocks}
 
     created, updated, archived = [], [], []
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
 
     # Upsert records
     for sym in symbols:

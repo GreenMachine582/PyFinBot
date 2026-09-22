@@ -46,9 +46,9 @@ class TestSyncMarketUpdate:
         assert result.one().name == "New Name"
 
     async def test_reactivates_archived_stock(self, session):
-        from datetime import datetime
+        from datetime import datetime, timezone
         session.add(Stock(symbol="BHP", market="ASX", name="BHP Group",
-                          is_active=False, archived_at=datetime.now()))
+                          is_active=False, archived_at=datetime.now(timezone.utc)))
         await session.commit()
 
         fetcher = _make_fetcher({"BHP": "BHP Group"})
@@ -77,8 +77,8 @@ class TestSyncMarketArchive:
         assert stock.archived_at is not None
 
     async def test_already_archived_not_double_archived(self, session):
-        from datetime import datetime
-        ts = datetime.now()
+        from datetime import datetime, timezone
+        ts = datetime.now(timezone.utc)
         session.add(Stock(symbol="DEL", market="ASX", name="Delisted",
                           is_active=False, archived_at=ts))
         await session.commit()

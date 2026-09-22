@@ -1,5 +1,5 @@
 from typing import Optional, List, TYPE_CHECKING
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlmodel import SQLModel, Field, Relationship
 
@@ -13,8 +13,8 @@ class User(SQLModel, table=True):
     active: bool = Field(default=True, description="User active status")
     password_hash: Optional[str] = Field(default=None, description="Bcrypt hash of the user's password")
 
-    create_datetime: datetime = Field(default_factory=datetime.now)
-    write_datetime: datetime = Field(default_factory=datetime.now)
+    create_datetime: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    write_datetime: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     transactions: List["Transaction"] = Relationship(
         back_populates="user",

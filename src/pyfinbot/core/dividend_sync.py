@@ -5,7 +5,7 @@ fetcher + upsert pattern as core/market_sync.py.
 from __future__ import annotations
 
 import asyncio
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Callable, Dict, List, Optional, Tuple
 
@@ -51,7 +51,7 @@ async def syncDividends(
     stocks = result.all()
 
     created, updated, errors = [], [], []
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
 
     for stock in stocks:
         try:

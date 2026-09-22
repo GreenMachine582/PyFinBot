@@ -1,5 +1,5 @@
 from typing import Optional, List, TYPE_CHECKING
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlmodel import SQLModel, Field, UniqueConstraint, select, Relationship
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -19,8 +19,8 @@ class Stock(SQLModel, table=True):
     market: str = Field(index=True, max_length=20, description="Stock market")
     name: str = Field(index=True, description="Full name of the stock")
 
-    create_datetime: datetime = Field(default_factory=datetime.now)
-    write_datetime: datetime = Field(default_factory=datetime.now)
+    create_datetime: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    write_datetime: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     is_active: bool = Field(default=True)
     archived_at: Optional[datetime] = None

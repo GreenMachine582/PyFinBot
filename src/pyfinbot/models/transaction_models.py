@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from decimal import Decimal
 from enum import Enum
 from typing import Optional, TYPE_CHECKING
@@ -50,8 +50,8 @@ class Transaction(SQLModel, table=True):
     fy: int = Field(default=0, description="Fiscal year")
 
     # Timestamps (UTC)
-    create_datetime: datetime = Field(default_factory=datetime.now)
-    write_datetime: datetime = Field(default_factory=datetime.now)
+    create_datetime: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    write_datetime: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     # relationships
     stock: Stock = Relationship(back_populates="transactions")

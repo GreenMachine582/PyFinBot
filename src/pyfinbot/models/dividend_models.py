@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Optional, TYPE_CHECKING
 
@@ -33,8 +33,8 @@ class Dividend(SQLModel, table=True):
     amount_per_share: Decimal = Field(sa_type=Numeric(18, 6), description="Cash dividend per share")
     source: str = Field(default="yfinance", description="Data source of this record")
 
-    create_datetime: datetime = Field(default_factory=datetime.now)
-    write_datetime: datetime = Field(default_factory=datetime.now)
+    create_datetime: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    write_datetime: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     # relationships
     stock: Stock = Relationship(back_populates="dividends")
