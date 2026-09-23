@@ -1,4 +1,4 @@
-FROM pybase:3.11
+FROM python:3.12-slim
 
 # Prevents Python from writing .pyc files and buffering stdout/stderr
 ENV PYTHONDONTWRITEBYTECODE 1
