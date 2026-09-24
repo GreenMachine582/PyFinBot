@@ -59,6 +59,14 @@ class Transaction(SQLModel, table=True):
 
     def model_post_init(self, __context):
         """Compute derived fields after (de)serialisation."""
+        self.recompute()
+
+    def recompute(self) -> None:
+        """(Re)derive total_value, cost, and fy from the input fields.
+
+        model_post_init only runs on construction, so anything that edits
+        units/price/fees/type/transaction_date in place must call this.
+        """
         if self.transaction_date is None:
             self.transaction_date = date.today()
         elif isinstance(self.transaction_date, datetime):

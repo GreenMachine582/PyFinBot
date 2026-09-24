@@ -148,6 +148,43 @@ class TestUpdateTransaction:
         assert resp.status_code == 200
         assert resp.json()["notes"] == "updated note"
 
+    async def test_full_update_recomputes_derived_fields(self, client):
+        headers = await register_and_login(client, USER_ID)
+        stock = await _create_stock(client)
+        other = await _create_stock(client, symbol="CBA", name="Commonwealth Bank")
+        created = await _create_transaction(client, stock["id"], headers, transaction_date="2024-06-30")
+
+        resp = await client.put(f"/api/transactions/{created['id']}", headers=headers, json={
+            "stock_id": "ASX:CBA", "type": "Sell", "units": 4, "price": 100, "fees": 10,
+            "transaction_date": "01/07/2024",
+        })
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["stock"]["symbol"] == "CBA"
+        assert body["stock_id"] == other["id"]
+        assert body["total_value"] == 400.0
+        assert body["cost"] == 390.0
+        assert body["fy"] == created["fy"] + 1
+        assert body["notes"] == created["notes"]  # untouched fields are kept
+
+    async def test_null_fields_other_than_notes_are_ignored(self, client):
+        headers = await register_and_login(client, USER_ID)
+        stock = await _create_stock(client)
+        created = await _create_transaction(client, stock["id"], headers, notes="keep?")
+        resp = await client.put(f"/api/transactions/{created['id']}", headers=headers,
+                                json={"units": None, "notes": None})
+        assert resp.status_code == 200
+        assert resp.json()["units"] == created["units"]
+        assert resp.json()["notes"] is None
+
+    async def test_update_to_unknown_stock_returns_404(self, client):
+        headers = await register_and_login(client, USER_ID)
+        stock = await _create_stock(client)
+        created = await _create_transaction(client, stock["id"], headers)
+        resp = await client.put(f"/api/transactions/{created['id']}", headers=headers,
+                                json={"stock_id": 999999})
+        assert resp.status_code == 404
+
     async def test_other_user_gets_403(self, client):
         headers = await register_and_login(client, USER_ID)
         other_headers = await register_and_login(client, OTHER_USER_ID)

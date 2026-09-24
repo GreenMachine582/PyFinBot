@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -167,8 +168,22 @@ async def update_transaction(
     if transaction.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not allowed to modify this transaction")
 
-    for key, value in transaction_update.model_dump(exclude_unset=True).items():
+    # An explicit null only makes sense for notes; for anything else it would
+    # break recompute(), so treat it the same as "not sent".
+    changes = {
+        key: value for key, value in transaction_update.model_dump(exclude_unset=True).items()
+        if value is not None or key == "notes"
+    }
+    if "stock_id" in changes:
+        stock = await _searchForStock(session, changes["stock_id"])
+        if not stock:
+            raise HTTPException(status_code=404, detail="Stock not found")
+        changes["stock_id"] = stock.id
+
+    for key, value in changes.items():
         setattr(transaction, key, value)
+    transaction.recompute()
+    transaction.write_datetime = datetime.now(timezone.utc)
 
     session.add(transaction)
     try:
