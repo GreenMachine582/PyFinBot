@@ -33,7 +33,21 @@ Roughly, in order:
         hand-rolled CORS middleware + `cors_origins_list` retired in favor
         of `register_core(app, settings)` (also picks up request-id/timing/
         security-header/trusted-proxy middleware for free)
-- [ ] Stocks + Transactions pages — `gth-table`/`gth-modal`/`gth-form`
+- [x] Stocks + Transactions pages — `gth-table`/`gth-modal`/`gth-form` —
+      done: filterable/sortable tables with load-more paging, modal
+      create/edit/delete, ASX sync action with `gth-toast`, searchable stock
+      picker; transactions are fully editable (derived fields recomputed via
+      `Transaction.recompute()`, which `PUT /api/transactions/{id}` now uses
+      too); covered by `tests/test_web_stocks.py`/`test_web_transactions.py`
+  - [ ] Upstream (greentechhub-ui): `gth_pagination` hardcodes
+        `hx-target="this"`, so it can't append table rows — PyFinBot uses its
+        own `_load_more_row.html` instead; an `hx_target` param would let it
+        use the shared macro
+  - [ ] Upstream (greentechhub-ui): vendored htmx 1.9.10 shares one
+        `requestCount` between the request-indicator class and
+        `hx-disabled-elt`, so `.htmx-request` sticks on an element that is
+        both — bump htmx (confirm the fixing version in its changelog); until
+        then PyFinBot styles busy buttons on `:disabled` (see `base.html`)
 - [ ] Import page — upload + `gth-toast`
 - [ ] Emails + Dividends pages — manual sync triggers + `gth-toast`
 - [ ] Reports page — holdings, capital gains, and dividend income

@@ -106,7 +106,7 @@ All routes are mounted under `/api`. See `/docs` for full request/response schem
 | Auth | `/api/auth` | `POST /login` — exchange a user id + password for a JWT access token |
 | Users | `/api/users` | Create (register) and manage users |
 | Stocks | `/api/stocks` | CRUD for tracked stocks, plus market sync |
-| Transactions | `/api/transactions` | CRUD for Buy/Sell transactions |
+| Transactions | `/api/transactions` | CRUD for Buy/Sell transactions (`PUT` accepts any subset of fields; total/cost/FY are recomputed) |
 | Import | `/api/transactions/import` | Bulk-import transactions from CSV/Excel |
 | Emails | `/api/emails` | Sync Commsec bought/sold confirmation emails into transactions |
 | Dividends | `/api/dividends` | Sync per-stock dividend history (yfinance) |
