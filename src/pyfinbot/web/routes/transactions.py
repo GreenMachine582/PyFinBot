@@ -1,8 +1,9 @@
 from datetime import date, datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from greentechhub_core.identity import Identity
-from greentechhub_fastapi.query import PageParams, next_page_url
+from greentechhub_ui import TableState
+from greentechhub_ui.htmx import wants_fragment
 from pydantic import ValidationError
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
@@ -16,19 +17,12 @@ from ...models.transaction_models import Transaction, TypeEnum
 from ...schemas.transaction_schemas import TransactionCreate
 from ..deps import page_identity
 from ..htmx import CLOSE_MODAL, hx_response
-from ..paging import paginate, web_page_params
+from ..paging import PAGE_SIZE, PAGE_SIZES, paginate, sort_string
 from ..templating import templates
 
 router = APIRouter(prefix="/transactions")
 
 CHANGED = "transactionsChanged"
-DEFAULT_SORT = "-transaction_date,id"
-SORTS = {
-    DEFAULT_SORT: "Newest first",
-    "transaction_date,id": "Oldest first",
-    "-total_value": "Largest value",
-    "total_value": "Smallest value",
-}
 # stock_id_search is the stock gth_combobox's visible text — only echoed back
 # on a 422 re-render; stock_id (the picked value) is what's validated.
 FORM_FIELDS = ("stock_id", "stock_id_search", "transaction_date", "type", "units", "price", "fees", "notes")
@@ -58,33 +52,42 @@ def _parse_date(value: str) -> date | None:
         return None
 
 
-async def _rows_context(session: AsyncSession, identity: Identity, params: PageParams, *, stock: str,
-                        type_: str, date_from: str, date_to: str, fy: str, sort: str) -> dict:
+def _table_state(request: Request) -> TableState:
+    return TableState.from_query(
+        request.query_params,
+        id="transactions",
+        base_url="/transactions",
+        page_size=PAGE_SIZE,
+        page_sizes=PAGE_SIZES,
+        sortable=("transaction_date", "type", "units", "price", "fees", "total_value", "cost"),
+        default_sort="transaction_date",
+        default_direction="desc",
+        filter_params=("stock", "type", "fy", "date_from", "date_to"),
+    )
+
+
+async def _query_transactions(session: AsyncSession, identity: Identity,
+                              state: TableState) -> tuple[list[Transaction], TableState]:
     stmt = (
         select(Transaction)
         .options(selectinload(Transaction.stock))
         .where(Transaction.user_id == identity.subject)
     )
-    if stock.strip():
-        like = f"%{stock.strip()}%"
+    filters = state.filters
+    if stock := filters.get("stock"):
+        like = f"%{stock}%"
         stmt = stmt.join(Stock).where(Stock.symbol.ilike(like) | Stock.name.ilike(like))
-    if type_ in {t.value for t in TypeEnum}:
+    if (type_ := filters.get("type")) in {t.value for t in TypeEnum}:
         stmt = stmt.where(Transaction.type == TypeEnum(type_))
-    if start := _parse_date(date_from):
+    if start := _parse_date(filters.get("date_from", "")):
         stmt = stmt.where(Transaction.transaction_date >= start)
-    if end := _parse_date(date_to):
+    if end := _parse_date(filters.get("date_to", "")):
         stmt = stmt.where(Transaction.transaction_date <= end)
-    if fy.isdigit():
+    if (fy := filters.get("fy", "")).isdigit():
         stmt = stmt.where(Transaction.fy == int(fy))
-    stmt = stmt.order_by(*buildSortOrderBy(Transaction, ALLOWED_FILTERING_FIELDS, None, sort or DEFAULT_SORT))
-
-    page = await paginate(session, stmt, params)
-    filters = {"stock": stock, "type": type_, "date_from": date_from, "date_to": date_to, "fy": fy, "sort": sort}
-    return {
-        "transactions": page.items,
-        "total": page.total,
-        "next_url": next_page_url("/transactions/rows", page, filters),
-    }
+    sort = sort_string(state, "transaction_date", "id")
+    stmt = stmt.order_by(*buildSortOrderBy(Transaction, ALLOWED_FILTERING_FIELDS, None, sort))
+    return await paginate(session, stmt, state)
 
 
 @router.get("")
@@ -92,34 +95,18 @@ async def transactions_page(
     request: Request,
     identity: Identity = Depends(page_identity),
     session: AsyncSession = Depends(get_session),
-    params: PageParams = Depends(web_page_params),
 ):
+    """The page, or (htmx: sort, filter, load more, refresh) just the table."""
+    transactions, state = await _query_transactions(session, identity, _table_state(request))
+    context = {"table": state, "transactions": transactions}
+    if wants_fragment(request.headers):
+        return templates.TemplateResponse(request, "_transaction_table.html", context)
     fys = (await session.exec(
         select(Transaction.fy).where(Transaction.user_id == identity.subject).distinct().order_by(Transaction.fy.desc())
     )).all()
-    context = await _rows_context(session, identity, params, stock="", type_="", date_from="", date_to="",
-                                  fy="", sort=DEFAULT_SORT)
     return templates.TemplateResponse(request, "transactions.html", {
-        **context, "fys": fys, "types": [t.value for t in TypeEnum], "sorts": SORTS,
+        **context, "fys": fys, "types": [t.value for t in TypeEnum],
     })
-
-
-@router.get("/rows")
-async def transaction_rows(
-    request: Request,
-    identity: Identity = Depends(page_identity),
-    session: AsyncSession = Depends(get_session),
-    params: PageParams = Depends(web_page_params),
-    stock: str = "",
-    type_: str = Query("", alias="type"),
-    date_from: str = "",
-    date_to: str = "",
-    fy: str = "",
-    sort: str = DEFAULT_SORT,
-):
-    context = await _rows_context(session, identity, params, stock=stock, type_=type_, date_from=date_from,
-                                  date_to=date_to, fy=fy, sort=sort)
-    return templates.TemplateResponse(request, "_transaction_rows.html", context)
 
 
 async def _render_form(request: Request, session: AsyncSession, transaction: Transaction | None, values: dict,
@@ -223,7 +210,7 @@ async def create_transaction(request: Request, identity: Identity = Depends(page
     label = _label(transaction, stock)
     session.add(transaction)
     await session.commit()
-    return hx_response(f"Added {label}", events=(CLOSE_MODAL, CHANGED))
+    return hx_response(f"Added {label}", title="Transaction added", events=(CLOSE_MODAL, CHANGED))
 
 
 @router.post("/{transaction_id:int}")
@@ -245,7 +232,7 @@ async def update_transaction(request: Request, transaction_id: int,
     label = _label(transaction, stock)
     session.add(transaction)
     await session.commit()
-    return hx_response(f"Saved {label}", events=(CLOSE_MODAL, CHANGED))
+    return hx_response(f"Saved {label}", title="Transaction saved", events=(CLOSE_MODAL, CHANGED))
 
 
 @router.get("/{transaction_id:int}/delete")
@@ -263,4 +250,4 @@ async def delete_transaction(transaction_id: int, identity: Identity = Depends(p
     label = _label(transaction, transaction.stock)
     await session.delete(transaction)
     await session.commit()
-    return hx_response(f"Deleted {label}", events=(CHANGED,))
+    return hx_response(f"Deleted {label}", title="Transaction deleted", events=(CHANGED,))

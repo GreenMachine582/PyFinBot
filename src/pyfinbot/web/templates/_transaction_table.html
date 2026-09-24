@@ -1,14 +1,25 @@
-{% from "table.html" import gth_table_body, gth_table_load_more %}
-{% call(txn) gth_table_body(rows=transactions, empty_message="No transactions match these filters.", colspan=11) %}
+{% from "table.html" import gth_data_table %}
+{% from "badge.html" import gth_badge %}
+{% from "_table_refresh.html" import table_refresh %}
+{% call(txn) gth_data_table(table, [
+    {"label": "Date", "sort_key": "transaction_date"},
+    "Stock",
+    {"label": "Type", "sort_key": "type"},
+    {"label": "Units", "sort_key": "units", "class": "text-end"},
+    {"label": "Price", "sort_key": "price", "class": "text-end"},
+    {"label": "Fees", "sort_key": "fees", "class": "text-end"},
+    {"label": "Total", "sort_key": "total_value", "class": "text-end"},
+    {"label": "Cost", "sort_key": "cost", "class": "text-end"},
+    "FY",
+    "Notes",
+    "",
+  ], transactions, empty_message="No transactions match these filters.") %}
 <tr>
   <td class="text-nowrap">{{ txn.transaction_date.strftime("%d/%m/%Y") }}</td>
   <td class="text-nowrap" title="{{ txn.stock.name }}">
     <span class="fw-semibold">{{ txn.stock.symbol }}</span> · {{ txn.stock.market }}
   </td>
-  <td>
-    {% if txn.type.value == "Buy" %}<span class="badge text-bg-primary">Buy</span>
-    {% else %}<span class="badge text-bg-warning">Sell</span>{% endif %}
-  </td>
+  <td>{{ gth_badge("Buy", "info", icon="arrow-down-left") if txn.type.value == "Buy" else gth_badge("Sell", "warn", icon="arrow-up-right") }}</td>
   <td class="text-end">{{ txn.units|qty }}</td>
   <td class="text-end">{{ txn.price|qty }}</td>
   <td class="text-end">{{ txn.fees|money }}</td>
@@ -28,4 +39,4 @@
   </td>
 </tr>
 {% endcall %}
-{{ gth_table_load_more(next_url, total=total) }}
+{% if not table.rows_only %}{{ table_refresh(table, "transactionsChanged") }}{% endif %}

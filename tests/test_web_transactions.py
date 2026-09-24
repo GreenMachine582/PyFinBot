@@ -139,6 +139,8 @@ class TestList:
         assert "mine" in resp.text
         assert "not yours" not in resp.text
         assert "2024–25" in resp.text  # FY 2024 = 1 Jul 2024 – 30 Jun 2025
+        assert 'aria-sort="descending"' in resp.text  # newest first by default
+        assert "gth-badge" in resp.text and "Buy</span>" in resp.text
 
     async def test_filters(self, client):
         await web_login(client, "web-txn")
@@ -147,27 +149,27 @@ class TestList:
         await _add(client, bhp["id"], notes="bhp-buy", transaction_date="2023-08-01")
         await _add(client, cba["id"], notes="cba-sell", type="Sell", transaction_date="2024-08-01")
 
-        resp = await client.get("/transactions/rows", params={"stock": "cba"})
+        resp = await client.get("/transactions", headers=HX, params={"stock": "cba"})
         assert "cba-sell" in resp.text and "bhp-buy" not in resp.text
 
-        resp = await client.get("/transactions/rows", params={"type": "Buy"})
+        resp = await client.get("/transactions", headers=HX, params={"type": "Buy"})
         assert "bhp-buy" in resp.text and "cba-sell" not in resp.text
 
-        resp = await client.get("/transactions/rows", params={"fy": "2024"})
+        resp = await client.get("/transactions", headers=HX, params={"fy": "2024"})
         assert "cba-sell" in resp.text and "bhp-buy" not in resp.text
 
-        resp = await client.get("/transactions/rows", params={"date_from": "2024-01-01"})
+        resp = await client.get("/transactions", headers=HX, params={"date_from": "2024-01-01"})
         assert "cba-sell" in resp.text and "bhp-buy" not in resp.text
 
-        resp = await client.get("/transactions/rows", params={"date_to": "2024-01-01", "date_from": "not-a-date"})
+        resp = await client.get("/transactions", headers=HX, params={"date_to": "2024-01-01", "date_from": "not-a-date"})
         assert "bhp-buy" in resp.text and "cba-sell" not in resp.text
 
-        resp = await client.get("/transactions/rows", params={"sort": "transaction_date,id"})
+        resp = await client.get("/transactions", headers=HX, params={"sort": "transaction_date", "dir": "asc"})
         assert resp.text.index("bhp-buy") < resp.text.index("cba-sell")
 
     async def test_empty_state(self, client):
         await web_login(client, "web-txn")
-        resp = await client.get("/transactions/rows")
+        resp = await client.get("/transactions", headers=HX)
         assert "No transactions match these filters." in resp.text
 
 
@@ -243,4 +245,4 @@ class TestDelete:
         resp = await client.delete(f"/transactions/{transaction_id}")
         assert resp.status_code == 204
         assert hx_triggers(resp)["showToast"]["message"] == "Deleted Buy BHP"
-        assert "No transactions match these filters." in (await client.get("/transactions/rows")).text
+        assert "No transactions match these filters." in (await client.get("/transactions", headers=HX)).text

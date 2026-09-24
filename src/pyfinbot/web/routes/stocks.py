@@ -1,8 +1,9 @@
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from greentechhub_fastapi.query import PageParams, next_page_url
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from greentechhub_ui import TableState
+from greentechhub_ui.htmx import wants_fragment
 from sqlalchemy import func, or_
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -15,7 +16,7 @@ from ...models.stock_models import Stock
 from ...models.transaction_models import Transaction
 from ..deps import page_identity
 from ..htmx import CLOSE_MODAL, hx_response
-from ..paging import paginate, web_page_params
+from ..paging import PAGE_SIZE, PAGE_SIZES, paginate, sort_string
 from ..templating import templates
 
 logger = logging.getLogger(__name__)
@@ -24,12 +25,6 @@ router = APIRouter(prefix="/stocks", dependencies=[Depends(page_identity)])
 
 CHANGED = "stocksChanged"
 STATUSES = {"active": "Active", "archived": "Archived", "all": "All"}
-SORTS = {
-    "market,symbol": "Market, symbol",
-    "symbol": "Symbol A–Z",
-    "-symbol": "Symbol Z–A",
-    "name": "Name A–Z",
-}
 OPTIONS_LIMIT = 20
 
 
@@ -40,57 +35,50 @@ async def _get_stock_or_404(session: AsyncSession, stock_id: int) -> Stock:
     return stock
 
 
-async def _rows_context(session: AsyncSession, params: PageParams, q: str, market: str,
-                        status_: str, sort: str) -> dict:
+def _table_state(request: Request) -> TableState:
+    return TableState.from_query(
+        request.query_params,
+        id="stocks",
+        base_url="/stocks",
+        page_size=PAGE_SIZE,
+        page_sizes=PAGE_SIZES,
+        sortable=("symbol", "market", "name"),
+        default_sort="market",
+        filter_params=("q", "market", "status"),
+    )
+
+
+async def _query_stocks(session: AsyncSession, state: TableState) -> tuple[list[Stock], TableState]:
     stmt = select(Stock)
-    if q.strip():
-        like = f"%{q.strip()}%"
+    if q := state.filters.get("q"):
+        like = f"%{q}%"
         stmt = stmt.where(or_(Stock.symbol.ilike(like), Stock.name.ilike(like)))
-    if market:
+    if market := state.filters.get("market"):
         stmt = stmt.where(Stock.market == market)
+    status_ = state.filters.get("status", "active")
     if status_ == "active":
         stmt = stmt.where(Stock.is_active.is_(True))
     elif status_ == "archived":
         stmt = stmt.where(Stock.is_active.is_(False))
-    stmt = stmt.order_by(*buildSortOrderBy(Stock, ALLOWED_FILTERING_FIELDS, None, sort or "market,symbol"))
-
-    page = await paginate(session, stmt, params)
-    return {
-        "stocks": page.items,
-        "total": page.total,
-        "next_url": next_page_url("/stocks/rows", page, {"q": q, "market": market, "status": status_, "sort": sort}),
-    }
+    sort = sort_string(state, "market", "symbol", "id")
+    stmt = stmt.order_by(*buildSortOrderBy(Stock, ALLOWED_FILTERING_FIELDS, None, sort))
+    return await paginate(session, stmt, state)
 
 
 @router.get("")
-async def stocks_page(
-    request: Request,
-    session: AsyncSession = Depends(get_session),
-    params: PageParams = Depends(web_page_params),
-):
+async def stocks_page(request: Request, session: AsyncSession = Depends(get_session)):
+    """The page, or (htmx: sort, filter, load more, refresh) just the table."""
+    stocks, state = await _query_stocks(session, _table_state(request))
+    context = {"table": state, "stocks": stocks}
+    if wants_fragment(request.headers):
+        return templates.TemplateResponse(request, "_stock_table.html", context)
     markets = (await session.exec(select(Stock.market).distinct().order_by(Stock.market))).all()
-    context = await _rows_context(session, params, "", "", "active", "market,symbol")
     return templates.TemplateResponse(request, "stocks.html", {
         **context,
         "markets": markets,
         "statuses": STATUSES,
-        "sorts": SORTS,
         "sync_markets": sorted(MARKET_FETCHERS),
     })
-
-
-@router.get("/rows")
-async def stock_rows(
-    request: Request,
-    session: AsyncSession = Depends(get_session),
-    params: PageParams = Depends(web_page_params),
-    q: str = "",
-    market: str = "",
-    status_: str = Query("active", alias="status"),
-    sort: str = "market,symbol",
-):
-    context = await _rows_context(session, params, q, market, status_, sort)
-    return templates.TemplateResponse(request, "_stock_rows.html", context)
 
 
 @router.get("/options")
@@ -138,7 +126,7 @@ async def create_stock(request: Request, session: AsyncSession = Depends(get_ses
 
     session.add(Stock(market=market, symbol=symbol, name=name))
     await session.commit()
-    return hx_response(f"Added {market}:{symbol}", events=(CLOSE_MODAL, CHANGED))
+    return hx_response(f"Added {market}:{symbol}", title="Stock added", events=(CLOSE_MODAL, CHANGED))
 
 
 @router.post("/{stock_id:int}")
@@ -158,7 +146,7 @@ async def update_stock(request: Request, stock_id: int, session: AsyncSession = 
     label = f"{stock.market}:{stock.symbol}"
     session.add(stock)
     await session.commit()
-    return hx_response(f"Saved {label}", events=(CLOSE_MODAL, CHANGED))
+    return hx_response(f"Saved {label}", title="Stock saved", events=(CLOSE_MODAL, CHANGED))
 
 
 @router.get("/{stock_id:int}/delete")
@@ -178,11 +166,11 @@ async def delete_stock(stock_id: int, session: AsyncSession = Depends(get_sessio
     )).one()
     if in_use:
         noun = "transaction" if in_use == 1 else "transactions"
-        return hx_response(f"{label} has {in_use} {noun} — archive it instead.", "danger")
+        return hx_response(f"{label} has {in_use} {noun} — archive it instead.", "danger", title="Can't delete")
 
     await session.delete(stock)
     await session.commit()
-    return hx_response(f"Deleted {label}", events=(CHANGED,))
+    return hx_response(f"Deleted {label}", title="Stock deleted", events=(CHANGED,))
 
 
 @router.post("/sync/{market}")
@@ -198,8 +186,11 @@ async def sync_market(market: str, session: AsyncSession = Depends(get_session))
             created, updated, archived = await syncMarket(session, market)
         except Exception:  # network/parse failures: log the detail, toast a summary
             logger.exception("%s market sync failed", market)
-            return hx_response(f"{market} sync failed — see the server logs.", "danger")
+            return hx_response(f"{market} sync failed — see the server logs.", "danger", title="Sync failed")
+    changed = len(created) + len(updated) + len(archived)
     return hx_response(
-        f"{market} sync: {len(created)} created, {len(updated)} updated, {len(archived)} archived",
+        f"{len(created)} created, {len(updated)} updated, {len(archived)} archived",
+        "success" if changed else "info",
+        title=f"{market} sync complete",
         events=(CHANGED,),
     )

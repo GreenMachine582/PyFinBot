@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "page_header.html" import gth_page_header %}
-{% from "table.html" import gth_table %}
+{% from "table.html" import gth_table_filter %}
 {% from "busy_button.html" import gth_busy_button %}
 {% block title %}Stocks{% endblock %}
 {% block content %}
@@ -17,38 +17,20 @@
   </button>
 {% endcall %}
 
-<form class="row g-2 align-items-end mb-3" id="stocks-filters"
-  hx-get="/stocks/rows" hx-target="#stocks-tbody" hx-sync="this:replace"
-  hx-trigger="input delay:300ms, change, stocksChanged from:body">
-  <div class="col-12 col-md-4">
-    <label class="form-label" for="stocks-q">Search</label>
-    <input type="search" class="form-control" id="stocks-q" name="q" placeholder="Symbol or name">
-  </div>
-  <div class="col-6 col-md-2">
-    <label class="form-label" for="stocks-market">Market</label>
-    <select class="form-select" id="stocks-market" name="market">
-      <option value="">All</option>
-      {% for m in markets %}<option value="{{ m }}">{{ m }}</option>{% endfor %}
-    </select>
-  </div>
-  <div class="col-6 col-md-2">
-    <label class="form-label" for="stocks-status">Status</label>
-    <select class="form-select" id="stocks-status" name="status">
-      {% for value, label in statuses.items() %}
-      <option value="{{ value }}"{% if value == "active" %} selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class="col-12 col-md-3">
-    <label class="form-label" for="stocks-sort">Sort</label>
-    <select class="form-select" id="stocks-sort" name="sort">
-      {% for value, label in sorts.items() %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
-    </select>
-  </div>
-</form>
-
-{% call gth_table(headers=["Symbol", "Market", "Name", "Status", ""], tbody_id="stocks-tbody") %}
-  {% include "_stock_rows.html" %}
+{% call gth_table_filter(table, placeholder="Symbol or name", label="Search stocks") %}
+  {% set market = table.filters.get("market", "") %}
+  <select class="form-select w-auto" name="market" aria-label="Market">
+    <option value="">All markets</option>
+    {% for m in markets %}<option value="{{ m }}"{% if m == market %} selected{% endif %}>{{ m }}</option>{% endfor %}
+  </select>
+  {% set current = table.filters.get("status", "active") %}
+  <select class="form-select w-auto" name="status" aria-label="Status">
+    {% for value, label in statuses.items() %}
+    <option value="{{ value }}"{% if value == current %} selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
 {% endcall %}
+
+{% include "_stock_table.html" %}
 
 {% endblock %}

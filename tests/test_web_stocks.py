@@ -1,7 +1,6 @@
 """Integration tests for the /stocks web pages."""
 from unittest.mock import AsyncMock, patch
 
-
 from pyfinbot.core.market_sync import market_sync_guard
 
 from .conftest import create_stock, hx_triggers, register_and_login, web_login
@@ -16,7 +15,7 @@ class TestAuthGuard:
         assert resp.headers["location"] == "/login"
 
     async def test_htmx_request_gets_hx_redirect(self, client):
-        resp = await client.get("/stocks/rows", headers=HX, follow_redirects=False)
+        resp = await client.get("/stocks", headers=HX, follow_redirects=False)
         assert resp.status_code == 401
         assert resp.headers["HX-Redirect"] == "/login"
 
@@ -44,34 +43,39 @@ class TestList:
         archived = await create_stock(client, "OLD", name="Old Co")
         await client.put(f"/api/stocks/{archived['id']}", json={"is_active": False})
 
-        resp = await client.get("/stocks/rows", params={"q": "common"})
+        resp = await client.get("/stocks", headers=HX, params={"q": "common"})
         assert "Commonwealth Bank" in resp.text and "BHP Group" not in resp.text
 
-        resp = await client.get("/stocks/rows", params={"market": "NASDAQ"})
+        resp = await client.get("/stocks", headers=HX, params={"market": "NASDAQ"})
         assert "Apple" in resp.text and "BHP Group" not in resp.text
 
-        resp = await client.get("/stocks/rows", params={"status": "archived"})
+        resp = await client.get("/stocks", headers=HX, params={"status": "archived"})
         assert "Old Co" in resp.text and "BHP Group" not in resp.text
 
-        resp = await client.get("/stocks/rows", params={"status": "all", "sort": "-symbol"})
+        resp = await client.get("/stocks", headers=HX, params={"status": "all", "sort": "symbol", "dir": "desc"})
         assert resp.text.index("OLD") < resp.text.index("BHP")
+        assert 'id="stocks"' in resp.text and "<html" not in resp.text  # the table fragment only
+        assert 'hx-get="/stocks?status=all&amp;sort=symbol&amp;dir=desc"' in resp.text  # refresh keeps sort
 
     async def test_empty_state(self, client):
         await web_login(client, "web-stocks")
-        resp = await client.get("/stocks/rows", params={"q": "zzz"})
+        resp = await client.get("/stocks", headers=HX, params={"q": "zzz"})
         assert "No stocks match these filters." in resp.text
 
     async def test_load_more_paging(self, client):
         await web_login(client, "web-stocks")
-        for symbol in ("AAA", "BBB", "CCC"):
+        symbols = [f"S{n:02d}" for n in range(11)]
+        for symbol in symbols:
             await create_stock(client, symbol, name=f"{symbol} Ltd")
 
-        resp = await client.get("/stocks/rows", params={"size": 2, "q": "Ltd"})
-        assert "AAA Ltd" in resp.text and "CCC Ltd" not in resp.text
-        assert "/stocks/rows?q=Ltd" in resp.text and "page=2" in resp.text
+        resp = await client.get("/stocks", headers=HX, params={"size": 10, "q": "Ltd", "sort": "symbol"})
+        assert "S09 Ltd" in resp.text and "S10 Ltd" not in resp.text
+        assert "/stocks?q=Ltd&amp;sort=symbol&amp;dir=asc&amp;size=10&amp;page=2&amp;partial=rows" in resp.text
 
-        resp = await client.get("/stocks/rows", params={"size": 2, "page": 2, "q": "Ltd"})
-        assert "CCC Ltd" in resp.text
+        resp = await client.get("/stocks", headers=HX,
+                                params={"size": 10, "page": 2, "q": "Ltd", "sort": "symbol", "partial": "rows"})
+        assert "S10 Ltd" in resp.text and "S09 Ltd" not in resp.text
+        assert 'id="stocks"' not in resp.text  # appended rows only
         assert "Load more" not in resp.text
 
 
@@ -214,7 +218,9 @@ class TestSync:
         sync.assert_awaited_once()
         assert sync.await_args.args[1] == "ASX"
         triggers = hx_triggers(resp)
-        assert triggers["showToast"]["message"] == "ASX sync: 2 created, 1 updated, 0 archived"
+        assert triggers["showToast"]["title"] == "ASX sync complete"
+        assert triggers["showToast"]["message"] == "2 created, 1 updated, 0 archived"
+        assert triggers["showToast"]["kind"] == "success"
         assert triggers["stocksChanged"]
 
     async def test_already_running_is_refused(self, client):
@@ -227,6 +233,12 @@ class TestSync:
         toast = hx_triggers(resp)["showToast"]
         assert toast["kind"] == "warning"
         assert "already running" in toast["message"]
+
+    async def test_nothing_changed_is_info(self, client):
+        await web_login(client, "web-stocks")
+        with patch("pyfinbot.web.routes.stocks.syncMarket", new=AsyncMock(return_value=([], [], []))):
+            resp = await client.post("/stocks/sync/ASX")
+        assert hx_triggers(resp)["showToast"]["kind"] == "info"
 
     async def test_unsupported_market(self, client):
         await web_login(client, "web-stocks")
