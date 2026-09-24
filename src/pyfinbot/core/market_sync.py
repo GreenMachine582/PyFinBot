@@ -1,13 +1,17 @@
 
 import asyncio
+from contextlib import contextmanager
+from functools import lru_cache
 from datetime import datetime, timezone
-from typing import Callable, Dict, Tuple, List
+from typing import Callable, Dict, Iterator, Tuple, List
 
 import pandas as pd
 from sqlalchemy import select
+from greentechhub_core.background.locks import FileLock
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..models.stock_models import Stock
+from .settings import settings
 
 
 ASX_CSV_URL = "https://asx.api.markitdigital.com/asx-research/1.0/companies/directory/file"
@@ -27,6 +31,38 @@ def fetchASXListed() -> Dict[str, str]:
 MARKET_FETCHERS = {
     "ASX": fetchASXListed,
 }
+
+# Upper bound on how long a sync is expected to take — informational for
+# FileLock (the OS releases its lock if the holder dies), but required by the
+# shared Lock protocol for a future expiry-based backend.
+SYNC_LOCK_TTL_SECONDS = 15 * 60
+
+
+@lru_cache(maxsize=1)
+def _sync_locks() -> FileLock:
+    # Lazy so importing this module doesn't create LOCK_DIR.
+    return FileLock(directory=settings.LOCK_DIR)
+
+
+@contextmanager
+def market_sync_guard(market: str) -> Iterator[bool]:
+    """Try to take `market`'s sync lock without waiting: yields True (and
+    releases on exit) if this caller may run the sync, False if one is already
+    running — in this process, another worker, or another replica on the
+    host (greentechhub_core's FileLock is an OS advisory lock).
+
+        with market_sync_guard("ASX") as acquired:
+            if not acquired:
+                ...  # refuse: already running
+            await syncMarket(session, "ASX")
+    """
+    name = f"market-sync-{market.upper()}"
+    acquired = _sync_locks().acquire(name, ttl=SYNC_LOCK_TTL_SECONDS)
+    try:
+        yield acquired
+    finally:
+        if acquired:
+            _sync_locks().release(name)
 
 
 async def syncMarket(session: AsyncSession, market: str, fetch_data: Callable = None) -> Tuple[List[str], List[str], List[str]]:
