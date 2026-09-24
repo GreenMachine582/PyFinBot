@@ -34,6 +34,7 @@ class TestList:
         assert "Old Co" not in resp.text  # default filter is Active
         assert "Sync ASX" in resp.text
         assert 'data-gth-start-toast="ASX sync started' in resp.text
+        assert 'href="/stocks" aria-current="page"' in resp.text  # navbar marks the active page
 
     async def test_filters(self, client):
         await web_login(client, "web-stocks")

@@ -3,21 +3,16 @@ from pathlib import Path
 
 import greentechhub_ui
 from fastapi.templating import Jinja2Templates
-from jinja2 import ChoiceLoader, FileSystemLoader
+from greentechhub_fastapi.templating import ui_context
 
-templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.loader = ChoiceLoader(
-    [
-        templates.env.loader,
-        FileSystemLoader(greentechhub_ui.templates_path),
-        FileSystemLoader(greentechhub_ui.components_path),
-    ]
-)
+# ui_context supplies current_path, so the navbar marks the active page.
+templates = Jinja2Templates(directory=Path(__file__).parent / "templates", context_processors=[ui_context])
 
-# greentechhub-ui shared shell context (brand, nav, every vendored asset URL
-# under the /gth-assets and /gth-static mounts in pyfinbot.py) — see
+# greentechhub-ui's template dirs (after ours) plus the shared shell globals
+# (brand, nav, vendored asset URLs under the mounts in pyfinbot.py) — see
 # greentechhub-ui/docs/contract.md.
-templates.env.globals.update(greentechhub_ui.shell_globals(
+greentechhub_ui.install(
+    templates.env,
     service_name="PyFinBot",
     nav_items=greentechhub_ui.navigation.build_nav_items(
         custom_items=[
@@ -26,7 +21,7 @@ templates.env.globals.update(greentechhub_ui.shell_globals(
             {"label": "Transactions", "url": "/transactions", "icon": "receipt"},
         ],
     ),
-))
+)
 
 
 def _qty(value) -> str:
