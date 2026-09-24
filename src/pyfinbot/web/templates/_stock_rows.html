@@ -1,0 +1,23 @@
+{% from "table.html" import gth_table_body, gth_table_load_more %}
+{% call(stock) gth_table_body(rows=stocks, empty_message="No stocks match these filters.", colspan=5) %}
+<tr>
+  <td class="fw-semibold">{{ stock.symbol }}</td>
+  <td>{{ stock.market }}</td>
+  <td>{{ stock.name }}</td>
+  <td>
+    {% if stock.is_active %}<span class="badge text-bg-success">Active</span>
+    {% else %}<span class="badge text-bg-secondary">Archived</span>{% endif %}
+  </td>
+  <td class="text-end text-nowrap">
+    <button type="button" class="btn btn-sm btn-outline-secondary" aria-label="Edit {{ stock.symbol }}"
+      hx-get="/stocks/{{ stock.id }}/edit" hx-target="#gth-modal-host">
+      <i class="bi bi-pencil" aria-hidden="true"></i>
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-danger" aria-label="Delete {{ stock.symbol }}"
+      hx-get="/stocks/{{ stock.id }}/delete" hx-target="#gth-modal-host">
+      <i class="bi bi-trash" aria-hidden="true"></i>
+    </button>
+  </td>
+</tr>
+{% endcall %}
+{{ gth_table_load_more(next_url, total=total) }}

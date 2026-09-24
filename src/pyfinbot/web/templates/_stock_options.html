@@ -1,0 +1,10 @@
+{# Results for the transaction form's stock gth_combobox. #}
+{% from "combobox.html" import gth_combobox_option, gth_combobox_empty %}
+{% for stock in stocks %}
+{% call gth_combobox_option(stock.id, stock.symbol ~ " · " ~ stock.market ~ " — " ~ stock.name) %}
+  <span class="fw-semibold">{{ stock.symbol }}</span> · {{ stock.market }}
+  <span class="text-secondary">— {{ stock.name }}</span>
+{% endcall %}
+{% else %}
+{{ gth_combobox_empty("No matching active stocks") }}
+{% endfor %}

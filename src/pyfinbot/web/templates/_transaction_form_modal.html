@@ -1,0 +1,4 @@
+{% from "modal.html" import gth_modal %}
+{% call gth_modal("transaction-modal", "Edit transaction" if transaction else "New transaction", size="lg") %}
+  {% include "_transaction_form.html" %}
+{% endcall %}

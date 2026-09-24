@@ -1,0 +1,48 @@
+{% from "form.html" import gth_form, gth_form_field %}
+{% from "combobox.html" import gth_combobox %}
+{% from "segmented.html" import gth_segmented %}
+{% set action = "/transactions/" ~ transaction.id if transaction else "/transactions" %}
+{% call gth_form(action, form_attrs={"hx-post": action, "hx-target": "this", "hx-swap": "outerHTML"}) %}
+  <div class="row g-2">
+    <div class="col-md-6">
+      {# Only a stock picked from the list is submitted (stock_id); the
+         typed search text (stock_id_search) is echoed back on a 422. #}
+      {{ gth_combobox("stock_id", "Stock", "/stocks/options",
+          value=selected_stock.id if selected_stock else none,
+          value_label=(selected_stock.symbol ~ " · " ~ selected_stock.market ~ " — " ~ selected_stock.name)
+                      if selected_stock else values.get("stock_id_search", ""),
+          errors=errors.get("stock_id"), placeholder="Search symbol or name…") }}
+    </div>
+    <div class="col-md-3">
+      {{ gth_form_field("transaction_date", "Date", value=values.get("transaction_date"), type="date",
+          errors=errors.get("transaction_date")) }}
+    </div>
+    <div class="col-md-3">
+      {{ gth_segmented("type", [
+          {"value": "Buy", "label": "Buy", "style": "btn-outline-primary", "icon": "plus-circle"},
+          {"value": "Sell", "label": "Sell", "style": "btn-outline-warning", "icon": "dash-circle"},
+        ], value=values.get("type") or "Buy", label="Type") }}
+      {% if errors.get("type") %}<div class="invalid-feedback d-block">{{ errors["type"]|join(" ") }}</div>{% endif %}
+    </div>
+  </div>
+  <div class="row g-2">
+    <div class="col-md-4">
+      {{ gth_form_field("units", "Units", value=values.get("units"), type="number", step="any", min="0",
+          errors=errors.get("units")) }}
+    </div>
+    <div class="col-md-4">
+      {{ gth_form_field("price", "Price per unit", value=values.get("price"), type="number", step="any", min="0",
+          errors=errors.get("price")) }}
+    </div>
+    <div class="col-md-4">
+      {{ gth_form_field("fees", "Fees", value=values.get("fees"), type="number", step="any", min="0",
+          errors=errors.get("fees"), help_text="Brokerage; defaults to 0.") }}
+    </div>
+  </div>
+  {{ gth_form_field("notes", "Notes", value=values.get("notes"), errors=errors.get("notes")) }}
+  <p class="form-text">Total, cost, and financial year are calculated when you save.</p>
+  <div class="d-flex justify-content-end gap-2">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+    <button type="submit" class="btn btn-primary">Save</button>
+  </div>
+{% endcall %}

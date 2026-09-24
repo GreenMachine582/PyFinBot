@@ -14,7 +14,12 @@ from greentechhub_fastapi import register_auth, register_core
 from . import version, api
 from .core.settings import settings
 from .db.session import init_db
-from .web.routes import auth as web_auth, dashboard as web_dashboard
+from .web.routes import (
+    auth as web_auth,
+    dashboard as web_dashboard,
+    stocks as web_stocks,
+    transactions as web_transactions,
+)
 
 
 @asynccontextmanager
@@ -61,6 +66,8 @@ web_auth_router = web_auth.build_router()
 if web_auth_router is not None:
     app.include_router(web_auth_router)
 app.include_router(web_dashboard.router)
+app.include_router(web_stocks.router)
+app.include_router(web_transactions.router)
 
 # Register all routers
 

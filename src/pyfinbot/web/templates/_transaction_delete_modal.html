@@ -1,0 +1,3 @@
+{% from "confirm_delete.html" import gth_confirm_delete %}
+{{ gth_confirm_delete("transaction-delete-modal", "/transactions/" ~ transaction.id,
+    "this " ~ transaction.type.value ~ " of " ~ transaction.stock.symbol) }}

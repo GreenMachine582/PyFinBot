@@ -1,0 +1,31 @@
+{% from "table.html" import gth_table_body, gth_table_load_more %}
+{% call(txn) gth_table_body(rows=transactions, empty_message="No transactions match these filters.", colspan=11) %}
+<tr>
+  <td class="text-nowrap">{{ txn.transaction_date.strftime("%d/%m/%Y") }}</td>
+  <td class="text-nowrap" title="{{ txn.stock.name }}">
+    <span class="fw-semibold">{{ txn.stock.symbol }}</span> · {{ txn.stock.market }}
+  </td>
+  <td>
+    {% if txn.type.value == "Buy" %}<span class="badge text-bg-primary">Buy</span>
+    {% else %}<span class="badge text-bg-warning">Sell</span>{% endif %}
+  </td>
+  <td class="text-end">{{ txn.units|qty }}</td>
+  <td class="text-end">{{ txn.price|qty }}</td>
+  <td class="text-end">{{ txn.fees|money }}</td>
+  <td class="text-end">{{ txn.total_value|money }}</td>
+  <td class="text-end {{ 'text-danger' if txn.cost < 0 else 'text-success' }}">{{ txn.cost|money }}</td>
+  <td class="text-nowrap">{{ txn.fy|fy }}</td>
+  <td class="text-truncate" style="max-width: 12rem" title="{{ txn.notes or '' }}">{{ txn.notes or "" }}</td>
+  <td class="text-end text-nowrap">
+    <button type="button" class="btn btn-sm btn-outline-secondary" aria-label="Edit transaction"
+      hx-get="/transactions/{{ txn.id }}/edit" hx-target="#gth-modal-host">
+      <i class="bi bi-pencil" aria-hidden="true"></i>
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-danger" aria-label="Delete transaction"
+      hx-get="/transactions/{{ txn.id }}/delete" hx-target="#gth-modal-host">
+      <i class="bi bi-trash" aria-hidden="true"></i>
+    </button>
+  </td>
+</tr>
+{% endcall %}
+{{ gth_table_load_more(next_url, total=total) }}

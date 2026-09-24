@@ -1,25 +1,8 @@
 from __future__ import annotations
 
-import pytest_asyncio
-from greentechhub_fastapi import register_auth
 from httpx import AsyncClient
 
 from pyfinbot.core.settings import settings
-from pyfinbot.pyfinbot import app
-
-
-@pytest_asyncio.fixture(autouse=True)
-async def _ensure_auth_registered():
-    """conftest.py's `client` fixture clears every app.dependency_overrides
-    entry at teardown — including the one register_auth(app, settings)
-    installs at pyfinbot.py's module-import time (which only happens once
-    per test session). After the first test using `client` tears down,
-    every subsequent test would hit the unregistered get_current_user
-    placeholder's NotImplementedError instead of the real local adapter.
-    Re-applying it here (idempotent — just re-sets the same dict entry)
-    before each test in this file avoids that ordering trap without
-    touching the shared fixture."""
-    register_auth(app, settings)
 
 
 async def _register(client: AsyncClient, user_id: str, password: str = "hunter2!") -> None:
