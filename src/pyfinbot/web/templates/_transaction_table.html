@@ -1,6 +1,5 @@
 {% from "table.html" import gth_data_table %}
 {% from "badge.html" import gth_badge %}
-{% from "_table_refresh.html" import table_refresh %}
 {% call(txn) gth_data_table(table, [
     {"label": "Date", "sort_key": "transaction_date"},
     "Stock",
@@ -13,7 +12,7 @@
     "FY",
     "Notes",
     "",
-  ], transactions, empty_message="No transactions match these filters.") %}
+  ], transactions, empty_message="No transactions match these filters.", refresh_event="transactionsChanged") %}
 <tr>
   <td class="text-nowrap">{{ txn.transaction_date.strftime("%d/%m/%Y") }}</td>
   <td class="text-nowrap" title="{{ txn.stock.name }}">
@@ -39,4 +38,3 @@
   </td>
 </tr>
 {% endcall %}
-{% if not table.rows_only %}{{ table_refresh(table, "transactionsChanged") }}{% endif %}

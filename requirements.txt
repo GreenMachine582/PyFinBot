@@ -8,7 +8,7 @@ email-validator~=2.3.0
 fastapi~=0.136.3
 fastapi-pagination==0.15.13  # pinned exactly: 0.15.16 breaks against fastapi 0.136.3 (TypeError: get_body_field() got an unexpected keyword argument 'body_params') — confirmed on unmodified main, unrelated to the web UI work in this commit
 greentechhub-fastapi @ git+https://github.com/GreenMachine582/greentechhub-fastapi.git@v0.8.0
-greentechhub-ui @ git+https://github.com/GreenMachine582/greentechhub-ui.git@v0.9.0
+greentechhub-ui @ git+https://github.com/GreenMachine582/greentechhub-ui.git@v0.10.0
 httpx~=0.28.1
 jinja2~=3.1
 mypy~=2.1.0
