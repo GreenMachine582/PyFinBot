@@ -7,14 +7,19 @@ import pkgutil
 
 import greentechhub_ui
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi_pagination import add_pagination
 from greentechhub_fastapi import register_auth, register_core
+from greentechhub_fastapi.templating import mount_static_dirs
 
 from . import version, api
 from .core.settings import settings
 from .db.session import init_db
-from .web.routes import auth as web_auth, dashboard as web_dashboard
+from .web.routes import (
+    auth as web_auth,
+    dashboard as web_dashboard,
+    stocks as web_stocks,
+    transactions as web_transactions,
+)
 
 
 @asynccontextmanager
@@ -52,8 +57,7 @@ register_core(app, settings)
 register_auth(app, settings)
 
 # greentechhub-ui static assets its templates reference.
-app.mount("/gth-static", StaticFiles(directory=greentechhub_ui.theme_path), name="gth-static")
-app.mount("/gth-assets", StaticFiles(directory=greentechhub_ui.static_path), name="gth-assets")
+mount_static_dirs(app, greentechhub_ui.static_dirs())
 
 # web_auth's login/logout routes are local-auth-only (see its own
 # build_router() docstring) — None under any other AUTH_ADAPTER.
@@ -61,6 +65,8 @@ web_auth_router = web_auth.build_router()
 if web_auth_router is not None:
     app.include_router(web_auth_router)
 app.include_router(web_dashboard.router)
+app.include_router(web_stocks.router)
+app.include_router(web_transactions.router)
 
 # Register all routers
 

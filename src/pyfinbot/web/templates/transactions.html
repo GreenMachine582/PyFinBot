@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "page_header.html" import gth_page_header %}
+{% from "table.html" import gth_table_filter %}
+{% block title %}Transactions{% endblock %}
+{% block content %}
+
+{% call gth_page_header("Transactions", subtitle="Your buy and sell history.") %}
+  <button type="button" class="btn btn-primary"
+    hx-get="/transactions/new" hx-target="#gth-modal-host">
+    <i class="bi bi-plus-lg" aria-hidden="true"></i> New transaction
+  </button>
+{% endcall %}
+
+{% call gth_table_filter(table, placeholder="Stock symbol or name", search_param="stock", label="Search by stock") %}
+  {% set f = table.filters %}
+  <select class="form-select w-auto" name="type" aria-label="Type">
+    <option value="">All types</option>
+    {% for t in types %}<option value="{{ t }}"{% if t == f.get("type") %} selected{% endif %}>{{ t }}</option>{% endfor %}
+  </select>
+  <select class="form-select w-auto" name="fy" aria-label="Financial year">
+    <option value="">All years</option>
+    {% for fy in fys %}<option value="{{ fy }}"{% if fy|string == f.get("fy") %} selected{% endif %}>{{ fy|fy }}</option>{% endfor %}
+  </select>
+  <div class="input-group w-auto">
+    <label class="input-group-text" for="txn-from">From</label>
+    <input type="date" class="form-control" id="txn-from" name="date_from" value="{{ f.get('date_from', '') }}">
+  </div>
+  <div class="input-group w-auto">
+    <label class="input-group-text" for="txn-to">To</label>
+    <input type="date" class="form-control" id="txn-to" name="date_to" value="{{ f.get('date_to', '') }}">
+  </div>
+{% endcall %}
+
+{% include "_transaction_table.html" %}
+
+{% endblock %}

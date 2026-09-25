@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ..core.market_sync import syncMarket, MARKET_FETCHERS
+from ..core.market_sync import syncMarket, MARKET_FETCHERS, market_sync_guard
 from ..core.sorting import buildSortOrderBy
 from ..core.sa_filters_compat import buildWhereFromSAFSpec
 from ..models.stock_models import Stock
@@ -161,13 +161,16 @@ async def sync_stocks_for_market(
     """
     m = market.upper()
 
-    if m in MARKET_FETCHERS:
-        created, updated, archived = await syncMarket(session, "ASX")
-    else:
+    if m not in MARKET_FETCHERS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Sync for market '{market}' is not supported"
         )
+
+    with market_sync_guard(m) as acquired:
+        if not acquired:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"{m} sync is already running")
+        created, updated, archived = await syncMarket(session, m)
 
     return SyncResult(
         created=created,

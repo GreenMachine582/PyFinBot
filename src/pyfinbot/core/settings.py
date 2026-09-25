@@ -1,6 +1,7 @@
 
 import os
 import secrets
+import tempfile
 import warnings
 from os import path as os_path
 
@@ -49,6 +50,11 @@ class Settings(GTHBaseSettings):
     # default — the "*" fallback is applied in pyfinbot.py, not here).
     ENVIRONMENT: str = "development"
     CORS_ALLOWED_ORIGINS: str = ""
+
+    # Directory for greentechhub_core FileLock files (e.g. the market-sync
+    # "already running" guard). Must be shared by every worker/replica on the
+    # host for the lock to span them; the default is fine for one container.
+    LOCK_DIR: str = os_path.join(tempfile.gettempdir(), "pyfinbot-locks")
 
 settings = Settings()
 

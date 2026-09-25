@@ -2,8 +2,8 @@ name: General Tests
 
 on:
   push:
-    branches:
-      - "**"
+    branches: [main, dev]
+  pull_request:
 
 jobs:
   test:

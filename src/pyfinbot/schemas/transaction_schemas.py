@@ -69,4 +69,13 @@ class TransactionRead(TransactionBase):
 
 
 class TransactionUpdate(BaseModel):
+    """Partial update — only fields actually sent are applied (exclude_unset)."""
+    stock_id: Optional[Union[int, str]] = None  # int or market:symbol key
+    transaction_date: Optional[date] = None
+    type: Optional[TypeEnum] = None
+    units: Optional[float] = None
+    price: Optional[float] = None
+    fees: Optional[float] = None
     notes: Optional[str] = None
+
+    _parse_transaction_date = field_validator("transaction_date", mode="before")(parse_transaction_date)

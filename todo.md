@@ -33,7 +33,13 @@ Roughly, in order:
         hand-rolled CORS middleware + `cors_origins_list` retired in favor
         of `register_core(app, settings)` (also picks up request-id/timing/
         security-header/trusted-proxy middleware for free)
-- [ ] Stocks + Transactions pages — `gth-table`/`gth-modal`/`gth-form`
+- [x] Stocks + Transactions pages — `gth_data_table` (sortable headers,
+      `gth_table_filter`, load-more paging, refreshed on change), modal
+      create/edit/delete, ASX sync action with titled toasts, `gth_badge`
+      status/type pills, searchable stock picker; transactions are fully
+      editable (derived fields recomputed via `Transaction.recompute()`, which
+      `PUT /api/transactions/{id}` now uses too); covered by
+      `tests/test_web_stocks.py`/`test_web_transactions.py`
 - [ ] Import page — upload + `gth-toast`
 - [ ] Emails + Dividends pages — manual sync triggers + `gth-toast`
 - [ ] Reports page — holdings, capital gains, and dividend income

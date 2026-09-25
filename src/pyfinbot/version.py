@@ -1,4 +1,4 @@
-VERSION = "1.0.0"
+VERSION = "0.1.0"  # x-release-please-version
 PROJECT_NAME = "pyfinbot"
 PROJECT_NAME_TEXT = "PyFinBot"
 AUTHOR = "Matthew Johnson"

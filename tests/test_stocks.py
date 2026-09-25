@@ -108,3 +108,18 @@ class TestDeleteStock:
     async def test_delete_nonexistent_returns_404(self, client):
         resp = await client.delete("/api/stocks/9999")
         assert resp.status_code == 404
+
+
+class TestSyncMarketLock:
+    async def test_already_running_returns_409(self, client):
+        from unittest.mock import AsyncMock, patch
+
+        from pyfinbot.core.market_sync import market_sync_guard
+
+        with patch("pyfinbot.api.stock_routes.syncMarket", new=AsyncMock()) as sync:
+            with market_sync_guard("asx") as held:
+                assert held
+                resp = await client.post("/api/stocks/sync/ASX")
+        assert resp.status_code == 409
+        assert resp.json()["detail"] == "ASX sync is already running"
+        sync.assert_not_awaited()

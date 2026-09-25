@@ -1,0 +1,5 @@
+{% from "modal.html" import gth_modal %}
+{% set title = "Edit " ~ stock.market ~ ":" ~ stock.symbol if stock else "New stock" %}
+{% call gth_modal("stock-modal", title) %}
+  {% include "_stock_form.html" %}
+{% endcall %}

@@ -1,0 +1,28 @@
+{% from "table.html" import gth_data_table %}
+{% from "badge.html" import gth_badge %}
+{% from "_table_refresh.html" import table_refresh %}
+{% call(stock) gth_data_table(table, [
+    {"label": "Symbol", "sort_key": "symbol"},
+    {"label": "Market", "sort_key": "market"},
+    {"label": "Name", "sort_key": "name"},
+    "Status",
+    "",
+  ], stocks, empty_message="No stocks match these filters.") %}
+<tr>
+  <td class="fw-semibold">{{ stock.symbol }}</td>
+  <td>{{ stock.market }}</td>
+  <td>{{ stock.name }}</td>
+  <td>{{ gth_badge("Active", "good") if stock.is_active else gth_badge("Archived", "neutral") }}</td>
+  <td class="text-end text-nowrap">
+    <button type="button" class="btn btn-sm btn-outline-secondary" aria-label="Edit {{ stock.symbol }}"
+      hx-get="/stocks/{{ stock.id }}/edit" hx-target="#gth-modal-host">
+      <i class="bi bi-pencil" aria-hidden="true"></i>
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-danger" aria-label="Delete {{ stock.symbol }}"
+      hx-get="/stocks/{{ stock.id }}/delete" hx-target="#gth-modal-host">
+      <i class="bi bi-trash" aria-hidden="true"></i>
+    </button>
+  </td>
+</tr>
+{% endcall %}
+{% if not table.rows_only %}{{ table_refresh(table, "stocksChanged") }}{% endif %}

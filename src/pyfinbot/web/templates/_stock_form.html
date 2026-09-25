@@ -1,0 +1,30 @@
+{% from "form.html" import gth_form, gth_form_field %}
+{% set action = "/stocks/" ~ stock.id if stock else "/stocks" %}
+{% call gth_form(action, form_attrs={"hx-post": action, "hx-target": "this", "hx-swap": "outerHTML"}) %}
+  {% if stock %}
+    <p class="text-secondary mb-3">
+      Symbol and market can't be changed — create a new stock instead.
+    </p>
+    {{ gth_form_field("name", "Name", value=values.get("name"), errors=errors.get("name")) }}
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" id="gth-field-is_active" name="is_active"
+        {% if values.get("is_active") %}checked{% endif %}>
+      <label class="form-check-label" for="gth-field-is_active">Active</label>
+      <div class="form-text">Unticking archives the stock; it stays on existing transactions.</div>
+    </div>
+  {% else %}
+    <div class="row g-2">
+      <div class="col-5">
+        {{ gth_form_field("market", "Market", value=values.get("market", "ASX"), errors=errors.get("market")) }}
+      </div>
+      <div class="col-7">
+        {{ gth_form_field("symbol", "Symbol", value=values.get("symbol"), errors=errors.get("symbol")) }}
+      </div>
+    </div>
+    {{ gth_form_field("name", "Name", value=values.get("name"), errors=errors.get("name")) }}
+  {% endif %}
+  <div class="d-flex justify-content-end gap-2">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+    <button type="submit" class="btn btn-primary">Save</button>
+  </div>
+{% endcall %}
