@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "page_header.html" import gth_page_header %}
+{% from "busy_button.html" import gth_busy_button %}
+{% block title %}Emails{% endblock %}
+{% block content %}
+
+{% call gth_page_header("Commsec emails", subtitle="Turn Commsec buy/sell confirmation emails into transactions.") %}
+  {{ gth_busy_button("Sync Commsec emails", "Syncing…",
+      {"hx-post": "/emails/sync", "hx-target": "#sync-result"},
+      icon="envelope-arrow-down", btn_class="btn-primary",
+      start_toast="Checking the mailbox — this can take a minute…") }}
+{% endcall %}
+
+{% if not configured %}
+<div class="alert alert-warning" role="alert">
+  Gmail isn't configured yet. Set <code>GMAIL_ADDRESS</code> and <code>GMAIL_APP_PASSWORD</code>
+  (a Google App Password) in the server's environment, then restart it.
+</div>
+{% endif %}
+
+<p class="text-secondary">
+  Reads unread emails from <code>{{ sender }}</code>, imports each confirmation as a transaction on your
+  account, then marks it read. Emails for stocks PyFinBot doesn't track yet are skipped. Add the stock, or
+  sync the ASX list on the <a href="/stocks">Stocks</a> page. Duplicates are always skipped, so syncing
+  again is safe.
+</p>
+
+<div id="sync-result" aria-live="polite"></div>
+
+{% endblock %}

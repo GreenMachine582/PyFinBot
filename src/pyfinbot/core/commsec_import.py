@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import asyncio
 from email.message import Message
-from typing import Callable, List, Tuple
+from typing import Callable, List, Optional, Tuple
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -40,13 +40,16 @@ async def sync_commsec_emails(
     user_id: str,
     *,
     include_seen: bool = False,
-    fetch: Callable[..., List[Tuple[bytes, Message]]] = fetch_commsec_emails,
-    mark: Callable[[List[bytes]], None] = mark_seen,
+    fetch: Optional[Callable[..., List[Tuple[bytes, Message]]]] = None,
+    mark: Optional[Callable[[List[bytes]], None]] = None,
 ) -> EmailSyncSummary:
     """Import every parseable Commsec confirmation as `user_id`'s transaction
     and commit, then mark the processed emails \\Seen. Emails that can't be
     imported are skipped and reported; raises EmailSyncError when the sync
-    as a whole fails. fetch/mark are injectable for tests."""
+    as a whole fails. fetch/mark default to core.email_sync's IMAP
+    functions, looked up per call so tests can patch them here."""
+    fetch = fetch or fetch_commsec_emails
+    mark = mark or mark_seen
     try:
         messages = await asyncio.to_thread(fetch, only_unseen=not include_seen)
     except GmailNotConfiguredError as exc:

@@ -35,7 +35,7 @@ def fetchDividendsForSymbol(symbol: str, market: str) -> Dict[date, Decimal]:
     return {ts.date(): Decimal(str(amt)) for ts, amt in series.items()}
 
 
-async def user_stock_ids(session: AsyncSession, user_id: str) -> List[int]:
+async def user_stock_ids(session: AsyncSession, user_id: Optional[str]) -> List[int]:
     """Every stock `user_id` has ever transacted — the default sync scope."""
     result = await session.exec(
         select(Transaction.stock_id)

@@ -1,0 +1,21 @@
+{% from "card.html" import gth_card %}
+{% from "badge.html" import gth_badge %}
+{% if error %}
+<div class="alert alert-danger" role="alert">
+  <h6 class="alert-heading mb-1">{{ heading }}</h6>
+  {{ error }}
+</div>
+{% else %}
+{% call gth_card(heading) %}
+  <p class="d-flex flex-wrap gap-2 mb-3">
+    {% for label, tone in badges %}{{ gth_badge(label, tone) }}{% endfor %}
+  </p>
+  {% if problems %}
+  <h6>Problems</h6>
+  <ul class="small mb-3">
+    {% for p in problems %}<li>{{ p }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+  {% if link %}<a href="{{ link[0] }}" class="btn btn-outline-primary btn-sm">{{ link[1] }}</a>{% endif %}
+{% endcall %}
+{% endif %}
