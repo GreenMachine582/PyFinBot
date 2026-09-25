@@ -23,13 +23,17 @@ async def _ensure_auth_registered():
     subsequent test would hit the unregistered get_current_user
     placeholder's NotImplementedError instead of the real local adapter.
     Re-applying it before each test (idempotent — just re-sets the same
-    dict entry) avoids that ordering trap."""
+    dict entry) avoids that ordering trap.
+
+    It uses the settings object pyfinbot.py was built with, not a fresh
+    import of core.settings: test_settings reloads that module, and without
+    a SECRET_KEY (CI has no .env) the reload draws a new random key — which
+    would no longer match the one the login routes sign sessions with."""
     from greentechhub_fastapi import register_auth
 
-    from pyfinbot.core.settings import settings
-    from pyfinbot.pyfinbot import app
+    from pyfinbot import pyfinbot as app_module
 
-    register_auth(app, settings)
+    register_auth(app_module.app, app_module.settings)
 
 
 @pytest_asyncio.fixture(scope="session")
