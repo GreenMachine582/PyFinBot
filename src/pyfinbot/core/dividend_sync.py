@@ -15,6 +15,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..models.dividend_models import Dividend
 from ..models.stock_models import Stock
+from ..models.transaction_models import Transaction
 
 MARKET_TO_YF_SUFFIX = {
     "ASX": ".AX",
@@ -32,6 +33,16 @@ def fetchDividendsForSymbol(symbol: str, market: str) -> Dict[date, Decimal]:
     ticker = yf.Ticker(f"{symbol.upper()}{suffix}")
     series = ticker.dividends
     return {ts.date(): Decimal(str(amt)) for ts, amt in series.items()}
+
+
+async def user_stock_ids(session: AsyncSession, user_id: Optional[str]) -> List[int]:
+    """Every stock `user_id` has ever transacted — the default sync scope."""
+    result = await session.exec(
+        select(Transaction.stock_id)
+        .where(Transaction.user_id == user_id)
+        .distinct()
+    )
+    return list(result.all())
 
 
 async def syncDividends(

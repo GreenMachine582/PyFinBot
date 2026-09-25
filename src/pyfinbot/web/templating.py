@@ -20,6 +20,8 @@ greentechhub_ui.install(
             {"label": "Stocks", "url": "/stocks", "icon": "graph-up"},
             {"label": "Transactions", "url": "/transactions", "icon": "receipt"},
             {"label": "Import", "url": "/import", "icon": "upload"},
+            {"label": "Emails", "url": "/emails", "icon": "envelope"},
+            {"label": "Dividends", "url": "/dividends", "icon": "cash-coin"},
         ],
     ),
 )

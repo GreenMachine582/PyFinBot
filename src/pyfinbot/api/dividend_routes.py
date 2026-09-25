@@ -7,13 +7,11 @@ from __future__ import annotations
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..core.dependencies import get_current_user
-from ..core.dividend_sync import syncDividends
+from ..core.dividend_sync import syncDividends, user_stock_ids
 from ..db.session import get_session
-from ..models.transaction_models import Transaction
 from ..models.user_models import User
 from ..schemas.dividend_schemas import DividendSyncResult
 
@@ -29,15 +27,7 @@ async def sync_dividends(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    if stock_id is not None:
-        target_ids = [stock_id]
-    else:
-        result = await session.exec(
-            select(Transaction.stock_id)
-            .where(Transaction.user_id == current_user.id)
-            .distinct()
-        )
-        target_ids = list(result.all())
+    target_ids = [stock_id] if stock_id is not None else await user_stock_ids(session, current_user.id)
 
     created, updated, errors = await syncDividends(session, stock_ids=target_ids)
     return DividendSyncResult(created=created, updated=updated, errors=errors)

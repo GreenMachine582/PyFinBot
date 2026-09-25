@@ -17,6 +17,8 @@ from .db.session import init_db
 from .web.routes import (
     auth as web_auth,
     dashboard as web_dashboard,
+    dividends as web_dividends,
+    emails as web_emails,
     imports as web_imports,
     stocks as web_stocks,
     transactions as web_transactions,
@@ -69,6 +71,8 @@ app.include_router(web_dashboard.router)
 app.include_router(web_stocks.router)
 app.include_router(web_transactions.router)
 app.include_router(web_imports.router)
+app.include_router(web_emails.router)
+app.include_router(web_dividends.router)
 
 # Register all routers
 

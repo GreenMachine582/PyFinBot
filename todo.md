@@ -47,7 +47,14 @@ Roughly, in order:
       `core/transaction_import.py`, shared with `POST /api/transactions/import`
       (which also returns structured `row_errors` now); covered by
       `tests/test_web_import.py`
-- [ ] Emails + Dividends pages — manual sync triggers + `gth-toast`
+- [x] Emails + Dividends pages — manual sync triggers + `gth-toast` — done:
+      `/emails` (Sync Commsec emails, with a not-configured hint) and
+      `/dividends` (sync all my stocks, or one picked stock) swap in a result
+      card with badges + a problems list and a toast; each sync takes a
+      `sync_guard` lock so a double-click can't run two at once. The logic
+      moved to `core/commsec_import.py` / `dividend_sync.user_stock_ids`,
+      shared with the API routes; covered by `tests/test_web_emails.py` /
+      `test_web_dividends.py`
 - [ ] Reports page — holdings, capital gains, and dividend income
 - [ ] Dashboard placeholder — `gth-stat-card`s + empty Grafana iframe slot
 - [ ] Later: swap `AUTH_ADAPTER=forward_auth` once Authentik is live (needs

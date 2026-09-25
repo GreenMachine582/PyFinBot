@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "page_header.html" import gth_page_header %}
+{% from "busy_button.html" import gth_busy_button %}
+{% from "card.html" import gth_card %}
+{% from "combobox.html" import gth_combobox %}
+{% block title %}Dividends{% endblock %}
+{% block content %}
+
+{% call gth_page_header("Dividends", subtitle="Pull dividend history from Yahoo Finance.") %}
+  {{ gth_busy_button("Sync all my stocks", "Syncing…",
+      {"hx-post": "/dividends/sync", "hx-target": "#sync-result"},
+      icon="arrow-repeat", btn_class="btn-primary",
+      start_toast="Dividend sync started — this can take a minute…") }}
+{% endcall %}
+
+<div class="row g-3">
+  <div class="col-lg-5">
+    {% call gth_card("Sync one stock") %}
+      <form hx-post="/dividends/sync" hx-target="#sync-result" hx-disabled-elt="find button[type=submit]">
+        {{ gth_combobox("stock_id", "Stock", "/stocks/options", placeholder="Search symbol or name…",
+            help_text="Any tracked stock, whether or not you've traded it.") }}
+        <div class="d-flex justify-content-end">
+          <button type="submit" class="btn btn-outline-secondary gth-busy-button">
+            <span class="gth-busy-button-idle"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Sync</span>
+            <span class="gth-busy-button-busy" role="status">
+              <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Syncing…
+            </span>
+          </button>
+        </div>
+      </form>
+    {% endcall %}
+    <p class="form-text mt-2">
+      "Sync all" covers every stock you've ever bought or sold. Dividend history is shared between users.
+    </p>
+  </div>
+  <div class="col-lg-7">
+    <div id="sync-result" aria-live="polite"></div>
+  </div>
+</div>
+
+{% endblock %}
