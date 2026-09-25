@@ -1,0 +1,71 @@
+# Keeps a release PR open on main (version bump + CHANGELOG.md from the
+# conventional commits since the last release); merging it tags vX.Y.Z and
+# publishes the GitHub Release. Then main is merged back into dev so dev
+# carries the new version and changelog. See CONTRIBUTING.md.
+#
+# Tokens come from the gth-release-bot GitHub App (vars.RELEASE_APP_ID +
+# secrets.RELEASE_APP_PRIVATE_KEY): short-lived, and — unlike GITHUB_TOKEN —
+# its release PR triggers CI, and it's the bypass actor the dev and tag rulesets
+# allow (the built-in GitHub Actions integration can't be one on a personal
+# account). Without the app, release-please falls back to GITHUB_TOKEN: merge
+# its release PR with the admin bypass, and back-merge main into dev by hand.
+name: release-please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      releases_created: ${{ steps.release.outputs.releases_created }}
+    steps:
+      - id: app-token
+        if: vars.RELEASE_APP_ID != ''
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+      - id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ steps.app-token.outputs.token || github.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  back-merge:
+    needs: release-please
+    if: needs.release-please.outputs.releases_created == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - id: app-token
+        if: vars.RELEASE_APP_ID != ''
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token || github.token }}
+      - name: Merge main into dev
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+        run: |
+          if [ -n "$APP_SLUG" ]; then
+            bot_id="$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)"
+            git config user.name "${APP_SLUG}[bot]"
+            git config user.email "${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          fi
+          git merge --no-edit origin/main
+          git push origin dev

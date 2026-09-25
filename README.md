@@ -129,7 +129,7 @@ pytest
 7. 🌐 CLI Interface – Interact via command line with exportable summaries.
 8. 🖥️ Web Dashboard (optional) – View and interact with data through a simple front end.
 
-Day-to-day and in-progress work is tracked in [`todo.md`](todo.md), which serves as the project's living backlog across sessions.
+Day-to-day and in-progress work is tracked in [`todo.md`](todo.md), which serves as the project's living backlog across sessions. Shipped versions and their notes: [CHANGELOG.md](CHANGELOG.md) and the [Releases page](https://github.com/GreenMachine582/PyFinBot/releases), both written by release-please. Branches, PRs and how a release is cut: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 PyFinBot is licensed under the MIT License, see [LICENSE](LICENSE) for more information.
