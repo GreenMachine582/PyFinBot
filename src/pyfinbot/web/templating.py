@@ -19,6 +19,7 @@ greentechhub_ui.install(
             {"label": "Dashboard", "url": "/", "icon": "speedometer2"},
             {"label": "Stocks", "url": "/stocks", "icon": "graph-up"},
             {"label": "Transactions", "url": "/transactions", "icon": "receipt"},
+            {"label": "Import", "url": "/import", "icon": "upload"},
         ],
     ),
 )

@@ -156,3 +156,18 @@ class TestImportCSV:
                                  files={"file": ("empty.csv", io.BytesIO(b""), "text/csv")},
                                  headers=headers)
         assert resp.status_code == 400
+
+    async def test_bad_number_does_not_roll_back_earlier_rows(self, client):
+        headers = await register_and_login(client, "importer-user")
+        await _create_stock(client)
+        csv = (CSV_HEADER
+               + "2024-08-01,ASX:BHP,Buy,10,25.50,,\n"
+               + "2024-08-02,ASX:BHP,Buy,lots,25.50,,\n")
+        resp = await client.post("/api/transactions/import",
+                                 files=_csv_file(csv), headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert (data["created"], data["skipped"]) == (1, 1)
+        assert data["row_errors"] == [{"row": 3, "message": "'units', 'price' and 'fees' must be numbers"}]
+        items = (await client.get("/api/transactions/", headers=headers)).json()["items"]
+        assert len(items) == 1
