@@ -40,7 +40,13 @@ Roughly, in order:
       editable (derived fields recomputed via `Transaction.recompute()`, which
       `PUT /api/transactions/{id}` now uses too); covered by
       `tests/test_web_stocks.py`/`test_web_transactions.py`
-- [ ] Import page — upload + `gth-toast`
+- [x] Import page — upload + `gth-toast` — done: `/import` posts the file
+      over HTMX and swaps in a result card (row/imported/skipped badges, a
+      Row/Problem table for skipped rows) with a success/warning/danger toast
+      that also fires `transactionsChanged`; the import itself moved to
+      `core/transaction_import.py`, shared with `POST /api/transactions/import`
+      (which also returns structured `row_errors` now); covered by
+      `tests/test_web_import.py`
 - [ ] Emails + Dividends pages — manual sync triggers + `gth-toast`
 - [ ] Reports page — holdings, capital gains, and dividend income
 - [ ] Dashboard placeholder — `gth-stat-card`s + empty Grafana iframe slot
