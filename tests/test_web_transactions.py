@@ -140,6 +140,7 @@ class TestList:
         assert "not yours" not in resp.text
         assert "2024–25" in resp.text  # FY 2024 = 1 Jul 2024 – 30 Jun 2025
         assert 'aria-sort="descending"' in resp.text  # newest first by default
+        assert 'hx-trigger="transactionsChanged from:body"' in resp.text  # refreshed after saves
         assert "gth-badge" in resp.text and "Buy</span>" in resp.text
 
     async def test_filters(self, client):

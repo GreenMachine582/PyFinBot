@@ -55,7 +55,9 @@ class TestList:
         resp = await client.get("/stocks", headers=HX, params={"status": "all", "sort": "symbol", "dir": "desc"})
         assert resp.text.index("OLD") < resp.text.index("BHP")
         assert 'id="stocks"' in resp.text and "<html" not in resp.text  # the table fragment only
-        assert 'hx-get="/stocks?status=all&amp;sort=symbol&amp;dir=desc"' in resp.text  # refresh keeps sort
+        # gth_data_table's refresh hook re-requests with the current sort + filters
+        assert ('class="gth-table-refresh" hx-get="/stocks?status=all&amp;sort=symbol&amp;dir=desc"'
+                ' hx-trigger="stocksChanged from:body"') in resp.text
 
     async def test_empty_state(self, client):
         await web_login(client, "web-stocks")

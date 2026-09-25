@@ -1,13 +1,12 @@
 {% from "table.html" import gth_data_table %}
 {% from "badge.html" import gth_badge %}
-{% from "_table_refresh.html" import table_refresh %}
 {% call(stock) gth_data_table(table, [
     {"label": "Symbol", "sort_key": "symbol"},
     {"label": "Market", "sort_key": "market"},
     {"label": "Name", "sort_key": "name"},
     "Status",
     "",
-  ], stocks, empty_message="No stocks match these filters.") %}
+  ], stocks, empty_message="No stocks match these filters.", refresh_event="stocksChanged") %}
 <tr>
   <td class="fw-semibold">{{ stock.symbol }}</td>
   <td>{{ stock.market }}</td>
@@ -25,4 +24,3 @@
   </td>
 </tr>
 {% endcall %}
-{% if not table.rows_only %}{{ table_refresh(table, "stocksChanged") }}{% endif %}
