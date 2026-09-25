@@ -45,8 +45,8 @@ def _sync_locks() -> FileLock:
 
 
 @contextmanager
-def market_sync_guard(market: str) -> Iterator[bool]:
-    """Try to take `market`'s sync lock without waiting: yields True (and
+def sync_guard(name: str) -> Iterator[bool]:
+    """Try to take the named sync lock without waiting: yields True (and
     releases on exit) if this caller may run the sync, False if one is already
     running — in this process, another worker, or another replica on the
     host (greentechhub_core's FileLock is an OS advisory lock).
@@ -56,13 +56,17 @@ def market_sync_guard(market: str) -> Iterator[bool]:
                 ...  # refuse: already running
             await syncMarket(session, "ASX")
     """
-    name = f"market-sync-{market.upper()}"
     acquired = _sync_locks().acquire(name, ttl=SYNC_LOCK_TTL_SECONDS)
     try:
         yield acquired
     finally:
         if acquired:
             _sync_locks().release(name)
+
+
+def market_sync_guard(market: str):
+    """sync_guard for one market's listing sync."""
+    return sync_guard(f"market-sync-{market.upper()}")
 
 
 async def syncMarket(session: AsyncSession, market: str, fetch_data: Callable = None) -> Tuple[List[str], List[str], List[str]]:
