@@ -55,7 +55,12 @@ Roughly, in order:
       moved to `core/commsec_import.py` / `dividend_sync.user_stock_ids`,
       shared with the API routes; covered by `tests/test_web_emails.py` /
       `test_web_dividends.py`
-- [ ] Reports page — holdings, capital gains, and dividend income
+- [x] Reports page — holdings, capital gains, and dividend income — done:
+      `/reports` with lazy `gth_tabs` panes (holdings as-of date, capital
+      gains by FY, dividend income by FY or all time), `gth_stat_card`
+      totals + tables, and a CSV download per report for its current
+      filter; the computations moved to `core/reports.py`, shared with
+      `/api/reports/*`; covered by `tests/test_web_reports.py`
 - [ ] Dashboard placeholder — `gth-stat-card`s + empty Grafana iframe slot
 - [ ] Later: swap `AUTH_ADAPTER=forward_auth` once Authentik is live (needs
       `register_core`'s `TRUSTED_PROXIES` wired first); real Grafana panels

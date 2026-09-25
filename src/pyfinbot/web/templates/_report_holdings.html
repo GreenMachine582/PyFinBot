@@ -1,0 +1,38 @@
+{% from "stat_card.html" import gth_stat_card %}
+{% from "table.html" import gth_table %}
+{% from "empty_state.html" import gth_empty_state %}
+{% set as_of = report.as_of.isoformat() %}
+<form class="d-flex flex-wrap align-items-end gap-2 mb-3"
+  hx-get="/reports/holdings" hx-target="closest .tab-pane" hx-trigger="change">
+  <div>
+    <label class="form-label" for="holdings-as-of">As of</label>
+    <input type="date" class="form-control" id="holdings-as-of" name="as_of" value="{{ as_of }}">
+  </div>
+  <a class="btn btn-outline-secondary ms-auto" href="/reports/holdings.csv?as_of={{ as_of }}" download>
+    <i class="bi bi-download" aria-hidden="true"></i> CSV
+  </a>
+</form>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-4">{{ gth_stat_card("Positions", report.holdings|length) }}</div>
+  <div class="col-6 col-md-4">{{ gth_stat_card("Cost base", cost_base|money) }}</div>
+  <div class="col-6 col-md-4">{{ gth_stat_card("Dividends received", dividends|money) }}</div>
+</div>
+
+{% if report.holdings %}
+{% call gth_table(["Stock", "Name", "Units", "Avg cost", "Cost base", "Dividends"], table_class="table-sm") %}
+  {% for h in report.holdings %}
+  <tr>
+    <td class="fw-semibold text-nowrap">{{ h.symbol }} <span class="text-secondary fw-normal">{{ h.market }}</span></td>
+    <td>{{ h.name }}</td>
+    <td class="text-end">{{ h.units_held|string|qty }}</td>
+    <td class="text-end">{{ h.avg_cost_basis|money }}</td>
+    <td class="text-end">{{ (h.units_held * h.avg_cost_basis)|money }}</td>
+    <td class="text-end">{{ h.total_dividends_received|money }}</td>
+  </tr>
+  {% endfor %}
+{% endcall %}
+<p class="form-text">Average cost basis across all buys up to the date. Dividends are those with an ex-date on or before it.</p>
+{% else %}
+{{ gth_empty_state("You held no stocks on " ~ as_of ~ ".") }}
+{% endif %}

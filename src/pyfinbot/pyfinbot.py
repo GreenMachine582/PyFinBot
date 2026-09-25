@@ -19,6 +19,7 @@ from .web.routes import (
     dashboard as web_dashboard,
     dividends as web_dividends,
     emails as web_emails,
+    reports as web_reports,
     imports as web_imports,
     stocks as web_stocks,
     transactions as web_transactions,
@@ -73,6 +74,7 @@ app.include_router(web_transactions.router)
 app.include_router(web_imports.router)
 app.include_router(web_emails.router)
 app.include_router(web_dividends.router)
+app.include_router(web_reports.router)
 
 # Register all routers
 

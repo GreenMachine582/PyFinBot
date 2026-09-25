@@ -1,0 +1,41 @@
+{% from "stat_card.html" import gth_stat_card %}
+{% from "table.html" import gth_table %}
+{% from "empty_state.html" import gth_empty_state %}
+<form class="d-flex flex-wrap align-items-end gap-2 mb-3"
+  hx-get="/reports/gains" hx-target="closest .tab-pane" hx-trigger="change">
+  <div>
+    <label class="form-label" for="gains-fy">Financial year</label>
+    <select class="form-select" id="gains-fy" name="fy">
+      {% for y in fys %}<option value="{{ y }}"{% if y == report.fy %} selected{% endif %}>{{ y|fy }}</option>{% endfor %}
+    </select>
+  </div>
+  <a class="btn btn-outline-secondary ms-auto" href="/reports/gains.csv?fy={{ report.fy }}" download>
+    <i class="bi bi-download" aria-hidden="true"></i> CSV
+  </a>
+</form>
+
+{% set total = report.total_gain_loss %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-4">
+    {{ gth_stat_card("Net gain/loss, FY " ~ report.fy|fy, total|money,
+        value_tone="good" if total > 0 else ("bad" if total < 0 else "neutral")) }}
+  </div>
+  <div class="col-6 col-md-4">{{ gth_stat_card("Stocks sold", report.items|length) }}</div>
+</div>
+
+{% if report.items %}
+{% call gth_table(["Stock", "Units sold", "Avg cost", "Proceeds", "Gain/loss"], table_class="table-sm") %}
+  {% for g in report.items %}
+  <tr>
+    <td class="fw-semibold text-nowrap">{{ g.symbol }} <span class="text-secondary fw-normal">{{ g.market }}</span></td>
+    <td class="text-end">{{ g.units_sold|string|qty }}</td>
+    <td class="text-end">{{ g.avg_cost_basis|money }}</td>
+    <td class="text-end">{{ g.proceeds|money }}</td>
+    <td class="text-end {{ 'text-success' if g.gain_loss > 0 else ('text-danger' if g.gain_loss < 0 else '') }}">{{ g.gain_loss|money }}</td>
+  </tr>
+  {% endfor %}
+{% endcall %}
+<p class="form-text">Average cost basis. Proceeds are the sell value less fees. Not tax advice: CGT discounts and FIFO parcels aren't applied.</p>
+{% else %}
+{{ gth_empty_state("No sells in FY " ~ report.fy|fy ~ ".") }}
+{% endif %}

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% from "page_header.html" import gth_page_header %}
+{% from "tabs.html" import gth_tabs %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+
+{{ gth_page_header("Reports", subtitle="Holdings, realised capital gains and dividend income. Every report downloads as CSV.") }}
+
+{{ gth_tabs("reports", tabs, active=active) }}
+
+{% endblock %}
