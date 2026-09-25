@@ -1,0 +1,28 @@
+{% from "card.html" import gth_card %}
+{% from "badge.html" import gth_badge %}
+{% from "table.html" import gth_table %}
+{% if error %}
+<div class="alert alert-danger" role="alert">
+  <h6 class="alert-heading mb-1">Couldn't import {{ filename or "the file" }}</h6>
+  {{ error }}
+</div>
+{% else %}
+{% call gth_card("Results — " ~ (filename or "upload")) %}
+  <p class="d-flex flex-wrap gap-2 mb-3">
+    {{ gth_badge(summary.total_rows ~ " rows", "neutral") }}
+    {{ gth_badge(summary.created ~ " imported", "good" if summary.created else "neutral") }}
+    {{ gth_badge(summary.skipped ~ " skipped", "warn" if summary.skipped else "neutral") }}
+  </p>
+  {% if summary.row_errors %}
+  {% call gth_table(["Row", "Problem"], table_class="table-sm mb-2") %}
+    {% for e in summary.row_errors %}
+    <tr><td class="text-nowrap">{{ e.row }}</td><td>{{ e.message }}</td></tr>
+    {% endfor %}
+  {% endcall %}
+  <p class="form-text">Row numbers match the spreadsheet (the header is row 1). Fix these rows and re-upload the file; rows already imported are skipped as duplicates.</p>
+  {% endif %}
+  {% if summary.created %}
+  <a href="/transactions" class="btn btn-outline-primary btn-sm">View transactions</a>
+  {% endif %}
+{% endcall %}
+{% endif %}

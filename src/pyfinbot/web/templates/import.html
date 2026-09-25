@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "page_header.html" import gth_page_header %}
+{% from "card.html" import gth_card %}
+{% from "form.html" import gth_form, gth_form_field %}
+{% block title %}Import{% endblock %}
+{% block content %}
+
+{{ gth_page_header("Import transactions", subtitle="Bulk-add your buys and sells from a CSV or Excel file.") }}
+
+<div class="row g-3">
+  <div class="col-lg-5">
+    {% call gth_card("Upload") %}
+      {% call gth_form("/import", form_attrs={"hx-post": "/import", "hx-encoding": "multipart/form-data",
+          "hx-target": "#import-result", "hx-disabled-elt": "find button[type=submit]"}) %}
+        {{ gth_form_field("file", "File", type="file", input_attrs={"accept": accept, "required": "required"},
+            help_text="CSV, XLS, XLSX or XLSM. Rows that duplicate an existing transaction are skipped, so re-uploading is safe.") }}
+        <div class="d-flex justify-content-end">
+          <button type="submit" class="btn btn-primary gth-busy-button">
+            <span class="gth-busy-button-idle"><i class="bi bi-upload" aria-hidden="true"></i> Import</span>
+            <span class="gth-busy-button-busy" role="status">
+              <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Importing…
+            </span>
+          </button>
+        </div>
+      {% endcall %}
+    {% endcall %}
+
+    <details class="mt-3">
+      <summary>Expected columns</summary>
+      <p class="form-text mb-2">
+        Header names are case-insensitive; any listed alternative works. <code>stock</code> is
+        <code>MARKET:SYMBOL</code> (e.g. <code>ASX:BHP</code>), or a plain symbol plus a <code>market</code> column.
+        Dates are <code>yyyy-mm-dd</code> or <code>dd/mm/yyyy</code>; <code>type</code> is Buy or Sell.
+      </p>
+      <table class="table table-sm">
+        <thead><tr><th scope="col">Column</th><th scope="col">Also accepts</th><th scope="col"></th></tr></thead>
+        <tbody>
+          {% for name, aliases in columns.items() %}
+          <tr>
+            <td><code>{{ name }}</code></td>
+            <td>{% for a in aliases if a != name %}<code>{{ a }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</td>
+            <td class="text-secondary">{{ "Required" if name in required else "Optional" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </details>
+  </div>
+
+  <div class="col-lg-7">
+    <div id="import-result" aria-live="polite"></div>
+  </div>
+</div>
+
+{% endblock %}

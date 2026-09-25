@@ -30,7 +30,7 @@ tracking.
 
 ## 🚀 Key Features
 * 📊 Transaction Recording: Track Buy/Sell orders with support for fees, prices, values, and financial year grouping.
-* 📥 CSV/Excel Import: Bulk-import transactions from a spreadsheet, with per-row validation and error reporting.
+* 📥 CSV/Excel Import: Bulk-import transactions from a spreadsheet — via the API or the web Import page — with per-row validation and error reporting.
 * 📆 Holdings Snapshot: Query real-time or historical stock units held as of any given date.
 * 💰 Capital Gain/Loss Calculation: Determine net gains/losses per stock by financial year using average cost basis.
 * 🔗 Relational Database Design: Clean, normalised schema to ensure data integrity and efficient queries.
