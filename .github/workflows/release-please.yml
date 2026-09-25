@@ -37,6 +37,9 @@ jobs:
           token: ${{ steps.app-token.outputs.token || github.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+          # Release PRs live on main (this workflow runs there), not on the
+          # repo's default branch (dev), which release-please targets otherwise.
+          target-branch: main
 
   back-merge:
     needs: release-please
