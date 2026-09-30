@@ -66,6 +66,71 @@ Roughly, in order:
       `register_core`'s `TRUSTED_PROXIES` wired first); real Grafana panels
       once embedding is configured
 
+## greentechhub-ui v0.11.0 adoption
+
+v0.11.0 (the Data & forms release) adds date range presets, file drop, bulk
+selection, column view options, CSV export URLs, form-field extras and shared
+`money`/`number`/`date` filters. One PR per item, in this order (item 1 first:
+the rest need the pin). Each PR puts its tests in its own new test file, and
+must pass `pytest` (coverage ≥ 80), `ruff check src tests` and
+`mypy src/pyfinbot`.
+
+- [ ] `build(deps): greentechhub-ui v0.11.0; shared formatting filters` —
+      pin `@v0.11.0` in `requirements.txt` and reinstall the local `.venv`
+      (it currently has gth-ui **0.6.0**, not the pinned 0.10.0). Drop
+      `_money`/`_qty` from `web/templating.py` (keep `_fy`; gth has no FY
+      filter) — `install()` supplies `money`/`number`/`date`, and our own
+      assignments after it would shadow them. `|qty` and `|string|qty` →
+      `|number` (it takes the report schemas' floats directly). `|money` call
+      sites stay but now print `$` (`-$264.95` for a buy's cost); per-unit
+      prices (Price, Per share) stay `|number` so they keep full precision.
+      Raw dates → `|date` ("5 Feb 2025"): the transaction table's
+      `strftime("%d/%m/%Y")`, ex/pay dates in `_report_dividends.html`, the
+      holdings empty state (keep the ISO `as_of` for input values and CSV
+      hrefs). Update `test_web_reports.py:88,152` for the new date format
+- [ ] `feat(transactions): date range presets` — `gth_date_range` replaces
+      `transactions.html`'s hand-built From/To inputs (`hide_label=True`,
+      `field_class="mb-0"`, `fy_start_month=7` default); same
+      `date_from`/`date_to` params, so the route is unchanged. Keep the FY
+      select
+- [ ] `feat(import): drag-and-drop upload with a 5 MB limit` —
+      `gth_file_drop("file", "File", accept=ACCEPTED_EXTENSIONS,
+      max_size=MAX_UPLOAD_BYTES)` in `import.html` (the form already has
+      `hx-encoding`); `MAX_UPLOAD_BYTES = 5 * 1024 * 1024` in
+      `core/transaction_import.py`; `imports.py` reads at most limit + 1 bytes
+      and raises `ImportFileError("File is larger than 5 MB.")` — the existing
+      422 result panel + toast. Update `test_web_import.py:42`'s `accept`
+      assertion
+- [ ] `feat(transactions): CSV export and column view options` — split
+      `_query_transactions` into a statement builder + paging so a new
+      `GET /transactions.csv` takes the table's filters and sort with no paging
+      (the `reports.py` CSV pattern; `pyfinbot-transactions.csv`: Date, Market,
+      Symbol, Type, Units, Price, Fees, Total, Cost, FY, Notes; user-scoped);
+      `export_base_url="/transactions.csv"` on `_table_state`. The 11-column
+      table gets `view_options=True`: Date and Stock `hideable: False`, Notes
+      `hidden: True`
+- [ ] `feat(stocks): bulk archive and unarchive` — `POST /stocks/bulk-archive`
+      and `/stocks/bulk-unarchive` read `ids` and share `update_stock`'s
+      `is_active`/`archived_at`/`write_datetime` rules (factor them into one
+      helper); toast "Archived 3 stocks" + `stocksChanged`.
+      `_stock_table.html`: `bulk_actions` + `gth_table_select_cell`. (Stocks
+      are global, not per-user, like the existing stock routes)
+- [ ] `feat(web): form polish` — `_transaction_form.html`: `prefix="$"` on
+      Price and Fees; Notes → `type="textarea", rows=3, maxlength=500`.
+      `notes` gets `max_length=500` in the create/update schemas (the form's
+      422 re-render shows the error; the API enforces it too) via a shared
+      `NOTES_MAX`; the CSV importer and Commsec email import truncate notes to
+      500 instead of failing the row. No DB migration (enforced in the app).
+      `_stock_form.html`: `maxlength=20` on symbol and market (the model's
+      limit)
+- [ ] `feat(transactions): bulk delete` — **after the CSV export item** (same
+      route and table files). `POST /transactions/bulk-delete` reads `ids` and
+      deletes only the current user's rows (a user-scoped query, so another
+      user's ids are silently ignored, like the 404-not-403 single delete);
+      toast "Deleted N transactions" + `transactionsChanged`. The table gets
+      `bulk_actions=[{"label": "Delete", "style": "btn-outline-danger",
+      "confirm": "Delete the selected transactions?", ...}]` + select cells
+
 ## Known limitations (accepted, not bugs)
 
 - `GET /users/` requires a valid token but returns every user unfiltered —
