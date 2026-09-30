@@ -27,6 +27,6 @@ python-multipart~=0.0.29
 ruff~=0.15.14
 setuptools~=82.0.1
 SQLAlchemy~=2.0.40
-sqlmodel~=0.0.24
+sqlmodel~=0.0.47
 uvicorn~=0.54.0
 yfinance~=1.4.0
