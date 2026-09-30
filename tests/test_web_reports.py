@@ -85,7 +85,7 @@ class TestHoldings:
         await web_login(client, "web-reports")
         await _seed(client, session)
         resp = await client.get("/reports/holdings", params={"as_of": "2024-01-01"})
-        assert "You held no stocks on 2024-01-01." in resp.text
+        assert "You held no stocks on 1 Jan 2024." in resp.text
 
     async def test_bad_date_falls_back_to_today(self, client):
         await web_login(client, "web-reports")
@@ -149,7 +149,7 @@ class TestDividends:
         await _seed(client, session)
         resp = await client.get("/reports/dividends")
         assert "Received, all time" in resp.text
-        assert "2024-09-01" in resp.text and "300.00" in resp.text
+        assert "1 Sep 2024" in resp.text and "$300.00" in resp.text
         assert 'href="/reports/dividends.csv"' in resp.text
 
         resp = await client.get("/reports/dividends", params={"fy": "2024"})

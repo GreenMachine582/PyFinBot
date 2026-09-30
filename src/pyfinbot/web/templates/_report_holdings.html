@@ -25,7 +25,7 @@
   <tr>
     <td class="fw-semibold text-nowrap">{{ h.symbol }} <span class="text-secondary fw-normal">{{ h.market }}</span></td>
     <td>{{ h.name }}</td>
-    <td class="text-end">{{ h.units_held|string|qty }}</td>
+    <td class="text-end">{{ h.units_held|number }}</td>
     <td class="text-end">{{ h.avg_cost_basis|money }}</td>
     <td class="text-end">{{ (h.units_held * h.avg_cost_basis)|money }}</td>
     <td class="text-end">{{ h.total_dividends_received|money }}</td>
@@ -34,5 +34,5 @@
 {% endcall %}
 <p class="form-text">Average cost basis across all buys up to the date. Dividends are those with an ex-date on or before it.</p>
 {% else %}
-{{ gth_empty_state("You held no stocks on " ~ as_of ~ ".") }}
+{{ gth_empty_state("You held no stocks on " ~ report.as_of|date ~ ".") }}
 {% endif %}

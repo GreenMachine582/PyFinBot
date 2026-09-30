@@ -28,7 +28,7 @@
   {% for g in report.items %}
   <tr>
     <td class="fw-semibold text-nowrap">{{ g.symbol }} <span class="text-secondary fw-normal">{{ g.market }}</span></td>
-    <td class="text-end">{{ g.units_sold|string|qty }}</td>
+    <td class="text-end">{{ g.units_sold|number }}</td>
     <td class="text-end">{{ g.avg_cost_basis|money }}</td>
     <td class="text-end">{{ g.proceeds|money }}</td>
     <td class="text-end {{ 'text-success' if g.gain_loss > 0 else ('text-danger' if g.gain_loss < 0 else '') }}">{{ g.gain_loss|money }}</td>

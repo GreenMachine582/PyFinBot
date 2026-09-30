@@ -75,8 +75,8 @@ the rest need the pin). Each PR puts its tests in its own new test file, and
 must pass `pytest` (coverage ≥ 80), `ruff check src tests` and
 `mypy src/pyfinbot`.
 
-- [ ] `build(deps): greentechhub-ui v0.11.0; shared formatting filters` —
-      pin `@v0.11.0` in `requirements.txt` and reinstall the local `.venv`
+- [x] `build(deps): greentechhub-ui v0.11.0; shared formatting filters` —
+      done; covered by `tests/test_web_formatting.py`. Pin `@v0.11.0` in `requirements.txt` and reinstall the local `.venv`
       (it currently has gth-ui **0.6.0**, not the pinned 0.10.0). Drop
       `_money`/`_qty` from `web/templating.py` (keep `_fy`; gth has no FY
       filter) — `install()` supplies `money`/`number`/`date`, and our own
