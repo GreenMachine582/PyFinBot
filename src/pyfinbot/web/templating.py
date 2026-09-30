@@ -1,4 +1,3 @@
-from decimal import Decimal
 from pathlib import Path
 
 import greentechhub_ui
@@ -28,16 +27,9 @@ greentechhub_ui.install(
 )
 
 
-def _qty(value) -> str:
-    """Units/prices: full stored precision, trailing zeros dropped (never
-    scientific notation — Decimal("100").normalize() alone gives 1E+2)."""
-    if value is None:
-        return ""
-    return f"{Decimal(value).normalize():,f}"
-
-
-def _money(value) -> str:
-    return "" if value is None else f"{Decimal(value):,.2f}"
+# money / number / date come from greentechhub_ui.install() above:
+# |money → "$1,234.50", |number → full precision with trailing zeros trimmed
+# (floats too), |date → "5 Feb 2025". Only the FY label is ours.
 
 
 def _fy(value: int) -> str:
@@ -46,6 +38,4 @@ def _fy(value: int) -> str:
     return f"{value}–{(value + 1) % 100:02d}"
 
 
-templates.env.filters["qty"] = _qty
 templates.env.filters["fy"] = _fy
-templates.env.filters["money"] = _money

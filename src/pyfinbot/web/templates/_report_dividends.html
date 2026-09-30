@@ -27,11 +27,11 @@
 {% call gth_table(["Ex date", "Pay date", "Stock", "Per share", "Units held", "Received"], table_class="table-sm") %}
   {% for d in report.items %}
   <tr>
-    <td class="text-nowrap">{{ d.ex_date }}</td>
-    <td class="text-nowrap">{{ d.pay_date or "—" }}</td>
+    <td class="text-nowrap">{{ d.ex_date|date }}</td>
+    <td class="text-nowrap">{{ d.pay_date|date or "—" }}</td>
     <td class="fw-semibold text-nowrap">{{ d.symbol }} <span class="text-secondary fw-normal">{{ d.market }}</span></td>
-    <td class="text-end">{{ d.amount_per_share|string|qty }}</td>
-    <td class="text-end">{{ d.units_held_at_ex_date|string|qty }}</td>
+    <td class="text-end">{{ d.amount_per_share|number }}</td>
+    <td class="text-end">{{ d.units_held_at_ex_date|number }}</td>
     <td class="text-end">{{ d.amount_received|money }}</td>
   </tr>
   {% endfor %}
