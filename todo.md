@@ -66,7 +66,91 @@ Roughly, in order:
       `register_core`'s `TRUSTED_PROXIES` wired first); real Grafana panels
       once embedding is configured
 
+## greentechhub v0.12 adoption: settings, roles, email accounts
+
+greentechhub-core v0.7.0, -fastapi v0.9.0 and -ui v0.12.0 shipped settings, roles, the user menu and the brand
+theme. One PR per item, in this order. Items 1–3 can go now. Item 4 waits on the gth secret-settings releases (core
+v0.8.0, ui v0.13.0, fastapi v0.10.0: gth roadmap #18–#20); until they ship, items 5–7 can go ahead. The
+greentechhub-ui v0.11.0 adoption below continues after item 6, each PR tested against item 2's seed data. Same bar as
+the v0.11 items: each PR's tests in their own new file, `pytest` (coverage ≥ 80), `ruff check src tests` and
+`mypy src/pyfinbot`.
+
+- [ ] 1. `build(deps): greentechhub core v0.7.0, fastapi v0.9.0, ui v0.12.0`
+  - Pin `greentechhub-core[sqlalchemy] @ git+…@v0.7.0` directly; the code imports `greentechhub_core.*` but only
+    gets core through fastapi today. Bump fastapi to `@v0.9.0` and ui to `@v0.12.0`, then reinstall `.venv` (it has
+    core **0.6.0**).
+  - No API changes are needed; both releases are additive. ui 0.12 changes the look, so check every page:
+    - the brand accent: `btn-primary`, links, focus rings and checked inputs turn brand green;
+    - `gth_segmented` without option styles becomes the track;
+    - the favicon is a tile.
+  - Settle Dependabot #17 (SQLAlchemy 2.1) against core's `[sqlalchemy]` extra (`sqlalchemy>=2`).
+- [ ] 2. `feat(dev): demo data seed`, so there's realistic data to test every following PR
+  - `scripts/seed_demo.py`:
+    - creates `demo-admin` and `demo-user` with known dev passwords;
+    - creates about 8 ASX stocks, some archived;
+    - adds about 150 transactions over three financial years, buys and sells, enough to page;
+    - adds dividends and a few notes.
+  - It's idempotent (`--reset` wipes the demo rows) and refuses to run unless `ENVIRONMENT == "development"`.
+  - README "Development": run it, then log in.
+  - Tests: two runs don't duplicate; it refuses in production; it produces the expected counts.
+- [ ] 3. `feat(settings): user preferences, settings page and the user menu`
+  - `db/session.py`: expose `get_session_factory()` (an `async_sessionmaker`); `get_session()` is unchanged.
+  - `settings_table(SQLModel.metadata)` in `models/`, plus migration 4 (`gth_settings`).
+  - `register_settings(app, settings, registry=SettingsRegistry(USER_PREFERENCES),
+    store=SQLAlchemySettingsStore(table, async_session_factory=…), views=SettingsViews(templates=templates),
+    logout_url="/logout")`. No `manage_permission` yet; item 5 adds the App section.
+  - `web/templating.py`: add `settings_context` to `context_processors`. That brings the user menu (Settings, Log
+    out), the server-saved theme and `user_settings`, so `|date`, `|money` and `|number` follow the user. Remove
+    `dashboard.html`'s hand-built logout form.
+  - `routes/stocks.py`/`transactions.py`: `TableState.from_query(..., user_settings=…)` (via
+    `get_effective_settings`), so rows per page follow the user. CSV exports keep the plain formats.
+  - conftest: `register_settings` adds middleware and doesn't use `dependency_overrides`, so
+    `_ensure_auth_registered` is unaffected.
+  - Tests: needs login; preferences persist per user; the user menu logs out; page size follows the setting.
+- [ ] 4. `feat(email): per-user email accounts for Commsec sync`, after the gth secret-settings releases
+  - Today one server-wide mailbox (`GMAIL_*`) is imported as whichever user clicks Sync. This moves the account into
+    each user's settings.
+  - Bump the gth pins and add core's `[crypto]` extra. Add a `SETTINGS_CIPHER_KEY` setting (a Fernet key) and pass
+    `FernetCipher` to `register_settings(cipher=…)`.
+  - An "Email sync" group of USER settings:
+    - `email.address`;
+    - `email.app_password` (secret: write-only in the form, encrypted at rest);
+    - `email.imap_host` (`imap.gmail.com`), `email.imap_port` (993), `email.mailbox` (`INBOX`);
+    - `email.commsec_sender` (`bounceback@commsec.com.au`).
+  - `core/email_sync.py`'s `fetch_commsec_emails`/`mark_seen` take an `EmailAccount` value instead of reading the
+    globals. The `/emails` page and `POST /api/emails/sync` load the current user's account (through
+    `Settings.get` and `get_secret`).
+  - The Emails page links to Settings when the account isn't configured.
+  - **Breaking config change:** remove `GMAIL_*`/`COMMSEC_SENDER` from `Settings`, the README, `.env` examples and
+    docker-compose.
+  - Tests:
+    - two users each sync only their own mailbox (mocked IMAP);
+    - the password is encrypted in `gth_settings` and appears in no page HTML;
+    - a blank password on save keeps the stored one;
+    - not configured gives a link to Settings.
+- [ ] 5. `feat(permissions): roles, the admin pages and a locked-down users API`
+  - The role catalogue: `ADMIN = Role("admin", {users.manage, settings.manage})`. Plus a `ROLE_BOOTSTRAP` setting
+    (e.g. `demo-admin=admin`).
+  - `role_grants_table(SQLModel.metadata)` plus migration 5. `register_permissions(app, settings, roles=ROLES,
+    grants=SQLAlchemyGrantStore(…))`.
+  - `manage_permission="settings.manage"` turns on Settings › App; `RoleAdminViews(templates=…,
+    permission="users.manage")` serves `/admin/roles`. Both get nav items with `required_permission`.
+  - **Users API:** `GET /api/users/` and `POST /api/users/` require `users.manage`. That needs a bearer-JWT twin of
+    `require_permission`: resolve the `User`, build an `Identity`, and call the app's resolver.
+    - The first user comes from the seed, or a `create-user` script plus `ROLE_BOOTSTRAP`.
+    - Update `tests/conftest.py`'s `register_and_login()`, which relies on open registration.
+  - Closes the two users-API "Known limitations" below, and updates `web-implementation-brief.md` §2 and §10.
+  - Tests: the bootstrap admin reaches Settings › App and Roles; a normal user gets 403 and no admin nav; the users
+    API returns 403 without `users.manage`.
+- [ ] 6. `chore(web): adopt register_logging, register_health and register_exception_handlers`
+  - Structured JSON logs, `/health` with core's `check_database` against the async engine, and JSON error envelopes
+    for `/api`. The pages' login redirect and HX-Redirect flow must be unchanged.
+- [ ] 7. Then the greentechhub-ui v0.11.0 adoption below: #21 (date range presets, open) first, then the rest in order.
+
 ## greentechhub-ui v0.11.0 adoption
+
+> Continues after items 1–6 of "greentechhub v0.12 adoption" above (item 7 there). Test each PR against the demo
+> seed (item 2).
 
 v0.11.0 (the Data & forms release) adds date range presets, file drop, bulk
 selection, column view options, CSV export URLs, form-field extras and shared
@@ -133,8 +217,9 @@ must pass `pytest` (coverage ≥ 80), `ruff check src tests` and
 
 ## Known limitations (accepted, not bugs)
 
-- `GET /users/` requires a valid token but returns every user unfiltered —
-  no admin/RBAC system built; deliberate scope boundary.
+- `GET /users/` requires a valid token but returns every user unfiltered,
+  and `POST /users/` needs no auth at all (open registration). Scheduled to
+  close: "greentechhub v0.12 adoption" item 5 (roles, `users.manage`).
 - Stateless JWT, 24h expiry, no refresh/revocation — a leaked token is valid
   up to 24h with no force-logout. Acceptable for personal-use scale; would
   need a blocklist or refresh tokens to harden.
