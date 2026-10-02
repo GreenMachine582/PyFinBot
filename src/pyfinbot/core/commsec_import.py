@@ -17,6 +17,7 @@ from ..schemas.email_schemas import EmailSyncSummary
 from .commsec_parser import CommsecParseError, parse_commsec_email
 from .dedupe import is_duplicate_transaction
 from .email_sync import (
+    EmailAccount,
     GmailNotConfiguredError,
     extract_body,
     fetch_commsec_emails,
@@ -38,20 +39,22 @@ class EmailSyncError(Exception):
 async def sync_commsec_emails(
     session: AsyncSession,
     user_id: str,
+    account: EmailAccount,
     *,
     include_seen: bool = False,
     fetch: Optional[Callable[..., List[Tuple[bytes, Message]]]] = None,
-    mark: Optional[Callable[[List[bytes]], None]] = None,
+    mark: Optional[Callable[[EmailAccount, List[bytes]], None]] = None,
 ) -> EmailSyncSummary:
-    """Import every parseable Commsec confirmation as `user_id`'s transaction
-    and commit, then mark the processed emails \\Seen. Emails that can't be
-    imported are skipped and reported; raises EmailSyncError when the sync
-    as a whole fails. fetch/mark default to core.email_sync's IMAP
-    functions, looked up per call so tests can patch them here."""
+    """Import every parseable Commsec confirmation in `account` (that user's
+    own mailbox) as `user_id`'s transaction and commit, then mark the
+    processed emails \\Seen. Emails that can't be imported are skipped and
+    reported; raises EmailSyncError when the sync as a whole fails.
+    fetch/mark default to core.email_sync's IMAP functions, looked up per
+    call so tests can patch them here."""
     fetch = fetch or fetch_commsec_emails
     mark = mark or mark_seen
     try:
-        messages = await asyncio.to_thread(fetch, only_unseen=not include_seen)
+        messages = await asyncio.to_thread(fetch, account, only_unseen=not include_seen)
     except GmailNotConfiguredError as exc:
         raise EmailSyncError(503, str(exc))
     except Exception as exc:
@@ -114,7 +117,7 @@ async def sync_commsec_emails(
 
     if processed_uids:
         try:
-            await asyncio.to_thread(mark, processed_uids)
+            await asyncio.to_thread(mark, account, processed_uids)
         except Exception:
             pass  # non-fatal; content-dedup catches reprocessing on next sync
 

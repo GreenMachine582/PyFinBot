@@ -1,8 +1,10 @@
-"""IMAP-based Gmail fetch for Commsec trade confirmation emails."""
+"""IMAP fetch for Commsec trade confirmation emails, from one user's own
+mailbox (their EmailAccount, from their Settings — see core/email_accounts.py)."""
 from __future__ import annotations
 
 import email
 import imaplib
+from dataclasses import dataclass, field
 from datetime import datetime
 from email.message import Message
 from email.utils import parsedate_to_datetime
@@ -10,31 +12,48 @@ from typing import List, Tuple
 
 from bs4 import BeautifulSoup
 
-from .settings import settings
+NOT_CONFIGURED = "Set your email address and app password in Settings to sync Commsec emails."
 
 
 class GmailNotConfiguredError(RuntimeError):
     pass
 
 
-def fetch_commsec_emails(*, only_unseen: bool = True) -> List[Tuple[bytes, Message]]:
-    """
-    Connect to Gmail via IMAP (App Password auth), search `GMAIL_MAILBOX` for
-    messages from `COMMSEC_SENDER` (UNSEEN only by default), return
-    (uid, email.message.Message) pairs. Synchronous — run via asyncio.to_thread.
-    Does NOT mark messages \\Seen; call mark_seen() after successful processing
-    so a partially-failed sync can be safely retried.
-    """
-    if not settings.GMAIL_ADDRESS or not settings.GMAIL_APP_PASSWORD:
-        raise GmailNotConfiguredError("GMAIL_ADDRESS/GMAIL_APP_PASSWORD not configured")
+@dataclass(frozen=True)
+class EmailAccount:
+    """One user's mailbox. app_password is the plaintext from
+    Settings.get_secret: kept out of repr, and never put in a template."""
 
-    imap = imaplib.IMAP4_SSL(settings.GMAIL_IMAP_HOST, settings.GMAIL_IMAP_PORT)
+    address: str = ""
+    app_password: str = field(default="", repr=False)
+    imap_host: str = "imap.gmail.com"
+    imap_port: int = 993
+    mailbox: str = "INBOX"
+    commsec_sender: str = "bounceback@commsec.com.au"
+
+    @property
+    def configured(self) -> bool:
+        return bool(self.address and self.app_password)
+
+
+def fetch_commsec_emails(account: EmailAccount, *, only_unseen: bool = True) -> List[Tuple[bytes, Message]]:
+    """
+    Connect to `account`'s mailbox over IMAP (App Password auth), search its
+    `mailbox` for messages from its `commsec_sender` (UNSEEN only by default),
+    return (uid, email.message.Message) pairs. Synchronous — run via
+    asyncio.to_thread. Does NOT mark messages \\Seen; call mark_seen() after
+    successful processing so a partially-failed sync can be safely retried.
+    """
+    if not account.configured:
+        raise GmailNotConfiguredError(NOT_CONFIGURED)
+
+    imap = imaplib.IMAP4_SSL(account.imap_host, account.imap_port)
     try:
-        imap.login(settings.GMAIL_ADDRESS, settings.GMAIL_APP_PASSWORD)
-        imap.select(settings.GMAIL_MAILBOX)
-        criteria = f'(FROM "{settings.COMMSEC_SENDER}")'
+        imap.login(account.address, account.app_password)
+        imap.select(account.mailbox)
+        criteria = f'(FROM "{account.commsec_sender}")'
         if only_unseen:
-            criteria = f'(UNSEEN FROM "{settings.COMMSEC_SENDER}")'
+            criteria = f'(UNSEEN FROM "{account.commsec_sender}")'
         _, data = imap.search(None, criteria)
         messages: List[Tuple[bytes, Message]] = []
         for uid in data[0].split():
@@ -85,14 +104,15 @@ def received_at(msg: Message) -> datetime:
     return parsedate_to_datetime(date_header)
 
 
-def mark_seen(uids: List[bytes]) -> None:
-    """Mark the given message UIDs \\Seen after a successful sync."""
+def mark_seen(account: EmailAccount, uids: List[bytes]) -> None:
+    """Mark the given message UIDs \\Seen in `account`'s mailbox after a
+    successful sync."""
     if not uids:
         return
-    imap = imaplib.IMAP4_SSL(settings.GMAIL_IMAP_HOST, settings.GMAIL_IMAP_PORT)
+    imap = imaplib.IMAP4_SSL(account.imap_host, account.imap_port)
     try:
-        imap.login(settings.GMAIL_ADDRESS, settings.GMAIL_APP_PASSWORD)
-        imap.select(settings.GMAIL_MAILBOX)
+        imap.login(account.address, account.app_password)
+        imap.select(account.mailbox)
         for uid in uids:
             imap.store(uid, "+FLAGS", "\\Seen")
     finally:

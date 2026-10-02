@@ -2,9 +2,9 @@
 with test_email_sync.py)."""
 from unittest.mock import patch
 
-from pyfinbot.core.email_sync import GmailNotConfiguredError
+from pyfinbot.core.email_sync import NOT_CONFIGURED, GmailNotConfiguredError
 from pyfinbot.core.market_sync import sync_guard
-from pyfinbot.web.routes.emails import LOCK
+from pyfinbot.web.routes.emails import email_sync_lock
 
 from .conftest import create_stock, hx_triggers, web_login
 from .test_email_sync import _fake_messages
@@ -36,16 +36,16 @@ class TestPage:
 
     async def test_not_configured_hint(self, client):
         await web_login(client, "web-emails")
-        with patch("pyfinbot.web.routes.emails.settings.GMAIL_ADDRESS", ""):
-            resp = await client.get("/emails")
-        assert "Gmail isn't configured yet" in resp.text
+        resp = await client.get("/emails")
+        assert "Your email account isn't set up yet" in resp.text
+        assert 'href="/settings#gth-settings-preferences"' in resp.text
 
     async def test_no_hint_when_configured(self, client):
         await web_login(client, "web-emails")
-        with patch("pyfinbot.web.routes.emails.settings.GMAIL_ADDRESS", "me@example.com"), \
-                patch("pyfinbot.web.routes.emails.settings.GMAIL_APP_PASSWORD", "app-password"):
-            resp = await client.get("/emails")
-        assert "configured yet" not in resp.text
+        await client.post("/settings/preferences", headers=HX, data={
+            "email.address": "me@example.com", "email.app_password": "app-password"})
+        resp = await client.get("/emails")
+        assert "set up yet" not in resp.text
 
 
 class TestSync:
@@ -91,10 +91,11 @@ class TestSync:
 
     async def test_not_configured(self, client):
         await web_login(client, "web-emails")
-        with patch(FETCH, side_effect=GmailNotConfiguredError("GMAIL_ADDRESS/GMAIL_APP_PASSWORD not configured")):
+        with patch(FETCH, side_effect=GmailNotConfiguredError(NOT_CONFIGURED)):
             resp = await client.post("/emails/sync")
         assert resp.status_code == 422
-        assert "not configured" in resp.text
+        assert "Set your email address and app password in Settings" in resp.text
+        assert 'href="/settings#gth-settings-preferences"' in resp.text
         assert hx_triggers(resp)["showToast"]["kind"] == "danger"
 
     async def test_imap_failure(self, client):
@@ -106,7 +107,7 @@ class TestSync:
 
     async def test_refused_while_running(self, client):
         await web_login(client, "web-emails")
-        with sync_guard(LOCK) as held, patch(FETCH) as mock_fetch:
+        with sync_guard(email_sync_lock("web-emails")) as held, patch(FETCH) as mock_fetch:
             assert held
             resp = await client.post("/emails/sync")
         assert resp.status_code == 204
