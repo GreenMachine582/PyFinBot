@@ -17,6 +17,7 @@ for accepted alternative names):
 from __future__ import annotations
 
 import io
+from typing import Protocol
 
 import pandas as pd
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -28,6 +29,10 @@ from ..schemas.transaction_schemas import parse_transaction_date
 from .dedupe import is_duplicate_transaction
 
 ACCEPTED_EXTENSIONS = (".csv", ".xls", ".xlsx", ".xlsm")
+
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+"""The largest import file accepted (5 MB) — enforced by read_upload on the
+server; the web page's drop zone checks it in the browser too."""
 REQUIRED_COLUMNS = ("date", "stock", "type", "units", "price")
 
 # Column aliases: canonical name -> accepted alternatives
@@ -51,6 +56,20 @@ class ImportFileError(Exception):
         super().__init__(detail)
         self.status_code = status_code
         self.detail = detail
+
+
+class _Readable(Protocol):
+    async def read(self, size: int = -1) -> bytes: ...
+
+
+async def read_upload(file: _Readable, limit: int = MAX_UPLOAD_BYTES) -> bytes:
+    """The uploaded file's bytes, reading at most limit + 1 so an oversized
+    upload is never buffered whole. Raises ImportFileError (413) when it's
+    larger than `limit`."""
+    content = await file.read(limit + 1)
+    if len(content) > limit:
+        raise ImportFileError(413, f"File is larger than {limit // (1024 * 1024)} MB.")
+    return content
 
 
 def _normalise_columns(df: pd.DataFrame) -> pd.DataFrame:

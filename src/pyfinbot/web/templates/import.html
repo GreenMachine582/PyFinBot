@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% from "page_header.html" import gth_page_header %}
 {% from "card.html" import gth_card %}
-{% from "form.html" import gth_form, gth_form_field %}
+{% from "form.html" import gth_form %}
+{% from "file_drop.html" import gth_file_drop %}
 {% block title %}Import{% endblock %}
 {% block content %}
 
@@ -12,8 +13,10 @@
     {% call gth_card("Upload") %}
       {% call gth_form("/import", form_attrs={"hx-post": "/import", "hx-encoding": "multipart/form-data",
           "hx-target": "#import-result", "hx-disabled-elt": "find button[type=submit]"}) %}
-        {{ gth_form_field("file", "File", type="file", input_attrs={"accept": accept, "required": "required"},
-            help_text="CSV, XLS, XLSX or XLSM. Rows that duplicate an existing transaction are skipped, so re-uploading is safe.") }}
+        {#- The drop zone shows the accepted types and the 5 MB limit, checks both in the browser, and shows
+            upload progress; the server checks again (core.transaction_import.read_upload). -#}
+        {{ gth_file_drop("file", "File", accept=accept, max_size=max_size, input_attrs={"required": "required"},
+            help_text="Rows that duplicate an existing transaction are skipped, so re-uploading is safe.") }}
         <div class="d-flex justify-content-end">
           <button type="submit" class="btn btn-primary gth-busy-button">
             <span class="gth-busy-button-idle"><i class="bi bi-upload" aria-hidden="true"></i> Import</span>

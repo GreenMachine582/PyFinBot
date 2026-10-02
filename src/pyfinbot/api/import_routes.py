@@ -11,6 +11,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..core.dependencies import get_current_user
 from ..core.transaction_import import ImportFileError, import_transactions as _import_transactions
+from ..core.transaction_import import read_upload
 from ..db.session import get_session
 from ..models.user_models import User
 from ..schemas.import_schemas import ImportSummary
@@ -38,6 +39,7 @@ async def import_transactions(
     Returns a summary of rows created, skipped, and any per-row errors.
     """
     try:
-        return await _import_transactions(session, current_user.id, await file.read(), file.filename or "")
+        content = await read_upload(file)  # at most 5 MB, else 413
+        return await _import_transactions(session, current_user.id, content, file.filename or "")
     except ImportFileError as exc:
         raise StatusError(exc.detail, status_code=exc.status_code, code="import_failed")
