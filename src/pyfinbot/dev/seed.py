@@ -28,14 +28,19 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..core.security import hash_password
 from ..core.settings import settings
+from ..core.permissions import ADMIN
 from ..models.dividend_models import Dividend
+from ..models.settings_models import ROLE_GRANTS_TABLE
 from ..models.stock_models import Stock
 from ..models.transaction_models import Transaction, TypeEnum
 from ..models.user_models import User
 
 DEMO_USERS: dict[str, str] = {"demo-admin": "demo-admin-pass", "demo-user": "demo-user-pass"}
-"""Dev-only logins (user id → password). demo-admin is the subject a
-ROLE_BOOTSTRAP map can make an admin."""
+"""Dev-only logins (user id → password)."""
+
+DEMO_ADMIN = "demo-admin"
+"""Granted the admin role (a gth_role_grants row), as if assigned at
+/admin/roles, so the admin pages work without a ROLE_BOOTSTRAP."""
 
 MARKET = "ASX"
 DIVIDEND_SOURCE = "demo"
@@ -76,6 +81,7 @@ class DemoSeedRefused(RuntimeError):
 @dataclass
 class SeedSummary:
     users_created: int = 0
+    grants_created: int = 0
     stocks_created: int = 0
     transactions_created: int = 0
     dividends_created: int = 0
@@ -83,8 +89,8 @@ class SeedSummary:
 
     @property
     def created_anything(self) -> bool:
-        return any((self.users_created, self.stocks_created, self.transactions_created,
-                    self.dividends_created))
+        return any((self.users_created, self.grants_created, self.stocks_created,
+                    self.transactions_created, self.dividends_created))
 
 
 async def seed_demo(session: AsyncSession, *, reset: bool = False,
@@ -99,6 +105,7 @@ async def seed_demo(session: AsyncSession, *, reset: bool = False,
     if reset:
         summary.reset = await _reset(session)
     users = await _ensure_users(session, summary)
+    await _ensure_admin_grant(session, summary)
     stocks = await _ensure_stocks(session, summary)
     for user_id, count in TRANSACTION_COUNTS.items():
         await _ensure_transactions(session, users[user_id], stocks, count, summary)
@@ -114,6 +121,8 @@ async def _reset(session: AsyncSession) -> dict[str, int]:
     txns = await session.execute(
         delete(Transaction).where(col(Transaction.user_id).in_(ids)))
     users = await session.execute(delete(User).where(col(User.id).in_(ids)))
+    grants = await session.execute(
+        delete(ROLE_GRANTS_TABLE).where(ROLE_GRANTS_TABLE.c.subject.in_(ids)))
     dividends = await session.execute(
         delete(Dividend).where(col(Dividend.source) == DIVIDEND_SOURCE))
     stocks_removed = 0
@@ -130,6 +139,7 @@ async def _reset(session: AsyncSession) -> dict[str, int]:
             stocks_removed += 1
     await session.flush()
     return {"transactions": cast(CursorResult, txns).rowcount,
+            "grants": cast(CursorResult, grants).rowcount,
             "users": cast(CursorResult, users).rowcount,
             "dividends": cast(CursorResult, dividends).rowcount, "stocks": stocks_removed}
 
@@ -145,6 +155,15 @@ async def _ensure_users(session: AsyncSession, summary: SeedSummary) -> dict[str
         users[user_id] = user
     await session.flush()
     return users
+
+
+async def _ensure_admin_grant(session: AsyncSession, summary: SeedSummary) -> None:
+    table = ROLE_GRANTS_TABLE
+    found = (await session.exec(select(table.c.role).where(
+        table.c.subject == DEMO_ADMIN, table.c.role == ADMIN.name))).first()
+    if found is None:
+        await session.execute(table.insert().values(subject=DEMO_ADMIN, role=ADMIN.name))
+        summary.grants_created += 1
 
 
 async def _ensure_stocks(session: AsyncSession, summary: SeedSummary) -> dict[str, Stock]:
@@ -256,7 +275,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print(f"Created {summary.users_created} users, {summary.stocks_created} stocks, "
           f"{summary.transactions_created} transactions, {summary.dividends_created} dividends"
           + ("" if summary.created_anything else " (already seeded)") + ".")
-    print("Log in as: " + ", ".join(f"{u} / {p}" for u, p in DEMO_USERS.items()))
+    print("Log in as: " + ", ".join(f"{u} / {p}" for u, p in DEMO_USERS.items())
+          + f" ({DEMO_ADMIN} has the admin role).")
     return 0
 
 

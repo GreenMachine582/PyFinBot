@@ -1,0 +1,18 @@
+"""Create a PyFinBot user (e.g. the first admin). Run from the project root:
+
+    python scripts/create_user.py <user_id>
+
+See src/pyfinbot/admin/create_user.py.
+"""
+
+import sys
+from pathlib import Path
+
+# Imported as src.pyfinbot, like `uvicorn src.pyfinbot.pyfinbot:app`: the
+# alembic env (run first, to migrate) imports src.pyfinbot.models.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from src.pyfinbot.admin.create_user import main  # noqa: E402
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

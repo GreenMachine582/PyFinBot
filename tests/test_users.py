@@ -1,43 +1,72 @@
-"""Integration tests for /api/users routes."""
+"""Integration tests for /api/users routes. Creating and listing users need
+users.manage (the admin role); get/update/delete are self-only."""
 
-from .conftest import register_and_login
+from .conftest import create_user, make_admin, register_and_login
+
+
+async def _admin_headers(client, user_id="admin-1"):
+    headers = await register_and_login(client, user_id)
+    await make_admin(client, user_id)
+    return headers
 
 
 async def _create_user(client, user_id="user-123", password="hunter2!"):
-    resp = await client.post("/api/users/", json={"id": user_id, "password": password})
-    assert resp.status_code == 201
-    return resp.json()
+    await create_user(client, user_id, password)
 
 
 class TestCreateUser:
-    async def test_creates_and_returns_user(self, client):
-        data = await _create_user(client)
+    async def test_admin_creates_and_returns_user(self, client):
+        headers = await _admin_headers(client)
+        resp = await client.post("/api/users/", json={"id": "user-123", "password": "hunter2!"},
+                                 headers=headers)
+        assert resp.status_code == 201
+        data = resp.json()
         assert data["id"] == "user-123"
         assert data["active"] is True
         assert "create_datetime" in data
         assert "password" not in data
         assert "password_hash" not in data
+        login = await client.post("/api/auth/login", data={"username": "user-123", "password": "hunter2!"})
+        assert login.status_code == 200
 
     async def test_duplicate_returns_400(self, client):
+        headers = await _admin_headers(client)
         await _create_user(client)
-        resp = await client.post("/api/users/", json={"id": "user-123", "password": "hunter2!"})
+        resp = await client.post("/api/users/", json={"id": "user-123", "password": "hunter2!"},
+                                 headers=headers)
         assert resp.status_code == 400
 
     async def test_missing_password_returns_422(self, client):
-        resp = await client.post("/api/users/", json={"id": "user-123"})
+        headers = await _admin_headers(client)
+        resp = await client.post("/api/users/", json={"id": "user-123"}, headers=headers)
         assert resp.status_code == 422
+
+    async def test_no_open_registration(self, client):
+        resp = await client.post("/api/users/", json={"id": "user-123", "password": "hunter2!"})
+        assert resp.status_code == 401
+
+    async def test_non_admin_gets_403(self, client):
+        headers = await register_and_login(client, "plain-user")
+        resp = await client.post("/api/users/", json={"id": "user-123", "password": "hunter2!"},
+                                 headers=headers)
+        assert resp.status_code == 403
 
 
 class TestListUsers:
-    async def test_returns_list(self, client):
+    async def test_admin_gets_every_user(self, client):
         await _create_user(client, "u1")
         await _create_user(client, "u2")
-        headers = await register_and_login(client, "u3")
+        headers = await _admin_headers(client, "u3")
         resp = await client.get("/api/users/", headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert isinstance(data, list)
-        assert len(data) >= 3
+        assert {"u1", "u2", "u3"} <= {u["id"] for u in data}
+
+    async def test_non_admin_gets_403(self, client):
+        headers = await register_and_login(client, "plain-user")
+        resp = await client.get("/api/users/", headers=headers)
+        assert resp.status_code == 403
 
     async def test_no_token_returns_401(self, client):
         resp = await client.get("/api/users/")

@@ -5,7 +5,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ..core.dependencies import get_current_user
+from ..core.dependencies import get_current_user, require_api_permission
+from ..core.permissions import USERS_MANAGE
 from ..core.security import hash_password
 from ..models.user_models import User
 from ..schemas.user_schemas import UserBase, UserCreate, UserUpdate
@@ -15,7 +16,13 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 
 @router.post("/", response_model=UserBase, status_code=status.HTTP_201_CREATED)
-async def create_user(user_in: UserCreate, session: AsyncSession = Depends(get_session)):
+async def create_user(
+    user_in: UserCreate,
+    session: AsyncSession = Depends(get_session),
+    admin: User = Depends(require_api_permission(USERS_MANAGE)),
+):
+    """Create a user (users.manage only: there's no open registration — the
+    first user comes from scripts/create_user.py plus ROLE_BOOTSTRAP)."""
     if await session.get(User, user_in.id):
         raise HTTPException(status_code=400, detail="User already registered")
 
@@ -34,8 +41,9 @@ async def create_user(user_in: UserCreate, session: AsyncSession = Depends(get_s
 @router.get("/", response_model=list[UserBase])
 async def list_users(
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    admin: User = Depends(require_api_permission(USERS_MANAGE)),
 ):
+    """Every user (users.manage only)."""
     result = await session.exec(select(User))
     return result.all()
 

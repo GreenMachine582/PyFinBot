@@ -102,10 +102,36 @@ async def client(connection):
     set_session_factory_override(None)
 
 
+async def create_user(client: AsyncClient, user_id: str, password: str = "hunter2!") -> None:
+    """Create a user directly in the test database, through the same
+    get_session override the app's routes use. There's no open registration
+    any more (POST /api/users/ needs users.manage), so tests seed users the
+    way scripts/create_user.py does."""
+    from greentechhub_fastapi.auth import resolve_dependency
+
+    from pyfinbot.admin.create_user import create_user as _create
+    from pyfinbot.db.session import get_session
+    from pyfinbot.pyfinbot import app
+
+    async with resolve_dependency(app, get_session) as session:
+        await _create(session, user_id, password)
+
+
+async def make_admin(client: AsyncClient, user_id: str) -> None:
+    """Grant `user_id` the admin role, as /admin/roles would. The grant
+    store uses db.session.session_factory, which the client fixture points
+    at the test connection."""
+    from greentechhub_fastapi.permissions import GRANTS_STATE_KEY
+
+    from pyfinbot.core.permissions import ADMIN
+    from pyfinbot.pyfinbot import app
+
+    await getattr(app.state, GRANTS_STATE_KEY).assign(user_id, ADMIN.name)
+
+
 async def register_and_login(client: AsyncClient, user_id: str, password: str = "hunter2!") -> dict[str, str]:
-    """Register a user (id + password) and log in, returning an Authorisation header dict."""
-    resp = await client.post("/api/users/", json={"id": user_id, "password": password})
-    assert resp.status_code == 201, resp.text
+    """Create a user (id + password) and log in, returning an Authorisation header dict."""
+    await create_user(client, user_id, password)
 
     resp = await client.post(
         "/api/auth/login", data={"username": user_id, "password": password}
@@ -122,8 +148,7 @@ async def web_login(client: AsyncClient, user_id: str, password: str = "hunter2!
 
     The cookie is marked Secure, so httpx's jar won't send it back over the
     tests' http:// base URL on its own — it's re-set without that flag."""
-    resp = await client.post("/api/users/", json={"id": user_id, "password": password})
-    assert resp.status_code == 201, resp.text
+    await create_user(client, user_id, password)
     resp = await client.post("/login", data={"user_id": user_id, "password": password}, follow_redirects=False)
     assert resp.status_code == 303, resp.text
     client.cookies.set("gth_session", resp.cookies["gth_session"])

@@ -40,6 +40,14 @@ class Settings(GTHBaseSettings):
     # not wired up yet, deferred).
     AUTH_ADAPTER: str = "local"
 
+    # Roles (greentechhub-fastapi's register_permissions reads these):
+    # ROLE_BOOTSTRAP maps user ids to roles — the first admin, and recovery if
+    # every admin grant is removed, e.g. "alice=admin". ROLE_GROUPS maps
+    # directory groups to roles (forward_auth/Authentik), e.g. "admins=admin".
+    # Roles assigned at /admin/roles are stored in gth_role_grants instead.
+    ROLE_BOOTSTRAP: str = ""
+    ROLE_GROUPS: str = ""
+
     # Encrypts secret settings at rest — each user's email app password, in
     # gth_settings. A Fernet key: generate one with
     #   python -c "from greentechhub_core.settings.crypto import FernetCipher; print(FernetCipher.generate_key())"

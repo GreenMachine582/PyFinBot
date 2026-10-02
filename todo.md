@@ -137,7 +137,11 @@ the v0.11 items: each PR's tests in their own new file, `pytest` (coverage ≥ 8
     - the password is encrypted in `gth_settings` and appears in no page HTML;
     - a blank password on save keeps the stored one;
     - not configured gives a link to Settings.
-- [ ] 5. `feat(permissions): roles, the admin pages and a locked-down users API`
+- [x] 5. `feat(permissions): roles, the admin pages and a locked-down users API` — done: `core/permissions.py`
+  (admin: `users.manage`, `settings.manage`), `ROLE_BOOTSTRAP`/`ROLE_GROUPS`, migration `d52e9f3a8b17`
+  (`gth_role_grants`), `/admin/roles`, Settings › App (the site banner), `require_api_permission` on the users API,
+  `scripts/create_user.py`, and the seed makes `demo-admin` an admin. Tests create users directly
+  (`conftest.create_user`) and grant roles with `make_admin`.
   - The role catalogue: `ADMIN = Role("admin", {users.manage, settings.manage})`. Plus a `ROLE_BOOTSTRAP` setting
     (e.g. `demo-admin=admin`).
   - `role_grants_table(SQLModel.metadata)` plus migration 5. `register_permissions(app, settings, roles=ROLES,
@@ -227,9 +231,6 @@ must pass `pytest` (coverage ≥ 80), `ruff check src tests` and
 
 ## Known limitations (accepted, not bugs)
 
-- `GET /users/` requires a valid token but returns every user unfiltered,
-  and `POST /users/` needs no auth at all (open registration). Scheduled to
-  close: "greentechhub v0.12 adoption" item 5 (roles, `users.manage`).
 - Stateless JWT, 24h expiry, no refresh/revocation — a leaked token is valid
   up to 24h with no force-logout. Acceptable for personal-use scale; would
   need a blocklist or refresh tokens to harden.
