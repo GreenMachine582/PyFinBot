@@ -86,7 +86,8 @@ the v0.11 items: each PR's tests in their own new file, `pytest` (coverage ≥ 8
     - `gth_segmented` without option styles becomes the track;
     - the favicon is a tile.
   - Settle Dependabot #17 (SQLAlchemy 2.1) against core's `[sqlalchemy]` extra (`sqlalchemy>=2`).
-- [ ] 2. `feat(dev): demo data seed`, so there's realistic data to test every following PR
+- [x] 2. `feat(dev): demo data seed`, so there's realistic data to test every following PR — done:
+  `python scripts/seed_demo.py [--reset]` (`src/pyfinbot/dev/seed.py`), logins in the README.
   - `scripts/seed_demo.py`:
     - creates `demo-admin` and `demo-user` with known dev passwords;
     - creates about 8 ASX stocks, some archived;

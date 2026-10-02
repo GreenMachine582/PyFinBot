@@ -98,6 +98,18 @@ docker compose up
 ```
 Once running, interactive API docs are available at `http://localhost:8000/docs` (or port `8001` under Docker Compose).
 
+### Demo data (development)
+For realistic data to click through, seed the database (it applies migrations first):
+```bash
+python scripts/seed_demo.py           # safe to re-run: adds only what's missing
+python scripts/seed_demo.py --reset   # remove the demo rows, then seed again
+```
+Then log in at `/login` as `demo-user` / `demo-user-pass` or `demo-admin` / `demo-admin-pass`. It creates those two
+users, 8 ASX stocks (TLS and FMG archived), about 150 buys and sells over FY2023–24 to FY2025–26 (a few with notes),
+and semi-annual dividends (`source="demo"`). The rows come from a fixed random seed, so everyone gets the same data.
+`--reset` only removes what the seed owns: a stock another user also trades is kept. The script refuses to run unless
+`ENVIRONMENT=development` (the default).
+
 ## API Overview
 All routes are mounted under `/api`. See `/docs` for full request/response schemas. Every route except `POST /api/users/` (registration) and `POST /api/auth/login` requires a `Bearer` token — register a user, log in to get a token, then pass `Authorization: Bearer <token>` on subsequent requests.
 
