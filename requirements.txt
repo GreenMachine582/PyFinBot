@@ -30,4 +30,4 @@ setuptools~=82.0.1
 SQLAlchemy~=2.0.40
 sqlmodel~=0.0.47
 uvicorn~=0.54.0
-yfinance~=1.4.0
+yfinance~=1.7.0
