@@ -69,13 +69,13 @@ Roughly, in order:
 ## greentechhub v0.12 adoption: settings, roles, email accounts
 
 greentechhub-core v0.7.0, -fastapi v0.9.0 and -ui v0.12.0 shipped settings, roles, the user menu and the brand
-theme. One PR per item, in this order. Items 1–3 can go now. Item 4 waits on the gth secret-settings releases (core
-v0.8.0, ui v0.13.0, fastapi v0.10.0: gth roadmap #18–#20); until they ship, items 5–7 can go ahead. The
+theme; core v0.8.0, -fastapi v0.10.0 and -ui v0.13.0 then shipped secret settings (gth roadmap #18–#20) and the
+landing page, so nothing here waits any more. One PR per item, in this order. The
 greentechhub-ui v0.11.0 adoption below continues after item 6, each PR tested against item 2's seed data. Same bar as
 the v0.11 items: each PR's tests in their own new file, `pytest` (coverage ≥ 80), `ruff check src tests` and
 `mypy src/pyfinbot`.
 
-- [x] 1. `build(deps): greentechhub core v0.7.0, fastapi v0.9.0, ui v0.12.0` — done: core pinned directly with
+- [x] 1. `build(deps): greentechhub core v0.8.0, fastapi v0.10.0, ui v0.13.0` — done: core pinned directly with
   `[sqlalchemy]`; `tests/test_gth_versions.py` guards the pins. SQLAlchemy 2.1 (Dependabot #17) is ignored in
   `dependabot.yml` until sqlmodel supports it.
   - Pin `greentechhub-core[sqlalchemy] @ git+…@v0.7.0` directly; the code imports `greentechhub_core.*` but only
@@ -112,7 +112,7 @@ the v0.11 items: each PR's tests in their own new file, `pytest` (coverage ≥ 8
 - [ ] 4. `feat(email): per-user email accounts for Commsec sync`, after the gth secret-settings releases
   - Today one server-wide mailbox (`GMAIL_*`) is imported as whichever user clicks Sync. This moves the account into
     each user's settings.
-  - Bump the gth pins and add core's `[crypto]` extra. Add a `SETTINGS_CIPHER_KEY` setting (a Fernet key) and pass
+  - Add core's `[crypto]` extra (the pins are already at core v0.8.0 / fastapi v0.10.0 / ui v0.13.0). Add a `SETTINGS_CIPHER_KEY` setting (a Fernet key) and pass
     `FernetCipher` to `register_settings(cipher=…)`.
   - An "Email sync" group of USER settings:
     - `email.address`;

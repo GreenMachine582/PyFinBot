@@ -1,6 +1,7 @@
 """The greentechhub packages are at the versions the code now relies on:
-core's settings and SQLAlchemy stores, fastapi's register_settings, ui's
-settings-aware templates."""
+core's settings (including secret settings) and SQLAlchemy stores,
+fastapi's register_settings (with cipher= and get_secret), ui's
+settings-aware templates and write-only secret fields."""
 
 from importlib.metadata import version
 
@@ -13,7 +14,7 @@ def _parts(v: str) -> tuple[int, ...]:
 
 @pytest.mark.parametrize(
     ("dist", "minimum"),
-    [("greentechhub-core", "0.7.0"), ("greentechhub-fastapi", "0.9.0"), ("greentechhub-ui", "0.12.0")],
+    [("greentechhub-core", "0.8.0"), ("greentechhub-fastapi", "0.10.0"), ("greentechhub-ui", "0.13.0")],
 )
 def test_greentechhub_versions(dist, minimum):
     assert _parts(version(dist)) >= _parts(minimum)
