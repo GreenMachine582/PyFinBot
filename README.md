@@ -80,7 +80,9 @@ cp .env.example .env
 
 `SECRET_KEY` signs JWT access tokens. If unset, a random key is generated on every process start (fine for local dev, but every restart invalidates all issued tokens) — set it explicitly for any deployment that needs to survive a restart.
 
-`GMAIL_ADDRESS`/`GMAIL_APP_PASSWORD` are only required to use `POST /api/emails/sync-commsec`, which reads Commsec trade confirmation emails via IMAP. An [App Password](https://myaccount.google.com/apppasswords) grants full mailbox read access (not scoped to Commsec mail), so a dedicated Gmail account or label is recommended over your primary inbox.
+**Email sync is per user.** Each user sets their own mailbox for Commsec email sync at `/settings` › Email sync: address, an [App Password](https://myaccount.google.com/apppasswords) for Gmail, and optionally the IMAP server, port, mailbox and Commsec sender. The app password is write-only in the form and stored encrypted with `SETTINGS_CIPHER_KEY` (a Fernet key: `python -c "from greentechhub_core.settings.crypto import FernetCipher; print(FernetCipher.generate_key())"`). If that's unset, a key is derived from `SECRET_KEY`, and changing `SECRET_KEY` then means re-entering saved app passwords. An App Password grants full mailbox read access (not scoped to Commsec mail), so a dedicated account or label is recommended over your primary inbox.
+
+> **Upgrading:** the server-wide `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD`, `GMAIL_IMAP_HOST`, `GMAIL_IMAP_PORT`, `GMAIL_MAILBOX` and `COMMSEC_SENDER` settings are no longer read (the app warns at startup while they're set). Enter those details in each user's Settings instead, then remove them from `.env`.
 
 `ENVIRONMENT`/`CORS_ORIGINS` control cross-origin access: in `development` (the default), all origins are allowed when `CORS_ORIGINS` is unset, for frictionless local testing; in `production`, no cross-origin access is allowed unless `CORS_ORIGINS` is set to an explicit comma-separated allow-list.
 
@@ -137,7 +139,7 @@ pytest
 1. ✅ MVP – Schema design, transaction insertion, and SQL-based queries.
 2. ✅ Import System – CSV or Excel import of stock transactions.
 3. ✅ Reporting Module – FY-based reports for holdings and capital gains.
-4. ✅ Commsec Email Ingestion – Parse bought/sold confirmation emails (Gmail IMAP) into transactions.
+4. ✅ Commsec Email Ingestion – Parse bought/sold confirmation emails (each user's own mailbox, over IMAP) into transactions.
 5. ✅ Dividend Tracking – Pull per-stock dividend history (yfinance) and report income by FY.
 6. 🧮 FIFO Method Support – Accurate gain/loss computation based on FIFO accounting.
 7. 🌐 CLI Interface – Interact via command line with exportable summaries.

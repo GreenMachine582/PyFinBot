@@ -11,10 +11,16 @@
       start_toast="Checking the mailbox — this can take a minute…") }}
 {% endcall %}
 
-{% if not configured %}
+{% if problem %}
+<div class="alert alert-danger" role="alert">
+  {{ problem }} <a href="{{ settings_url }}" class="alert-link">Open Settings</a>
+</div>
+{% elif not configured %}
 <div class="alert alert-warning" role="alert">
-  Gmail isn't configured yet. Set <code>GMAIL_ADDRESS</code> and <code>GMAIL_APP_PASSWORD</code>
-  (a Google App Password) in the server's environment, then restart it.
+  Your email account isn't set up yet. Add your email address and an app password (for Gmail, a
+  <a href="https://myaccount.google.com/apppasswords" class="alert-link" target="_blank" rel="noopener">Google App Password</a>)
+  under <a href="{{ settings_url }}" class="alert-link">Settings › Email sync</a>. It's stored encrypted and
+  only used to read your Commsec emails.
 </div>
 {% endif %}
 

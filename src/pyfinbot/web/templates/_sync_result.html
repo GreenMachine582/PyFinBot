@@ -4,6 +4,7 @@
 <div class="alert alert-danger" role="alert">
   <h6 class="alert-heading mb-1">{{ heading }}</h6>
   {{ error }}
+  {% if settings_url %}<a href="{{ settings_url }}" class="alert-link">Open Settings</a>{% endif %}
 </div>
 {% else %}
 {% call gth_card(heading) %}

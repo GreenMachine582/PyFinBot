@@ -114,7 +114,9 @@ the v0.11 items: each PR's tests in their own new file, `pytest` (coverage ≥ 8
     `_ensure_auth_registered` is unaffected. The store opens its own sessions, so the `client` fixture overrides
     `db.session.get_session_factory` to its per-test connection.
   - Tests: needs login; preferences persist per user; the user menu logs out; page size follows the setting.
-- [ ] 4. `feat(email): per-user email accounts for Commsec sync`, after the gth secret-settings releases
+- [x] 4. `feat(email): per-user email accounts for Commsec sync` — done: the "Email sync" settings group
+  (`core/user_settings.py`), `core/email_accounts.load_email_account`, a per-user sync lock, and
+  `SETTINGS_CIPHER_KEY` (derived from `SECRET_KEY` when unset). Old `GMAIL_*` env vars warn and are ignored.
   - Today one server-wide mailbox (`GMAIL_*`) is imported as whichever user clicks Sync. This moves the account into
     each user's settings.
   - Add core's `[crypto]` extra (the pins are already at core v0.8.0 / fastapi v0.10.0 / ui v0.13.0). Add a `SETTINGS_CIPHER_KEY` setting (a Fernet key) and pass

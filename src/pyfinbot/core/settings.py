@@ -5,14 +5,22 @@ import tempfile
 import warnings
 from os import path as os_path
 
+import base64
+import hashlib
+
 from dotenv import load_dotenv
 from greentechhub_core.config import GTHBaseSettings
+from pydantic_settings import SettingsConfigDict
 
 
 load_dotenv(dotenv_path=os_path.join(os_path.dirname(__file__), "..", "..", "..", ".env"))
 
 
 class Settings(GTHBaseSettings):
+    # Ignore unknown keys rather than refuse to start, so an older .env
+    # (e.g. the retired GMAIL_* settings) still loads; see _warn_retired.
+    model_config = SettingsConfigDict(**{**GTHBaseSettings.model_config, "extra": "ignore"})
+
     ASYNC_DATABASE_URL: str = ""
     DATABASE_URL: str = ""
     DB_ECHO: bool = False
@@ -32,15 +40,12 @@ class Settings(GTHBaseSettings):
     # not wired up yet, deferred).
     AUTH_ADAPTER: str = "local"
 
-    # Gmail IMAP (App Password auth, not OAuth) for Commsec email ingestion.
-    # An App Password is broader-scoped than a typical API credential (full
-    # mailbox read access) — recommend a dedicated Gmail label/account.
-    GMAIL_ADDRESS: str = ""
-    GMAIL_APP_PASSWORD: str = ""
-    GMAIL_IMAP_HOST: str = "imap.gmail.com"
-    GMAIL_IMAP_PORT: int = 993
-    GMAIL_MAILBOX: str = "INBOX"
-    COMMSEC_SENDER: str = "bounceback@commsec.com.au"
+    # Encrypts secret settings at rest — each user's email app password, in
+    # gth_settings. A Fernet key: generate one with
+    #   python -c "from greentechhub_core.settings.crypto import FernetCipher; print(FernetCipher.generate_key())"
+    # Unset, one is derived from secret_key (see settings_cipher_key) — then
+    # changing SECRET_KEY makes saved app passwords unreadable.
+    SETTINGS_CIPHER_KEY: str = ""
 
     # "development" or "production". Controls the CORS default in pyfinbot.py:
     # development allows all origins when CORS_ALLOWED_ORIGINS is unset
@@ -68,6 +73,43 @@ if not settings.secret_key:
             "that needs to survive a restart.",
             stacklevel=2,
         )
+
+RETIRED_SETTINGS = ("GMAIL_ADDRESS", "GMAIL_APP_PASSWORD", "GMAIL_IMAP_HOST", "GMAIL_IMAP_PORT",
+                    "GMAIL_MAILBOX", "COMMSEC_SENDER")
+
+
+def _warn_retired(environ=os.environ) -> list[str]:
+    """Warn about server-wide email settings that are set but no longer read
+    (each user's email account now lives in their Settings). Returns them."""
+    found = [name for name in RETIRED_SETTINGS if environ.get(name)]
+    if found:
+        warnings.warn(
+            f"{', '.join(found)} {'is' if len(found) == 1 else 'are'} no longer used: each user "
+            "sets their own email account at /settings › Email sync. Remove them from the "
+            "environment/.env.",
+            stacklevel=2,
+        )
+    return found
+
+
+_warn_retired()
+
+
+def settings_cipher_key(config: Settings = settings) -> str:
+    """The Fernet key for secret settings: SETTINGS_CIPHER_KEY, else one
+    derived from secret_key (with a warning), so a dev setup works without
+    configuring a second key."""
+    if config.SETTINGS_CIPHER_KEY:
+        return config.SETTINGS_CIPHER_KEY
+    warnings.warn(
+        "SETTINGS_CIPHER_KEY is not set — deriving the key that encrypts saved app passwords "
+        "from SECRET_KEY. Changing SECRET_KEY will make them unreadable; set "
+        "SETTINGS_CIPHER_KEY explicitly for any persistent deployment.",
+        stacklevel=2,
+    )
+    digest = hashlib.sha256(f"pyfinbot-settings:{config.secret_key}".encode()).digest()
+    return base64.urlsafe_b64encode(digest).decode("ascii")
+
 
 if settings.ENVIRONMENT == "production" and not settings.CORS_ALLOWED_ORIGINS:
     warnings.warn(
