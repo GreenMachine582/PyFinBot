@@ -6,9 +6,11 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from ...core.transaction_import import (
     ACCEPTED_EXTENSIONS,
     COLUMN_ALIASES,
+    MAX_UPLOAD_BYTES,
     REQUIRED_COLUMNS,
     ImportFileError,
     import_transactions,
+    read_upload,
 )
 from ...db.session import get_session
 from ..deps import page_identity
@@ -23,7 +25,8 @@ TITLE = "Import finished"
 @router.get("")
 async def import_page(request: Request, identity: Identity = Depends(page_identity)):
     return templates.TemplateResponse(request, "import.html", {
-        "accept": ",".join(ACCEPTED_EXTENSIONS),
+        "accept": ACCEPTED_EXTENSIONS,
+        "max_size": MAX_UPLOAD_BYTES,
         "columns": COLUMN_ALIASES,
         "required": REQUIRED_COLUMNS,
     })
@@ -41,7 +44,7 @@ async def upload(request: Request, file: UploadFile | None = File(None),
     # below rather than FastAPI's JSON 422 swapped into the page.
     filename = file.filename if file else ""
     try:
-        content = await file.read() if file else b""
+        content = await read_upload(file) if file else b""  # at most 5 MB
         summary = await import_transactions(session, identity.subject, content, filename or "")
     except ImportFileError as exc:
         return templates.TemplateResponse(

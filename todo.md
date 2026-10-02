@@ -195,7 +195,9 @@ must pass `pytest` (coverage ≥ 80), `ruff check src tests` and
       `field_class="mb-0"`, `fy_start_month=7` default); same
       `date_from`/`date_to` params, so the route is unchanged. Keep the FY
       select
-- [ ] `feat(import): drag-and-drop upload with a 5 MB limit` —
+- [x] `feat(import): drag-and-drop upload with a 5 MB limit` — done; covered by
+      `tests/test_web_import_file_drop.py`. The limit is `core.transaction_import.read_upload` (413 via
+      `ImportFileError`), shared with `POST /api/transactions/import`. Originally:
       `gth_file_drop("file", "File", accept=ACCEPTED_EXTENSIONS,
       max_size=MAX_UPLOAD_BYTES)` in `import.html` (the form already has
       `hx-encoding`); `MAX_UPLOAD_BYTES = 5 * 1024 * 1024` in
