@@ -212,7 +212,11 @@ must pass `pytest` (coverage ≥ 80), `ruff check src tests` and
       Symbol, Type, Units, Price, Fees, Total, Cost, FY, Notes; user-scoped);
       `export_base_url="/transactions.csv"` on `_table_state`. The 11-column
       table gets `view_options=True`: Date and Stock `hideable: False`, Notes
-      `hidden: True`
+      `hidden: True`. **Waits for greentechhub-ui's row actions column** (see
+      "greentechhub-ui v0.14 adoption" below): the blank `""` actions header
+      would show in the View menu as an unlabelled, hideable toggle, so this
+      PR also swaps both tables' hand-built edit/delete buttons for
+      `row_actions=True` + `gth_table_actions_cell`
 - [ ] `feat(stocks): bulk archive and unarchive` — `POST /stocks/bulk-archive`
       and `/stocks/bulk-unarchive` read `ids` and share `update_stock`'s
       `is_active`/`archived_at`/`write_datetime` rules (factor them into one
@@ -234,6 +238,34 @@ must pass `pytest` (coverage ≥ 80), `ruff check src tests` and
       toast "Deleted N transactions" + `transactionsChanged`. The table gets
       `bulk_actions=[{"label": "Delete", "style": "btn-outline-danger",
       "confirm": "Delete the selected transactions?", ...}]` + select cells
+
+## greentechhub-ui v0.14 adoption: slimming PyFinBot
+
+> From a review of PyFinBot's web layer (2026-10-03): hand-rolled pieces that belong in the gth repos move there
+> (opt-in), and PyFinBot drops its copies. Registered in each repo's TODO; one PR at a time.
+
+greentechhub-ui first, then a ui release (v0.14.0):
+- [ ] ui: the row actions column (`gth_data_table(row_actions=True)` + `gth_table_actions_cell`)
+- [ ] ui: `gth_busy_button(..., submit=True)`
+- [ ] ui: inline `gth_alert`
+- [ ] ui: `gth_select(..., hide_label=True)`
+- [ ] Cut greentechhub-ui v0.14.0
+
+Then PyFinBot, pinned to it:
+- [ ] `feat(transactions): CSV export and column view options` (above, now with row actions on both tables)
+- [ ] `refactor(web): adopt gth_alert, submit busy buttons and gth_select`:
+  - the raw alerts in `emails.html` (×2), `_sync_result.html`, `_import_result.html` and `login.html` → `gth_alert`;
+  - the hand-copied busy submit buttons in `import.html` and `dividends.html` → `gth_busy_button(submit=True)`;
+  - the filter-bar selects in `transactions.html`/`stocks.html` and the report panes' FY/as-of fields →
+    `gth_select(hide_label=True)` / `gth_form_field`.
+
+Later, cross-repo (core / fastapi / ui), when asked:
+- [ ] `login.html` → ui's `login_page.html`, which fastapi's `LoginViews` defaults to; delete ours
+- [ ] `web/api_errors.py` + `core/errors.StatusError` → fastapi's `register_api_error_handlers(prefix="/api")` and
+  core's explicit-status error
+- [ ] `templating.site_banners_context` + the `site.banner*` settings → fastapi's opt-in site banner
+- [ ] `web/paging.paginate` + `core/sorting.py` (+ maybe `core/sa_filters_compat.py`) → core's `sqlalchemy` helpers.
+  Its docstring's "neither shared package depends on SQLAlchemy" is stale: core has a `sqlalchemy` extra
 
 ## Known limitations (accepted, not bugs)
 
