@@ -77,20 +77,29 @@ async def session(connection):
 
 @pytest_asyncio.fixture
 async def client(connection):
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
     from pyfinbot.pyfinbot import app
-    from pyfinbot.db.session import get_session
+    from pyfinbot.db.session import get_session, set_session_factory_override
 
     async def _get_session():
         async with AsyncSession(bind=connection, join_transaction_mode="create_savepoint") as s:
             yield s
 
     app.dependency_overrides[get_session] = _get_session
+    # The settings store (register_settings) opens its own sessions through
+    # db.session.get_session_factory, not get_session: point it at the same
+    # per-test connection so its writes roll back with everything else.
+    set_session_factory_override(async_sessionmaker(
+        bind=connection, class_=AsyncSession, join_transaction_mode="create_savepoint",
+        expire_on_commit=False))
 
     with patch("pyfinbot.pyfinbot.init_db", new=AsyncMock()):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             yield c
 
     app.dependency_overrides.clear()
+    set_session_factory_override(None)
 
 
 async def register_and_login(client: AsyncClient, user_id: str, password: str = "hunter2!") -> dict[str, str]:

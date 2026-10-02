@@ -8,12 +8,17 @@ import pkgutil
 import greentechhub_ui
 from fastapi import FastAPI
 from fastapi_pagination import add_pagination
-from greentechhub_fastapi import register_auth, register_core
+from greentechhub_core.sqlalchemy import SQLAlchemySettingsStore
+from greentechhub_fastapi import register_auth, register_core, register_settings
+from greentechhub_fastapi.settings import SettingsViews
 from greentechhub_fastapi.templating import mount_static_dirs
 
 from . import version, api
 from .core.settings import settings
-from .db.session import init_db
+from .core.user_settings import USER_SETTINGS
+from .db.session import init_db, session_factory
+from .models.settings_models import SETTINGS_TABLE
+from .web.templating import templates
 from .web.routes import (
     auth as web_auth,
     dashboard as web_dashboard,
@@ -59,6 +64,19 @@ if settings.ENVIRONMENT == "development" and not settings.CORS_ALLOWED_ORIGINS:
 # local today, but the right order to not need revisiting later.
 register_core(app, settings)
 register_auth(app, settings)
+
+# Per-user preferences (greentechhub-core settings in the gth_settings
+# table): /settings, the navbar user menu (Settings, Log out), the
+# server-saved theme, and user_settings for the date/money/number filters
+# and table page sizes. No manage_permission (an App section) until roles.
+register_settings(
+    app,
+    settings,
+    registry=USER_SETTINGS,
+    store=SQLAlchemySettingsStore(SETTINGS_TABLE, async_session_factory=session_factory),
+    views=SettingsViews(templates=templates),
+    logout_url="/logout",
+)
 
 # greentechhub-ui static assets its templates reference.
 mount_static_dirs(app, greentechhub_ui.static_dirs())

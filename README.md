@@ -35,6 +35,8 @@ tracking.
 * 💰 Capital Gain/Loss Calculation: Determine net gains/losses per stock by financial year using average cost basis.
 * 🔗 Relational Database Design: Clean, normalised schema to ensure data integrity and efficient queries.
 * 🔐 Multi-user Support: JWT-authenticated accounts — each user only sees their own transactions and reports.
+* ⚙️ Per-user Settings: each person picks their theme, timezone, date, number and time formats, rows per page and
+  more at `/settings` (the navbar's user menu also has Log out); dates, amounts and tables follow them.
 * 📦 Modular Architecture: Built to be extended with additional features like tax reports, visualisations, or API integration.
 
 ## Tech Stack

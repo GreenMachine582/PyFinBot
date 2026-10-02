@@ -96,7 +96,10 @@ the v0.11 items: each PR's tests in their own new file, `pytest` (coverage ≥ 8
   - It's idempotent (`--reset` wipes the demo rows) and refuses to run unless `ENVIRONMENT == "development"`.
   - README "Development": run it, then log in.
   - Tests: two runs don't duplicate; it refuses in production; it produces the expected counts.
-- [ ] 3. `feat(settings): user preferences, settings page and the user menu`
+- [x] 3. `feat(settings): user preferences, settings page and the user menu` — done: `core/user_settings.py`
+  (core's preferences, with PyFinBot's own defaults of 50 rows per page and "31 Jan 2026" dates), migration
+  `c41d8e2f7a90` (`gth_settings`), and the test client points the store at its connection via
+  `set_session_factory_override`.
   - `db/session.py`: expose `get_session_factory()` (an `async_sessionmaker`); `get_session()` is unchanged.
   - `settings_table(SQLModel.metadata)` in `models/`, plus migration 4 (`gth_settings`).
   - `register_settings(app, settings, registry=SettingsRegistry(USER_PREFERENCES),
@@ -108,7 +111,8 @@ the v0.11 items: each PR's tests in their own new file, `pytest` (coverage ≥ 8
   - `routes/stocks.py`/`transactions.py`: `TableState.from_query(..., user_settings=…)` (via
     `get_effective_settings`), so rows per page follow the user. CSV exports keep the plain formats.
   - conftest: `register_settings` adds middleware and doesn't use `dependency_overrides`, so
-    `_ensure_auth_registered` is unaffected.
+    `_ensure_auth_registered` is unaffected. The store opens its own sessions, so the `client` fixture overrides
+    `db.session.get_session_factory` to its per-test connection.
   - Tests: needs login; preferences persist per user; the user menu logs out; page size follows the setting.
 - [ ] 4. `feat(email): per-user email accounts for Commsec sync`, after the gth secret-settings releases
   - Today one server-wide mailbox (`GMAIL_*`) is imported as whichever user clicks Sync. This moves the account into

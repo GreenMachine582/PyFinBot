@@ -1,7 +1,9 @@
 from datetime import date, datetime, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from greentechhub_core.identity import Identity
+from greentechhub_fastapi.settings import get_effective_settings
 from greentechhub_ui import TableState
 from greentechhub_ui.htmx import wants_fragment
 from pydantic import ValidationError
@@ -52,9 +54,10 @@ def _parse_date(value: str) -> date | None:
         return None
 
 
-def _table_state(request: Request) -> TableState:
+def _table_state(request: Request, user_settings: dict[str, Any]) -> TableState:
     return TableState.from_query(
         request.query_params,
+        user_settings=user_settings,  # their rows per page
         id="transactions",
         base_url="/transactions",
         page_size=PAGE_SIZE,
@@ -95,9 +98,10 @@ async def transactions_page(
     request: Request,
     identity: Identity = Depends(page_identity),
     session: AsyncSession = Depends(get_session),
+    user_settings: dict[str, Any] = Depends(get_effective_settings),
 ):
     """The page, or (htmx: sort, filter, load more, refresh) just the table."""
-    transactions, state = await _query_transactions(session, identity, _table_state(request))
+    transactions, state = await _query_transactions(session, identity, _table_state(request, user_settings))
     context = {"table": state, "transactions": transactions}
     if wants_fragment(request.headers):
         return templates.TemplateResponse(request, "_transaction_table.html", context)

@@ -5,6 +5,7 @@ from typing import Any, AsyncGenerator, Optional
 from alembic import command
 from alembic.config import Config
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession as SAAsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -50,3 +51,33 @@ async def get_session() -> AsyncGenerator[Any, Any]:
     _, session_maker = _get_engine()
     async with session_maker() as session:
         yield session
+
+
+_session_factory_override: Optional[Any] = None
+
+
+def get_session_factory() -> Any:
+    """The async sessionmaker code outside a request uses — e.g. the
+    greentechhub settings store, which opens its own sessions rather than
+    going through get_session. A test override wins (set_session_factory_
+    override), else the lazily built one from ASYNC_DATABASE_URL."""
+    if _session_factory_override is not None:
+        return _session_factory_override
+    _, session_maker = _get_engine()
+    return session_maker
+
+
+def set_session_factory_override(factory: Optional[Any]) -> None:
+    """Point get_session_factory at another sessionmaker (tests bind one to
+    their per-test connection), or back to the real one with None."""
+    global _session_factory_override
+    _session_factory_override = factory
+
+
+def session_factory() -> SAAsyncSession:
+    """A new session on get_session_factory()'s bind and options, looked up
+    per call: the shape SQLAlchemySettingsStore(async_session_factory=...)
+    takes, without creating the engine at import time. A plain SQLAlchemy
+    AsyncSession, since the store is plain SQLAlchemy (SQLModel's session
+    would flag its session.execute() calls as deprecated)."""
+    return SAAsyncSession(**get_session_factory().kw)
