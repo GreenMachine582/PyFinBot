@@ -4,7 +4,9 @@ import json
 from datetime import datetime, timezone
 from typing import Optional, Union
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
+from greentechhub_core.types import ConflictError, NotFoundError
+from ..core.errors import StatusError
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlmodel import apaginate
 from sqlalchemy.exc import IntegrityError
@@ -37,10 +39,7 @@ async def _searchForStock(session: AsyncSession, stock_id: int | str) -> Optiona
     try:
         market, symbol = stock_id.split(":")
     except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid stock identifier format. Use 'MARKET:SYMBOL'."
-        )
+        raise StatusError("Invalid stock identifier format. Use 'MARKET:SYMBOL'.", code="invalid_stock_id")
     return await Stock.search(session, market=market, symbol=symbol)
 
 
@@ -54,7 +53,7 @@ async def create_stock(stock_in: StockCreate, session: AsyncSession = Depends(ge
 
     # Check if stock already exists
     if await _searchForStock(session, f"{new_stock.market}:{new_stock.symbol}"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Stock already registered")
+        raise StatusError("Stock already registered", code="stock_exists")
 
     session.add(new_stock)
     try:
@@ -62,7 +61,7 @@ async def create_stock(stock_in: StockCreate, session: AsyncSession = Depends(ge
         await session.refresh(new_stock)
     except IntegrityError:
         await session.rollback()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to create stock")
+        raise StatusError("Failed to create stock", code="create_failed")
 
     return new_stock
 
@@ -85,7 +84,7 @@ async def list_stocks(
         try:
             filters_spec = json.loads(filters)
         except json.JSONDecodeError:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid 'filters' JSON")
+            raise StatusError("Invalid 'filters' JSON", code="invalid_filters")
 
         where_expr = buildWhereFromSAFSpec(model=Stock, spec=filters_spec, allowed_fields=ALLOWED_FILTERING_FIELDS)
         if where_expr is not None:
@@ -104,7 +103,7 @@ async def list_stocks(
 async def get_stock(stock_id: Union[int, str], session: AsyncSession = Depends(get_session)):
     stock = await _searchForStock(session, stock_id)
     if not stock:
-        raise HTTPException(status_code=404, detail="Stock not found")
+        raise NotFoundError("Stock not found")
     return stock
 
 
@@ -116,7 +115,7 @@ async def update_stock(
 ):
     stock = await _searchForStock(session, stock_id)
     if not stock:
-        raise HTTPException(status_code=404, detail="Stock not found")
+        raise NotFoundError("Stock not found")
 
     for key, value in stock_update.model_dump(exclude_unset=True).items():
         setattr(stock, key, value)
@@ -130,7 +129,7 @@ async def update_stock(
         await session.refresh(stock)
     except IntegrityError:
         await session.rollback()
-        raise HTTPException(status_code=400, detail="Failed to update stock")
+        raise StatusError("Failed to update stock", code="update_failed")
 
     return stock
 
@@ -139,7 +138,7 @@ async def update_stock(
 async def delete_stock(stock_id: Union[int, str], session: AsyncSession = Depends(get_session)):
     stock = await _searchForStock(session, stock_id)
     if not stock:
-        raise HTTPException(status_code=404, detail="Stock not found")
+        raise NotFoundError("Stock not found")
 
     await session.delete(stock)
     await session.commit()
@@ -162,14 +161,11 @@ async def sync_stocks_for_market(
     m = market.upper()
 
     if m not in MARKET_FETCHERS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Sync for market '{market}' is not supported"
-        )
+        raise StatusError(f"Sync for market '{market}' is not supported", code="unsupported_market")
 
     with market_sync_guard(m) as acquired:
         if not acquired:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"{m} sync is already running")
+            raise ConflictError(f"{m} sync is already running")
         created, updated, archived = await syncMarket(session, m)
 
     return SyncResult(

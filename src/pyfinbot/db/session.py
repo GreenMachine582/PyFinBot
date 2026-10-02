@@ -4,6 +4,8 @@ from typing import Any, AsyncGenerator, Optional
 
 from alembic import command
 from alembic.config import Config
+from greentechhub_core.health import HealthResult
+from greentechhub_core.health.checks import check_database
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.ext.asyncio import AsyncSession as SAAsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -40,6 +42,9 @@ def _run_migrations() -> None:
     cfg = Config(str(_PROJECT_ROOT / "alembic.ini"))
     cfg.set_main_option("script_location", str(_PROJECT_ROOT / "src" / "pyfinbot" / "alembic"))
     cfg.set_main_option("prepend_sys_path", str(_PROJECT_ROOT))
+    # Keep the app's JSON logging: alembic/env.py skips alembic.ini's
+    # fileConfig when told it isn't the CLI.
+    cfg.attributes["configure_logger"] = False
     command.upgrade(cfg, "head")
 
 
@@ -81,3 +86,11 @@ def session_factory() -> SAAsyncSession:
     AsyncSession, since the store is plain SQLAlchemy (SQLModel's session
     would flag its session.execute() calls as deprecated)."""
     return SAAsyncSession(**get_session_factory().kw)
+
+
+async def database_ready() -> HealthResult:
+    """/health/ready's database check: greentechhub-core's check_database
+    (SELECT 1) against the engine sessions come from. Looked up per call, so
+    it follows a test override; a connection-bound override uses its engine."""
+    bind = get_session_factory().kw["bind"]
+    return await check_database(bind if hasattr(bind, "connect") else bind.engine)

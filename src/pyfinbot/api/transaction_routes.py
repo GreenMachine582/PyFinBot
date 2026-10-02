@@ -4,7 +4,9 @@ import json
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
+from greentechhub_core.types import ForbiddenError, NotFoundError
+from ..core.errors import StatusError
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlmodel import apaginate
 from sqlalchemy.exc import IntegrityError
@@ -67,7 +69,7 @@ async def create_transaction(
     # If stock_id is string "market:symbol" → resolve to stock record
     stock = await _searchForStock(session, transaction_in.stock_id)
     if not stock:
-        raise HTTPException(status_code=404, detail="Stock not found")
+        raise NotFoundError("Stock not found")
     transaction_in.stock_id = stock.id
 
     # Create new transaction object
@@ -80,7 +82,7 @@ async def create_transaction(
         await session.refresh(new_transaction, attribute_names=["stock"])
     except IntegrityError:
         await session.rollback()
-        raise HTTPException(status_code=400, detail="Failed to create transaction")
+        raise StatusError("Failed to create transaction", code="create_failed")
 
     return new_transaction
 
@@ -122,7 +124,7 @@ async def list_transactions(
         try:
             filters_spec = json.loads(filters)
         except json.JSONDecodeError:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid 'filters' JSON")
+            raise StatusError("Invalid 'filters' JSON", code="invalid_filters")
 
         # If a client tries to filter a different user_id, override it with the
         # authenticated user by appending (AND) our user filter afterwards.
@@ -147,10 +149,10 @@ async def get_transaction(
     current_user: User = Depends(get_current_user),
 ):
     if not (transaction := await fetchTransaction(session, transaction_id)):
-        raise HTTPException(status_code=404, detail="Transaction not found")
+        raise NotFoundError("Transaction not found")
 
     if transaction.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not allowed to access this transaction")
+        raise ForbiddenError("Not allowed to access this transaction")
 
     return transaction
 
@@ -163,10 +165,10 @@ async def update_transaction(
     current_user: User = Depends(get_current_user),
 ):
     if not (transaction := await fetchTransaction(session, transaction_id)):
-        raise HTTPException(status_code=404, detail="Transaction not found")
+        raise NotFoundError("Transaction not found")
 
     if transaction.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not allowed to modify this transaction")
+        raise ForbiddenError("Not allowed to modify this transaction")
 
     # An explicit null only makes sense for notes; for anything else it would
     # break recompute(), so treat it the same as "not sent".
@@ -177,7 +179,7 @@ async def update_transaction(
     if "stock_id" in changes:
         stock = await _searchForStock(session, changes["stock_id"])
         if not stock:
-            raise HTTPException(status_code=404, detail="Stock not found")
+            raise NotFoundError("Stock not found")
         changes["stock_id"] = stock.id
 
     for key, value in changes.items():
@@ -191,7 +193,7 @@ async def update_transaction(
         await session.refresh(transaction, attribute_names=["stock"])
     except IntegrityError:
         await session.rollback()
-        raise HTTPException(status_code=400, detail="Failed to update transaction")
+        raise StatusError("Failed to update transaction", code="update_failed")
 
     return transaction
 
@@ -204,10 +206,10 @@ async def delete_transaction(
 ):
     transaction = await session.get(Transaction, transaction_id)
     if not transaction:
-        raise HTTPException(status_code=404, detail="Transaction not found")
+        raise NotFoundError("Transaction not found")
 
     if transaction.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not allowed to delete this transaction")
+        raise ForbiddenError("Not allowed to delete this transaction")
 
     await session.delete(transaction)
     await session.commit()

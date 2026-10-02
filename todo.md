@@ -155,7 +155,11 @@ the v0.11 items: each PR's tests in their own new file, `pytest` (coverage ≥ 8
   - Closes the two users-API "Known limitations" below, and updates `web-implementation-brief.md` §2 and §10.
   - Tests: the bootstrap admin reaches Settings › App and Roles; a normal user gets 403 and no admin nav; the users
     API returns 403 without `users.manage`.
-- [ ] 6. `chore(web): adopt register_logging, register_health and register_exception_handlers`
+- [x] 6. `chore(web): adopt register_logging, register_health and register_exception_handlers` — done: JSON logs
+  via core's `configure_logging` (with `service`/`version`, which `register_logging` doesn't pass), `/health` and
+  `/health/ready` (`db.session.database_ready`, plus a docker-compose healthcheck), and every `/api` error as the
+  `{code, message, details}` envelope at its old status (`core/errors.StatusError` for 400/502/503,
+  `web/api_errors.py` for the 401 challenge, framework errors and validation). Pages keep FastAPI's defaults.
   - Structured JSON logs, `/health` with core's `check_database` against the async engine, and JSON error envelopes
     for `/api`. The pages' login redirect and HX-Redirect flow must be unchanged.
 - [ ] 7. Then the greentechhub-ui v0.11.0 adoption below: #21 (date range presets, open) first, then the rest in order.

@@ -111,7 +111,8 @@ async def test_not_configured_sync_and_api(client):
 
     headers = await register_and_login(client, "acct-api")
     api = await client.post("/api/emails/sync-commsec", headers=headers)
-    assert api.status_code == 503 and "Settings" in api.json()["detail"]
+    assert api.status_code == 503 and "Settings" in api.json()["message"]
+    assert api.json()["code"] == "email_sync_failed"
 
 
 async def test_an_unreadable_password_asks_for_it_again(client):

@@ -142,6 +142,22 @@ All routes are mounted under `/api`. See `/docs` for full request/response schem
 | Dividends | `/api/dividends` | Sync per-stock dividend history (yfinance) |
 | Reports | `/api/reports` | Holdings, FY capital-gains, and dividend-income reports |
 
+**Errors.** Every `/api` error is a JSON envelope with a stable machine-readable `code`:
+```json
+{"code": "not_found", "message": "Stock not found", "details": null}
+```
+Statuses are the usual ones: 400 (e.g. `stock_exists`, `invalid_filters`), 401 `unauthorized` (with
+`WWW-Authenticate: Bearer`), 403 `forbidden`, 404 `not_found`, 409 `conflict`, 422 `validation_error` (with the
+field errors in `details`), 502/503 for email sync and import failures. *(Changed: errors used to be FastAPI's
+`{"detail": ...}`; read `message` instead.)*
+
+## Health & logs
+- `GET /health` — liveness, always `{"status": "healthy"}` while the process answers.
+- `GET /health/ready` — readiness: runs `SELECT 1` against the database, 200 when healthy, 503 with details otherwise
+  (the Docker Compose `healthcheck` uses it).
+- Logs are one JSON object per line on stdout, tagged `"service": "pyfinbot"` and the version, at `LOG_LEVEL`
+  (default `INFO`).
+
 ## Testing
 PyFinBot includes a pytest suite covering all routers, models/schemas, and core utilities.
 

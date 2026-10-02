@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
+from greentechhub_core.types import ForbiddenError, NotFoundError
+from ..core.errors import StatusError
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -24,7 +26,7 @@ async def create_user(
     """Create a user (users.manage only: there's no open registration — the
     first user comes from scripts/create_user.py plus ROLE_BOOTSTRAP)."""
     if await session.get(User, user_in.id):
-        raise HTTPException(status_code=400, detail="User already registered")
+        raise StatusError("User already registered", code="user_exists")
 
     new_user = User(id=user_in.id, active=True, password_hash=hash_password(user_in.password))
     session.add(new_user)
@@ -33,7 +35,7 @@ async def create_user(
         await session.refresh(new_user)
     except IntegrityError:
         await session.rollback()
-        raise HTTPException(status_code=400, detail="Failed to create user")
+        raise StatusError("Failed to create user", code="create_failed")
 
     return new_user
 
@@ -55,11 +57,11 @@ async def get_user(
     current_user: User = Depends(get_current_user),
 ):
     if current_user.id != user_id:
-        raise HTTPException(status_code=403, detail="Not allowed to access this user")
+        raise ForbiddenError("Not allowed to access this user")
 
     user = await session.get(User, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise NotFoundError("User not found")
     return user
 
 
@@ -71,11 +73,11 @@ async def update_user(
     current_user: User = Depends(get_current_user),
 ):
     if current_user.id != user_id:
-        raise HTTPException(status_code=403, detail="Not allowed to modify this user")
+        raise ForbiddenError("Not allowed to modify this user")
 
     user = await session.get(User, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise NotFoundError("User not found")
 
     update_data = user_update.model_dump(exclude_unset=True)
     password = update_data.pop("password", None)
@@ -90,7 +92,7 @@ async def update_user(
         await session.refresh(user)
     except IntegrityError:
         await session.rollback()
-        raise HTTPException(status_code=400, detail="Failed to update user")
+        raise StatusError("Failed to update user", code="update_failed")
 
     return user
 
@@ -102,11 +104,11 @@ async def delete_user(
     current_user: User = Depends(get_current_user),
 ):
     if current_user.id != user_id:
-        raise HTTPException(status_code=403, detail="Not allowed to delete this user")
+        raise ForbiddenError("Not allowed to delete this user")
 
     user = await session.get(User, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise NotFoundError("User not found")
 
     await session.delete(user)
     await session.commit()

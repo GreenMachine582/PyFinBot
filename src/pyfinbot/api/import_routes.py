@@ -5,7 +5,8 @@ with the web Import page).
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, UploadFile, status
+from ..core.errors import StatusError
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..core.dependencies import get_current_user
@@ -39,4 +40,4 @@ async def import_transactions(
     try:
         return await _import_transactions(session, current_user.id, await file.read(), file.filename or "")
     except ImportFileError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.detail)
+        raise StatusError(exc.detail, status_code=exc.status_code, code="import_failed")
