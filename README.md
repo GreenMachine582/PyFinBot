@@ -35,6 +35,8 @@ tracking.
 * 💰 Capital Gain/Loss Calculation: Determine net gains/losses per stock by financial year using average cost basis.
 * 🔗 Relational Database Design: Clean, normalised schema to ensure data integrity and efficient queries.
 * 🔐 Multi-user Support: JWT-authenticated accounts — each user only sees their own transactions and reports.
+* 🛡️ Roles: an admin role (manage users and roles at `/admin/roles`, app-wide settings such as the site banner at
+  `/settings` › App), from `ROLE_BOOTSTRAP` or assigned in the app. There's no open registration.
 * ⚙️ Per-user Settings: each person picks their theme, timezone, date, number and time formats, rows per page and
   more at `/settings` (the navbar's user menu also has Log out); dates, amounts and tables follow them.
 * 📦 Modular Architecture: Built to be extended with additional features like tax reports, visualisations, or API integration.
@@ -102,20 +104,32 @@ docker compose up
 ```
 Once running, interactive API docs are available at `http://localhost:8000/docs` (or port `8001` under Docker Compose).
 
+### First admin
+There's no open registration: admins create users (the users API needs `users.manage`). Create the first user from
+the shell, then make them an admin with `ROLE_BOOTSTRAP`:
+```bash
+python scripts/create_user.py alice    # prompts for the password; runs migrations first
+```
+```dotenv
+ROLE_BOOTSTRAP=alice=admin
+```
+After a restart `alice` can create users through the API and assign roles at `/admin/roles`. Roles assigned there are
+stored in the database; `ROLE_BOOTSTRAP` stays as the recovery path if every admin grant is removed.
+
 ### Demo data (development)
 For realistic data to click through, seed the database (it applies migrations first):
 ```bash
 python scripts/seed_demo.py           # safe to re-run: adds only what's missing
 python scripts/seed_demo.py --reset   # remove the demo rows, then seed again
 ```
-Then log in at `/login` as `demo-user` / `demo-user-pass` or `demo-admin` / `demo-admin-pass`. It creates those two
-users, 8 ASX stocks (TLS and FMG archived), about 150 buys and sells over FY2023–24 to FY2025–26 (a few with notes),
+Then log in at `/login` as `demo-user` / `demo-user-pass` or `demo-admin` / `demo-admin-pass` (`demo-admin` has the
+admin role, so the Roles page and Settings › App are there). It creates those two users, 8 ASX stocks (TLS and FMG archived), about 150 buys and sells over FY2023–24 to FY2025–26 (a few with notes),
 and semi-annual dividends (`source="demo"`). The rows come from a fixed random seed, so everyone gets the same data.
 `--reset` only removes what the seed owns: a stock another user also trades is kept. The script refuses to run unless
 `ENVIRONMENT=development` (the default).
 
 ## API Overview
-All routes are mounted under `/api`. See `/docs` for full request/response schemas. Every route except `POST /api/users/` (registration) and `POST /api/auth/login` requires a `Bearer` token — register a user, log in to get a token, then pass `Authorization: Bearer <token>` on subsequent requests.
+All routes are mounted under `/api`. See `/docs` for full request/response schemas. Every route except `POST /api/auth/login` requires a `Bearer` token: log in to get one, then pass `Authorization: Bearer <token>` on subsequent requests. Creating and listing users (`POST`/`GET /api/users/`) also needs the `users.manage` permission (the admin role); a user can still read, update and delete their own account. See [First admin](#first-admin) for the first user.
 
 | Router | Prefix | Purpose |
 |---|---|---|

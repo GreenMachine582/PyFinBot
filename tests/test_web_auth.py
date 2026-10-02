@@ -4,10 +4,11 @@ from httpx import AsyncClient
 
 from pyfinbot.core.settings import settings
 
+from .conftest import create_user
+
 
 async def _register(client: AsyncClient, user_id: str, password: str = "hunter2!") -> None:
-    resp = await client.post("/api/users/", json={"id": user_id, "password": password})
-    assert resp.status_code == 201, resp.text
+    await create_user(client, user_id, password)
 
 
 async def test_login_form_renders(client: AsyncClient):

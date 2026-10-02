@@ -1,12 +1,10 @@
 """Integration tests for /api/auth/login and JWT-protected route access."""
 
-from .conftest import register_and_login
+from .conftest import create_user, register_and_login
 
 
 async def _register(client, user_id="user-123", password="hunter2!"):
-    resp = await client.post("/api/users/", json={"id": user_id, "password": password})
-    assert resp.status_code == 201
-    return resp.json()
+    await create_user(client, user_id, password)
 
 
 class TestLogin:

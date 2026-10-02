@@ -14,6 +14,7 @@ its app password a write-only, encrypted secret setting.
 from dataclasses import replace
 
 from greentechhub_core.settings import Setting, SettingScope, SettingsRegistry, SettingType
+from .permissions import SETTINGS_MANAGE
 from greentechhub_core.settings.builtins import (
     DATE_FORMAT,
     PAGE_SIZE,
@@ -50,9 +51,23 @@ EMAIL_SETTINGS = (
             help_text="Only emails from this address are imported."),
 )
 
+SITE_GROUP = "Site"
+
+# App-wide settings, on /settings › App for admins (settings.manage).
+SITE_SETTINGS = (
+    Setting(key="site.banner", type=SettingType.STR, default="", scope=SettingScope.APP,
+            label="Site banner", group=SITE_GROUP, edit_permission=SETTINGS_MANAGE,
+            help_text="Shown to everyone above the navbar, e.g. planned maintenance. "
+                      "Leave empty for none."),
+    Setting(key="site.banner_tone", type=SettingType.CHOICE, default="warn", scope=SettingScope.APP,
+            label="Banner style", group=SITE_GROUP, edit_permission=SETTINGS_MANAGE,
+            choices={"info": "Info", "warn": "Warning", "bad": "Alert"}),
+)
+
 USER_SETTINGS = SettingsRegistry([
     *(replace(s, default=DEFAULTS[s.key]) if s.key in DEFAULTS else s
       for s in USER_PREFERENCES
       if s.key != SIDEBAR_DEFAULT.key),
     *EMAIL_SETTINGS,
+    *SITE_SETTINGS,
 ])

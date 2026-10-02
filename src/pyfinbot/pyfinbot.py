@@ -9,16 +9,23 @@ import greentechhub_ui
 from fastapi import FastAPI
 from fastapi_pagination import add_pagination
 from greentechhub_core.settings.crypto import FernetCipher
-from greentechhub_core.sqlalchemy import SQLAlchemySettingsStore
-from greentechhub_fastapi import register_auth, register_core, register_settings
+from greentechhub_core.sqlalchemy import SQLAlchemyGrantStore, SQLAlchemySettingsStore
+from greentechhub_fastapi import (
+    register_auth,
+    register_core,
+    register_permissions,
+    register_settings,
+)
+from greentechhub_fastapi.permissions import RoleAdminViews
 from greentechhub_fastapi.settings import SettingsViews
 from greentechhub_fastapi.templating import mount_static_dirs
 
 from . import version, api
+from .core.permissions import ROLES, SETTINGS_MANAGE, USERS_MANAGE
 from .core.settings import settings, settings_cipher_key
 from .core.user_settings import USER_SETTINGS
 from .db.session import init_db, session_factory
-from .models.settings_models import SETTINGS_TABLE
+from .models.settings_models import ROLE_GRANTS_TABLE, SETTINGS_TABLE
 from .web.templating import templates
 from .web.routes import (
     auth as web_auth,
@@ -66,16 +73,27 @@ if settings.ENVIRONMENT == "development" and not settings.CORS_ALLOWED_ORIGINS:
 register_core(app, settings)
 register_auth(app, settings)
 
-# Per-user preferences (greentechhub-core settings in the gth_settings
-# table): /settings, the navbar user menu (Settings, Log out), the
-# server-saved theme, and user_settings for the date/money/number filters
-# and table page sizes. No manage_permission (an App section) until roles.
+# Roles: the admin role (core/permissions.py) comes from ROLE_BOOTSTRAP /
+# ROLE_GROUPS or a grant made at /admin/roles (gth_role_grants). Before
+# register_settings, which gates Settings › App on SETTINGS_MANAGE.
+register_permissions(
+    app,
+    settings,
+    roles=ROLES,
+    grants=SQLAlchemyGrantStore(ROLE_GRANTS_TABLE, async_session_factory=session_factory),
+)
+
+# Per-user preferences and app settings (greentechhub-core settings in the
+# gth_settings table): /settings (its App section for SETTINGS_MANAGE), the
+# navbar user menu (Settings, Log out), the server-saved theme, and
+# user_settings for the date/money/number filters and table page sizes.
 register_settings(
     app,
     settings,
     registry=USER_SETTINGS,
     store=SQLAlchemySettingsStore(SETTINGS_TABLE, async_session_factory=session_factory),
     views=SettingsViews(templates=templates),
+    manage_permission=SETTINGS_MANAGE,
     logout_url="/logout",
     # Encrypts secret settings (each user's email app password) at rest.
     cipher=FernetCipher(settings_cipher_key()),
@@ -90,6 +108,8 @@ web_auth_router = web_auth.build_router()
 if web_auth_router is not None:
     app.include_router(web_auth_router)
 app.include_router(web_dashboard.router)
+# /admin/roles: assign roles to users (USERS_MANAGE).
+app.include_router(RoleAdminViews(templates=templates, permission=USERS_MANAGE).router())
 app.include_router(web_stocks.router)
 app.include_router(web_transactions.router)
 app.include_router(web_imports.router)
