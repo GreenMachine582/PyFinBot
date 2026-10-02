@@ -179,7 +179,8 @@ must pass `pytest` (coverage ≥ 80), `ruff check src tests` and
       `strftime("%d/%m/%Y")`, ex/pay dates in `_report_dividends.html`, the
       holdings empty state (keep the ISO `as_of` for input values and CSV
       hrefs). Update `test_web_reports.py:88,152` for the new date format
-- [ ] `feat(transactions): date range presets` — `gth_date_range` replaces
+- [x] `feat(transactions): date range presets` — done; covered by
+      `tests/test_web_date_range.py`. `gth_date_range` replaces
       `transactions.html`'s hand-built From/To inputs (`hide_label=True`,
       `field_class="mb-0"`, `fy_start_month=7` default); same
       `date_from`/`date_to` params, so the route is unchanged. Keep the FY
