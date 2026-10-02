@@ -8,6 +8,11 @@ updates:
     commit-message:
       prefix: build
       include: scope
+    ignore:
+      # sqlmodel 0.0.47 (and alembic's pins) can't resolve against SQLAlchemy 2.1
+      # yet (pip ResolutionImpossible, see #17). Drop this once sqlmodel supports 2.1.
+      - dependency-name: "sqlalchemy"
+        versions: [">=2.1"]
 
   - package-ecosystem: github-actions
     directory: "/"
