@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 import importlib
+import logging
 import pkgutil
 
 import greentechhub_ui
@@ -10,12 +11,15 @@ from fastapi import FastAPI
 from fastapi_pagination import add_pagination
 from greentechhub_core.settings.crypto import FernetCipher
 from greentechhub_core.sqlalchemy import SQLAlchemyGrantStore, SQLAlchemySettingsStore
+from greentechhub_core.logging import configure_logging
 from greentechhub_fastapi import (
     register_auth,
     register_core,
+    register_health,
     register_permissions,
     register_settings,
 )
+from greentechhub_fastapi.exceptions import register_exception_handlers
 from greentechhub_fastapi.permissions import RoleAdminViews
 from greentechhub_fastapi.settings import SettingsViews
 from greentechhub_fastapi.templating import mount_static_dirs
@@ -24,8 +28,9 @@ from . import version, api
 from .core.permissions import ROLES, SETTINGS_MANAGE, USERS_MANAGE
 from .core.settings import settings, settings_cipher_key
 from .core.user_settings import USER_SETTINGS
-from .db.session import init_db, session_factory
+from .db.session import database_ready, init_db, session_factory
 from .models.settings_models import ROLE_GRANTS_TABLE, SETTINGS_TABLE
+from .web.api_errors import register_api_error_handlers
 from .web.templating import templates
 from .web.routes import (
     auth as web_auth,
@@ -48,12 +53,31 @@ async def lifespan(app: FastAPI):
     yield
 
 
+# Structured logs: one JSON object per line on stdout (greentechhub-core),
+# tagged with the service and version, at LOG_LEVEL. configure_logging
+# directly rather than register_logging, which doesn't pass service/version.
+configure_logging(settings.log_level, service="pyfinbot", version=version.VERSION)
+# Uvicorn sets up its own plain-text loggers before importing the app; send
+# them through the root's JSON handler too, so every line is JSON.
+for _name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+    logging.getLogger(_name).handlers.clear()
+    logging.getLogger(_name).propagate = True
+
 app = FastAPI(
     lifespan=lifespan,
     title=version.PROJECT_NAME_TEXT,
     description=version.DESCRIPTION,
     version=version.VERSION
 )
+
+# /api errors as greentechhub's {code, message, details} envelope (core's
+# ApplicationError hierarchy, plus web/api_errors.py's StatusError, OAuth2
+# 401 header and framework errors); pages keep FastAPI's defaults.
+register_exception_handlers(app)
+register_api_error_handlers(app)
+
+# /health (liveness) and /health/ready (SELECT 1 against the database).
+register_health(app, checks=[database_ready])
 
 # CORS: development allows all origins when CORS_ALLOWED_ORIGINS is unset
 # (frictionless local/Swagger testing); production allows none until

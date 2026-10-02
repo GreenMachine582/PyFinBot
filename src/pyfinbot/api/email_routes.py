@@ -8,7 +8,8 @@ Emails page).
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
+from ..core.errors import StatusError
 from greentechhub_fastapi.settings import get_settings_service
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -39,4 +40,4 @@ async def sync_commsec_emails(
         return await _sync_commsec_emails(session, user_id, account, include_seen=include_seen,
                                           fetch=fetch_commsec_emails, mark=mark_seen)
     except EmailSyncError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.detail)
+        raise StatusError(exc.detail, status_code=exc.status_code, code="email_sync_failed")

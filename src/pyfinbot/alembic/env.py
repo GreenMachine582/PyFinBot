@@ -14,9 +14,11 @@ config = context.config
 
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
-if config.config_file_name is not None:
+# Interpret the config file for Python logging — for the alembic CLI only.
+# When the app migrates on startup (db.session._run_migrations sets
+# configure_logger=False), fileConfig would replace the app's JSON log
+# handlers with alembic.ini's plain ones.
+if config.config_file_name is not None and config.attributes.get("configure_logger", True):
     fileConfig(config.config_file_name)
 
 # add your model's MetaData object here

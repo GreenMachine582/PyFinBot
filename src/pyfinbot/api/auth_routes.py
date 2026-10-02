@@ -6,7 +6,8 @@ password form's "username" is the same string as User.id.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
+from greentechhub_core.types import UnauthorizedError
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -22,11 +23,8 @@ async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     session: AsyncSession = Depends(get_session),
 ):
-    unauthorized = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Incorrect user ID or password",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+    # 401 envelope + WWW-Authenticate: Bearer (web/api_errors.py).
+    unauthorized = UnauthorizedError("Incorrect user ID or password")
 
     user = await session.get(User, form_data.username)
     if not user or not user.password_hash:

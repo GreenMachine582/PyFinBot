@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import jwt
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer
 from greentechhub_core.identity import Identity
+from greentechhub_core.types import ForbiddenError, UnauthorizedError
 from greentechhub_fastapi.permissions import get_permission_resolver
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -18,11 +19,8 @@ async def get_current_user(
     token: str = Depends(oauth2_scheme),
     session: AsyncSession = Depends(get_session),
 ) -> User:
-    unauthorized = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+    # 401 envelope + WWW-Authenticate: Bearer (web/api_errors.py).
+    unauthorized = UnauthorizedError("Could not validate credentials")
     try:
         payload = decode_access_token(token)
     except jwt.PyJWTError:
@@ -49,7 +47,7 @@ def require_api_permission(permission: str):
         identity = Identity(subject=str(user.id), username=str(user.id), email=None, groups=[],
                             claims={})
         if permission not in await get_permission_resolver(request).granted(identity):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed")
+            raise ForbiddenError("Not allowed")
         return user
 
     return dependency

@@ -121,5 +121,6 @@ class TestSyncMarketLock:
                 assert held
                 resp = await client.post("/api/stocks/sync/ASX")
         assert resp.status_code == 409
-        assert resp.json()["detail"] == "ASX sync is already running"
+        assert resp.json()["message"] == "ASX sync is already running"
+        assert resp.json()["code"] == "conflict"
         sync.assert_not_awaited()
