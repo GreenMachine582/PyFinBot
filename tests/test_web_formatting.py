@@ -11,9 +11,10 @@ from .test_web_reports import HX, _txn
 
 def test_filters_are_gth_uis_not_app_overrides():
     filters = templates.env.filters
-    assert filters["money"] is greentechhub_ui.formatting.money
-    assert filters["number"] is greentechhub_ui.formatting.number
-    assert filters["date"] is greentechhub_ui.formatting.format_date
+    # gth-ui registers its own filters (context-aware wrappers since v0.12, so
+    # they can follow the user's settings); nothing of ours shadows them.
+    for name in ("money", "number", "date"):
+        assert filters[name] is greentechhub_ui.formatting.FILTERS[name]
     assert "qty" not in filters
     assert filters["fy"](2024) == "2024–25"  # still PyFinBot's own
 

@@ -75,7 +75,9 @@ greentechhub-ui v0.11.0 adoption below continues after item 6, each PR tested ag
 the v0.11 items: each PR's tests in their own new file, `pytest` (coverage ≥ 80), `ruff check src tests` and
 `mypy src/pyfinbot`.
 
-- [ ] 1. `build(deps): greentechhub core v0.7.0, fastapi v0.9.0, ui v0.12.0`
+- [x] 1. `build(deps): greentechhub core v0.7.0, fastapi v0.9.0, ui v0.12.0` — done: core pinned directly with
+  `[sqlalchemy]`; `tests/test_gth_versions.py` guards the pins. SQLAlchemy 2.1 (Dependabot #17) is ignored in
+  `dependabot.yml` until sqlmodel supports it.
   - Pin `greentechhub-core[sqlalchemy] @ git+…@v0.7.0` directly; the code imports `greentechhub_core.*` but only
     gets core through fastapi today. Bump fastapi to `@v0.9.0` and ui to `@v0.12.0`, then reinstall `.venv` (it has
     core **0.6.0**).
