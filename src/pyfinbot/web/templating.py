@@ -2,10 +2,15 @@ from pathlib import Path
 
 import greentechhub_ui
 from fastapi.templating import Jinja2Templates
+from greentechhub_fastapi.settings import settings_context
 from greentechhub_fastapi.templating import ui_context
 
-# ui_context supplies current_path, so the navbar marks the active page.
-templates = Jinja2Templates(directory=Path(__file__).parent / "templates", context_processors=[ui_context])
+# ui_context supplies current_path, so the navbar marks the active page;
+# settings_context (register_settings, pyfinbot.py) the signed-in user, the
+# user menu, their saved theme and user_settings — which the |date / |money /
+# |number filters and the tables' page size follow.
+templates = Jinja2Templates(directory=Path(__file__).parent / "templates",
+                            context_processors=[ui_context, settings_context])
 
 # greentechhub-ui's template dirs (after ours) plus the shared shell globals
 # (brand, nav, vendored asset URLs under the mounts in pyfinbot.py) — see

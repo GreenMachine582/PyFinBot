@@ -1,7 +1,9 @@
 import logging
 from datetime import datetime, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from greentechhub_fastapi.settings import get_effective_settings
 from greentechhub_ui import TableState
 from greentechhub_ui.htmx import wants_fragment
 from sqlalchemy import func, or_
@@ -35,9 +37,10 @@ async def _get_stock_or_404(session: AsyncSession, stock_id: int) -> Stock:
     return stock
 
 
-def _table_state(request: Request) -> TableState:
+def _table_state(request: Request, user_settings: dict[str, Any]) -> TableState:
     return TableState.from_query(
         request.query_params,
+        user_settings=user_settings,  # their rows per page
         id="stocks",
         base_url="/stocks",
         page_size=PAGE_SIZE,
@@ -66,9 +69,13 @@ async def _query_stocks(session: AsyncSession, state: TableState) -> tuple[list[
 
 
 @router.get("")
-async def stocks_page(request: Request, session: AsyncSession = Depends(get_session)):
+async def stocks_page(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    user_settings: dict[str, Any] = Depends(get_effective_settings),
+):
     """The page, or (htmx: sort, filter, load more, refresh) just the table."""
-    stocks, state = await _query_stocks(session, _table_state(request))
+    stocks, state = await _query_stocks(session, _table_state(request, user_settings))
     context = {"table": state, "stocks": stocks}
     if wants_fragment(request.headers):
         return templates.TemplateResponse(request, "_stock_table.html", context)
