@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from pathlib import Path
 
 import greentechhub_ui
@@ -60,4 +61,10 @@ def _fy(value: int) -> str:
     return f"{value}–{(value + 1) % 100:02d}"
 
 
+def _fy_options(fys: Iterable[int]) -> list[tuple[int, str]]:
+    """(value, label) pairs for gth_select: 2024 → (2024, "2024–25")."""
+    return [(fy, _fy(fy)) for fy in fys]
+
+
 templates.env.filters["fy"] = _fy
+templates.env.filters["fy_options"] = _fy_options

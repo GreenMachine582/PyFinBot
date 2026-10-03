@@ -3,6 +3,7 @@
 {% from "card.html" import gth_card %}
 {% from "form.html" import gth_form %}
 {% from "file_drop.html" import gth_file_drop %}
+{% from "busy_button.html" import gth_busy_button %}
 {% block title %}Import{% endblock %}
 {% block content %}
 
@@ -18,12 +19,7 @@
         {{ gth_file_drop("file", "File", accept=accept, max_size=max_size, input_attrs={"required": "required"},
             help_text="Rows that duplicate an existing transaction are skipped, so re-uploading is safe.") }}
         <div class="d-flex justify-content-end">
-          <button type="submit" class="btn btn-primary gth-busy-button">
-            <span class="gth-busy-button-idle"><i class="bi bi-upload" aria-hidden="true"></i> Import</span>
-            <span class="gth-busy-button-busy" role="status">
-              <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Importing…
-            </span>
-          </button>
+          {{ gth_busy_button("Import", "Importing…", icon="upload", btn_class="btn-primary", submit=True) }}
         </div>
       {% endcall %}
     {% endcall %}

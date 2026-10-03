@@ -255,6 +255,7 @@ Shipped in the gth repos:
 - [x] greentechhub-fastapi v0.11.0 — the status hint + `BadRequestError` honoured (#27),
   `register_api_error_handlers` (#28), the opt-in site banner (#29), JSON filter groups (#30), `LoginViews`
   defaulting to ui's login page (#31)
+- [ ] greentechhub-ui, unreleased — `gth_select`/`gth_form_field` `id=` element-id prefix (#71)
 
 PyFinBot, in order:
 - [x] 1. `build(deps): greentechhub ui v0.14, core v0.9, fastapi v0.11` — done; covered by
@@ -267,11 +268,15 @@ PyFinBot, in order:
   `tests/test_web_transactions_export.py`. The v0.11 item above, with
   `row_actions=True` + `gth_table_actions_cell` replacing the hand-built edit/delete cells on the transactions
   **and** stocks tables
-- [ ] 3. `refactor(web): adopt gth_alert, submit busy buttons and gth_select`:
-  - the raw alerts in `emails.html` (×2), `_sync_result.html` and `_import_result.html` → `gth_alert`;
-  - the hand-copied busy submit buttons in `import.html` and `dividends.html` → `gth_busy_button(submit=True)`;
-  - the filter-bar selects in `transactions.html`/`stocks.html` and the report panes' FY/as-of fields →
-    `gth_select(hide_label=True)` / `gth_form_field`
+- [x] 3. `refactor(web): adopt gth_alert, submit busy buttons and gth_select` — done; covered by
+  `tests/test_web_gth_components.py`. The inline alerts are `gth_alert`, the Import/Sync form buttons
+  `gth_busy_button(submit=True)`, the transactions/stocks filter bars `gth_select(hide_label=True)` (FY options via the
+  `fy_options` filter) and the holdings as-of `gth_form_field`. The gains/dividends FY selects stay hand-built: both
+  are `name="fy"` in panes that stay in the DOM, so `gth_select` would give both `id="gth-field-fy"` (item 3a)
+- [ ] 3a. `refactor(reports): FY selects as gth_select` — after a greentechhub-ui release with `gth_select(id=)` /
+  `gth_form_field(id=)` (greentechhub-ui #71, not released yet): pin it, then
+  `gth_select("fy", "Financial year", fys|fy_options, value=report.fy, id="gains-fy", field_class="mb-0")` in
+  `_report_gains.html` and the same with `placeholder="All time"`, `id="dividends-fy"` in `_report_dividends.html`
 - [ ] 4. `refactor(api): fastapi's API error handlers` — `register_api_error_handlers(app, prefix="/api")` replaces
   `web/api_errors.py`; `StatusError` raises become core's `BadRequestError` or
   `ApplicationError(..., status_code=…)`, deleting `core/errors.py`. The existing envelope tests hold unchanged

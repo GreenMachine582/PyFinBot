@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "page_header.html" import gth_page_header %}
 {% from "busy_button.html" import gth_busy_button %}
+{% from "toast.html" import gth_alert %}
 {% block title %}Emails{% endblock %}
 {% block content %}
 
@@ -12,16 +13,16 @@
 {% endcall %}
 
 {% if problem %}
-<div class="alert alert-danger" role="alert">
-  {{ problem }} <a href="{{ settings_url }}" class="alert-link">Open Settings</a>
-</div>
+{{ gth_alert(problem, kind="danger", action={"label": "Open Settings", "url": settings_url}) }}
 {% elif not configured %}
-<div class="alert alert-warning" role="alert">
+{#- Server-built markup (settings_url is ours), so html=True is safe here. -#}
+{% set setup_message %}
   Your email account isn't set up yet. Add your email address and an app password (for Gmail, a
-  <a href="https://myaccount.google.com/apppasswords" class="alert-link" target="_blank" rel="noopener">Google App Password</a>)
-  under <a href="{{ settings_url }}" class="alert-link">Settings › Email sync</a>. It's stored encrypted and
+  <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">Google App Password</a>)
+  under <a href="{{ settings_url }}">Settings › Email sync</a>. It's stored encrypted and
   only used to read your Commsec emails.
-</div>
+{% endset %}
+{{ gth_alert(setup_message, kind="warning", html=True) }}
 {% endif %}
 
 <p class="text-secondary">

@@ -1,13 +1,11 @@
 {% from "stat_card.html" import gth_stat_card %}
 {% from "table.html" import gth_table %}
 {% from "empty_state.html" import gth_empty_state %}
+{% from "form.html" import gth_form_field %}
 {% set as_of = report.as_of.isoformat() %}
 <form class="d-flex flex-wrap align-items-end gap-2 mb-3"
   hx-get="/reports/holdings" hx-target="closest .tab-pane" hx-trigger="change">
-  <div>
-    <label class="form-label" for="holdings-as-of">As of</label>
-    <input type="date" class="form-control" id="holdings-as-of" name="as_of" value="{{ as_of }}">
-  </div>
+  {{ gth_form_field("as_of", "As of", value=as_of, type="date", field_class="mb-0") }}
   <a class="btn btn-outline-secondary ms-auto" href="/reports/holdings.csv?as_of={{ as_of }}" download>
     <i class="bi bi-download" aria-hidden="true"></i> CSV
   </a>

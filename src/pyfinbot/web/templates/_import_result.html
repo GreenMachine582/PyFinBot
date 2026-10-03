@@ -1,11 +1,9 @@
 {% from "card.html" import gth_card %}
 {% from "badge.html" import gth_badge %}
 {% from "table.html" import gth_table %}
+{% from "toast.html" import gth_alert %}
 {% if error %}
-<div class="alert alert-danger" role="alert">
-  <h6 class="alert-heading mb-1">Couldn't import {{ filename or "the file" }}</h6>
-  {{ error }}
-</div>
+{{ gth_alert(error, kind="danger", title="Couldn't import " ~ (filename or "the file")) }}
 {% else %}
 {% call gth_card("Results — " ~ (filename or "upload")) %}
   <p class="d-flex flex-wrap gap-2 mb-3">

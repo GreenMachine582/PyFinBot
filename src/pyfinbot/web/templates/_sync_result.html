@@ -1,11 +1,9 @@
 {% from "card.html" import gth_card %}
 {% from "badge.html" import gth_badge %}
+{% from "toast.html" import gth_alert %}
 {% if error %}
-<div class="alert alert-danger" role="alert">
-  <h6 class="alert-heading mb-1">{{ heading }}</h6>
-  {{ error }}
-  {% if settings_url %}<a href="{{ settings_url }}" class="alert-link">Open Settings</a>{% endif %}
-</div>
+{{ gth_alert(error, kind="danger", title=heading,
+    action={"label": "Open Settings", "url": settings_url} if settings_url else None) }}
 {% else %}
 {% call gth_card(heading) %}
   <p class="d-flex flex-wrap gap-2 mb-3">
