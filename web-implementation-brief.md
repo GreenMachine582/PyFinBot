@@ -14,7 +14,7 @@ PyFinBot currently ships as a FastAPI JSON API only (`/api/...`, JWT bearer auth
 - **Auth**: `OAuth2PasswordBearer` — `POST /api/auth/login` exchanges credentials for a JWT (`HS256`, 24h expiry, no refresh/revocation). Every route but registration and login requires `Authorization: Bearer <token>`.
 - **Data model**: `User` (string PK) → `Transaction` (FK `user_id`, cascade delete) → `Stock` (FK `stock_id`, no cascade). `Transaction` carries computed fields (`total_value`, `cost`, `fy`) derived server-side on insert.
 - **Routers**: `auth`, `users`, `stocks` (CRUD + market sync + `search`), `transactions` (CRUD, paginated via `fastapi-pagination`), `transactions/import` (CSV/Excel bulk import with row-level validation and dedupe), `emails` (`POST /api/emails/sync-commsec` — Gmail IMAP ingestion of Commsec buy/sell confirmation emails), `dividends` (`POST /api/dividends/sync` — yfinance dividend history sync), `reports` (holdings snapshot, FY capital gains, FY dividend income).
-- **Known gaps** (from the project's own backlog): no RBAC, stateless JWT with no revocation — unsolved anywhere in the ecosystem yet, not PyFinBot-specific to fix. *(Update: RBAC is in: an admin role (`users.manage`, `settings.manage`) from `ROLE_BOOTSTRAP` or grants made at `/admin/roles`, Settings › App, and a users API locked to `users.manage` — `todo.md` "greentechhub v0.12 adoption" item 5.)* CORS/env-mode config now exists (`ENVIRONMENT`/`CORS_ORIGINS` in `core/settings.py`), built independently of `greentechhub-fastapi`'s equivalent `register_core` (see §10 for the resulting duplication to clean up).
+- **Known gaps** (from the project's own backlog): no RBAC, stateless JWT with no revocation — unsolved anywhere in the ecosystem yet, not PyFinBot-specific to fix. *(Update: RBAC is in: an admin role (`users.manage`, `settings.manage`) from `ROLE_BOOTSTRAP` or grants made at `/admin/roles`, Settings › App, and a users API locked to `users.manage`.)* CORS/env-mode config now exists (`ENVIRONMENT`/`CORS_ORIGINS` in `core/settings.py`), built independently of `greentechhub-fastapi`'s equivalent `register_core` (see §10 for the resulting duplication to clean up).
 
 ## 3. Requested capabilities
 
@@ -105,7 +105,7 @@ Homelab already runs Grafana (`homelab-observe` node, internal URL `http://grafa
 
 ## 10. Non-functional / cleanup items
 
-- RBAC and JWT revocation remain unbuilt anywhere in the ecosystem today — not tracked as a blocking dependency, just not yet PyFinBot's to solve either. *(Update: RBAC is adopted — roles via greentechhub-core/-fastapi, `/admin/roles`, a locked users API (`todo.md` "greentechhub v0.12 adoption" item 5); JWT revocation is still unbuilt.)*
+- RBAC and JWT revocation remain unbuilt anywhere in the ecosystem today — not tracked as a blocking dependency, just not yet PyFinBot's to solve either. *(Update: RBAC is adopted — roles via greentechhub-core/-fastapi, `/admin/roles`, a locked users API; JWT revocation is still unbuilt.)*
 - **CORS/env-mode is `greentechhub-fastapi`'s `register_core`, not `greentechhub-core`** (correcting v2, which named the wrong package): `register_core(app, settings)` wires request-ID, timing, security-header, CORS, and trusted-proxy middleware in one call, reading `CORS_ALLOWED_ORIGINS` (a list setting). This is a real, concrete duplication worth flagging: PyFinBot already built its own `CORS_ORIGINS`/`ENVIRONMENT` settings + manual `CORSMiddleware` registration independently (see `todo.md`) — the env var name doesn't even match (`CORS_ORIGINS` vs. `CORS_ALLOWED_ORIGINS`). Adopting `register_core` instead, at the same time as wiring `register_auth`, is a genuine follow-up consolidation — the same shape as BottleBot's `register_health` adoption — not just a nice-to-have. It's also a hard prerequisite for the `forward_auth` swap (§5): `register_core` is what installs `ProxyHeadersMiddleware` and reads `TRUSTED_PROXIES`.
 - No behavior change to the existing `/api` — the web layer is additive.
 
@@ -113,12 +113,8 @@ Homelab already runs Grafana (`homelab-observe` node, internal URL `http://grafa
 
 v2 sequenced this against `greentechhub-core`/`greentechhub-ui`'s *planned* phasing ("wait for v0.1–v0.3"). Both packages have shipped real tagged releases since (`greentechhub-fastapi` v0.5.0, `greentechhub-ui` v0.6.0) — there's nothing left to wait for, so this is now a straight build sequence:
 
-1. **Dependencies + registration**: pin `greentechhub-fastapi` and `greentechhub-ui` as `git+https://github.com/GreenMachine582/greentechhub-{fastapi,ui}.git@vX.Y.0` dependencies — this exact pattern was just proven end-to-end on BottleBot (built, tested, verified live), so start pinned rather than with local editable installs the way BottleBot originally did and later had to migrate off. Have `Settings` extend `GTHBaseSettings` (§5), add `AUTH_ADAPTER`, and call `register_core` + `register_auth` in `pyfinbot.py`.
-2. **Login + base shell**: build PyFinBot's own login route (§5 — no shared template/adapter route exists to reuse) and base `web/templates/` extending `greentechhub_ui`'s `app.html`.
-3. **Core CRUD**: Stocks and Transactions via `gth-table`/`gth-modal`/`gth-form`.
-4. **Import**: upload page, `gth-toast` on completion.
-5. **Emails + Dividends**: manual sync-trigger pages (§6) — small, since both are just a button + `gth-toast` over an existing endpoint.
-6. **Reports**: holdings snapshot, capital-gains, and dividend-income views.
+Steps 1–6 (dependencies + registration, login + base shell, Stocks/Transactions, Import, Emails + Dividends, Reports) have shipped — see `git log`. What's left:
+
 7. **Dashboard placeholder**: `gth-stat-card`s + empty Grafana iframe slot.
 8. **Later**: swap `AUTH_ADAPTER` to `forward_auth` once Authentik is live (set `TRUSTED_PROXIES` via `register_core` first — see §5); wire real Grafana panels once embedding is configured.
 

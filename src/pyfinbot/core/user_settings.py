@@ -8,7 +8,9 @@ always have until someone picks otherwise: 50 rows per page (core: 25) and
 uses the navbar layout, so it would do nothing.
 
 Plus PyFinBot's own "Email sync" group: the user's mailbox for Commsec sync,
-its app password a write-only, encrypted secret setting.
+its app password a write-only, encrypted secret setting. And core's site
+banner (Settings › App, for settings.manage), which greentechhub-fastapi's
+settings_context shows above the navbar on every page.
 """
 
 from dataclasses import replace
@@ -20,6 +22,7 @@ from greentechhub_core.settings.builtins import (
     PAGE_SIZE,
     SIDEBAR_DEFAULT,
     USER_PREFERENCES,
+    site_banner_settings,
 )
 
 DEFAULT_ROWS_PER_PAGE = 50  # web.paging.PAGE_SIZE (a test keeps them equal)
@@ -51,23 +54,10 @@ EMAIL_SETTINGS = (
             help_text="Only emails from this address are imported."),
 )
 
-SITE_GROUP = "Site"
-
-# App-wide settings, on /settings › App for admins (settings.manage).
-SITE_SETTINGS = (
-    Setting(key="site.banner", type=SettingType.STR, default="", scope=SettingScope.APP,
-            label="Site banner", group=SITE_GROUP, edit_permission=SETTINGS_MANAGE,
-            help_text="Shown to everyone above the navbar, e.g. planned maintenance. "
-                      "Leave empty for none."),
-    Setting(key="site.banner_tone", type=SettingType.CHOICE, default="warn", scope=SettingScope.APP,
-            label="Banner style", group=SITE_GROUP, edit_permission=SETTINGS_MANAGE,
-            choices={"info": "Info", "warn": "Warning", "bad": "Alert"}),
-)
-
 USER_SETTINGS = SettingsRegistry([
     *(replace(s, default=DEFAULTS[s.key]) if s.key in DEFAULTS else s
       for s in USER_PREFERENCES
       if s.key != SIDEBAR_DEFAULT.key),
     *EMAIL_SETTINGS,
-    *SITE_SETTINGS,
+    *site_banner_settings(edit_permission=SETTINGS_MANAGE),
 ])
