@@ -10,6 +10,10 @@ from ..templating import templates
 
 
 class PyFinBotLoginViews(LoginViews):
+    """Local-auth /login and /logout. The page is greentechhub-ui's
+    login_page.html (LoginViews' default since greentechhub-fastapi v0.11),
+    so PyFinBot only checks the password."""
+
     async def authenticate(self, user_id: str, password: str) -> Identity | None:
         # Deferred import: pyfinbot.py imports this module at load time, so a
         # top-level `from ...pyfinbot import app` here would be circular.
