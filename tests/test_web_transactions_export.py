@@ -22,7 +22,7 @@ async def _add(client: AsyncClient, stock_id, **overrides) -> None:
 
 
 def _rows(resp) -> list[list[str]]:
-    return list(csv.reader(io.StringIO(resp.text)))
+    return list(csv.reader(io.StringIO(resp.content.decode("utf-8-sig"))))
 
 
 async def test_export_needs_a_signed_in_user(client: AsyncClient):
@@ -39,7 +39,7 @@ async def test_export_is_the_users_rows_as_a_csv_download(client: AsyncClient):
 
     resp = await client.get("/transactions.csv")
     assert resp.status_code == 200
-    assert resp.headers["content-type"].startswith("text/csv")
+    assert resp.headers["content-type"] == "text/csv; charset=utf-8"
     assert resp.headers["content-disposition"] == 'attachment; filename="pyfinbot-transactions.csv"'
     rows = _rows(resp)
     assert rows[0] == HEADER
@@ -104,3 +104,15 @@ async def test_stock_table_has_the_row_actions_column(client: AsyncClient):
     assert '<span class="visually-hidden">Actions</span>' in html
     assert 'aria-label="Edit BHP"' in html and 'aria-label="Delete BHP"' in html
     assert '<th scope="col"></th>' not in html  # no hand-built blank header
+
+
+async def test_export_is_utf8_with_a_bom_so_excel_reads_the_fy_dash(client: AsyncClient):
+    # Without a BOM, Excel opens UTF-8 as Windows-1252 and "2024–25" shows as "2024â€“25".
+    bhp = await create_stock(client)
+    await web_login(client, "export-e")
+    await _add(client, bhp["id"])
+    body = (await client.get("/transactions.csv")).content
+    bom = chr(0xFEFF).encode("utf-8")  # EF BB BF
+    assert body.startswith(bom)
+    assert "2024–25".encode("utf-8") in body
+    assert body.count(bom) == 1  # once, at the start

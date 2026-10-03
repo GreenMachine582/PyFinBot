@@ -31,7 +31,8 @@ async def _seed(client: AsyncClient, session) -> dict:
 
 
 def _csv(resp) -> list[list[str]]:
-    return list(csv.reader(io.StringIO(resp.text)))
+    # utf-8-sig: the exports start with a BOM, so Excel reads them as UTF-8.
+    return list(csv.reader(io.StringIO(resp.content.decode("utf-8-sig"))))
 
 
 class TestAuthGuard:
@@ -104,7 +105,8 @@ class TestHoldings:
         await _seed(client, session)
         resp = await client.get("/reports/holdings.csv", params={"as_of": "2025-06-30"})
         assert resp.status_code == 200
-        assert resp.headers["content-type"].startswith("text/csv")
+        assert resp.headers["content-type"] == "text/csv; charset=utf-8"
+        assert resp.content.startswith(chr(0xFEFF).encode("utf-8"))  # the BOM Excel needs to read UTF-8
         assert 'filename="pyfinbot-holdings-2025-06-30.csv"' in resp.headers["content-disposition"]
         rows = _csv(resp)
         assert rows[0][:3] == ["Market", "Symbol", "Name"]

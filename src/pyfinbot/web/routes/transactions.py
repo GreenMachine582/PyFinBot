@@ -1,11 +1,8 @@
-import csv
-import io
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import Response
 from greentechhub_core.identity import Identity
 from greentechhub_fastapi.settings import get_effective_settings
 from greentechhub_ui import TableState
@@ -21,6 +18,7 @@ from ...db.session import get_session
 from ...models.stock_models import Stock
 from ...models.transaction_models import Transaction, TypeEnum
 from ...schemas.transaction_schemas import TransactionCreate
+from ..csv_response import csv_download
 from ..deps import page_identity
 from ..htmx import CLOSE_MODAL, hx_response
 from ..paging import PAGE_SIZE, PAGE_SIZES, paginate, sort_string
@@ -118,19 +116,15 @@ async def export_csv(
     """Every transaction the table's current filters and sort match, as a CSV
     download — the table's "Export CSV" link (TableState.export_url)."""
     state = _table_state(request, user_settings)
-    rows = (await session.exec(_transactions_stmt(identity, state))).all()
-    buf = io.StringIO()
-    writer = csv.writer(buf)
-    writer.writerow(CSV_HEADER)
-    for t in rows:
-        writer.writerow([
-            t.transaction_date.isoformat(), t.stock.market, t.stock.symbol, t.type.value,
-            _plain(t.units), _plain(t.price), _plain(t.fees), _plain(t.total_value), _plain(t.cost),
-            templates.env.filters["fy"](t.fy), t.notes or "",
-        ])
-    return Response(buf.getvalue(), media_type="text/csv", headers={
-        "Content-Disposition": 'attachment; filename="pyfinbot-transactions.csv"',
-    })
+    transactions = (await session.exec(_transactions_stmt(identity, state))).all()
+    fy_label = templates.env.filters["fy"]
+    rows = [CSV_HEADER, *(
+        [t.transaction_date.isoformat(), t.stock.market, t.stock.symbol, t.type.value,
+         _plain(t.units), _plain(t.price), _plain(t.fees), _plain(t.total_value), _plain(t.cost),
+         fy_label(t.fy), t.notes or ""]
+        for t in transactions
+    )]
+    return csv_download(rows, "pyfinbot-transactions.csv")
 
 
 def _plain(value: Any) -> str:

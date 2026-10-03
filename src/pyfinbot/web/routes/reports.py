@@ -1,9 +1,6 @@
-import csv
-import io
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import Response
 from greentechhub_core.identity import Identity
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -13,6 +10,7 @@ from ...core.fiscal_year import au_fiscal_year
 from ...db.session import get_session
 from ...models.transaction_models import Transaction
 from ...schemas.report_schemas import CapitalGainsReport, DividendsReport, HoldingsReport
+from ..csv_response import csv_download
 from ..deps import page_identity
 from ..templating import templates
 
@@ -127,8 +125,4 @@ async def export_csv(kind: str, as_of: str | None = None, fy: str | None = None,
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown report")
 
-    buf = io.StringIO()
-    csv.writer(buf).writerows(rows)
-    return Response(buf.getvalue(), media_type="text/csv", headers={
-        "Content-Disposition": f'attachment; filename="pyfinbot-{kind}-{suffix}.csv"',
-    })
+    return csv_download(rows, f"pyfinbot-{kind}-{suffix}.csv")
