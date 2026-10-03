@@ -256,7 +256,8 @@ Shipped in the gth repos:
   defaulting to ui's login page (#31)
 
 PyFinBot, in order:
-- [ ] 1. `build(deps): greentechhub ui v0.14, core v0.9, fastapi v0.11` — pin all three in `requirements.txt`.
+- [x] 1. `build(deps): greentechhub ui v0.14, core v0.9, fastapi v0.11` — done; covered by
+  `tests/test_web_login_page.py`. Pin all three in `requirements.txt`.
   fastapi v0.11's `LoginViews` renders ui's `login_page.html` and `PyFinBotLoginViews` doesn't override it, so the
   bump itself switches the login page: delete `web/templates/login.html` in the same PR. Check nothing else moves:
   core v0.9's `status_code` hint is read by fastapi's handlers, and `StatusError` already carries a matching

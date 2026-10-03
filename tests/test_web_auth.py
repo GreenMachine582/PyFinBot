@@ -14,7 +14,7 @@ async def _register(client: AsyncClient, user_id: str, password: str = "hunter2!
 async def test_login_form_renders(client: AsyncClient):
     resp = await client.get("/login")
     assert resp.status_code == 200
-    assert "Log in" in resp.text
+    assert "Sign in" in resp.text  # greentechhub-ui's login_page.html (fastapi v0.11)
 
 
 async def test_dashboard_redirects_when_not_logged_in(client: AsyncClient):
