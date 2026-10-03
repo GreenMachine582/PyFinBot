@@ -39,8 +39,8 @@ async def test_sign_in_still_lands_on_the_dashboard(client: AsyncClient):
 
 
 async def test_site_banner_shows_once_on_the_login_page(client: AsyncClient):
-    # fastapi v0.11's settings_context and PyFinBot's own site_banners_context
-    # both emit the banner until PR 5; the page must still show just one.
+    # fastapi's settings_context emits the banner (core's site_banner_settings);
+    # signed out, the login page still shows it, once.
     await web_login(client, "login-admin")
     await make_admin(client, "login-admin")
     resp = await client.post("/settings/app", headers=HX, data={
