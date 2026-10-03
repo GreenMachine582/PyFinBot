@@ -212,11 +212,11 @@ must pass `pytest` (coverage ≥ 80), `ruff check src tests` and
       Symbol, Type, Units, Price, Fees, Total, Cost, FY, Notes; user-scoped);
       `export_base_url="/transactions.csv"` on `_table_state`. The 11-column
       table gets `view_options=True`: Date and Stock `hideable: False`, Notes
-      `hidden: True`. **Waits for greentechhub-ui's row actions column** (see
-      "greentechhub-ui v0.14 adoption" below): the blank `""` actions header
-      would show in the View menu as an unlabelled, hideable toggle, so this
-      PR also swaps both tables' hand-built edit/delete buttons for
-      `row_actions=True` + `gth_table_actions_cell`
+      `hidden: True`. Done as item 2 of "greentechhub adoption" below, after
+      the ui v0.14 pin: the blank `""` actions header would show in the View
+      menu as an unlabelled, hideable toggle, so the same PR swaps both
+      tables' hand-built edit/delete buttons for `row_actions=True` +
+      `gth_table_actions_cell`
 - [ ] `feat(stocks): bulk archive and unarchive` — `POST /stocks/bulk-archive`
       and `/stocks/bulk-unarchive` read `ids` and share `update_stock`'s
       `is_active`/`archived_at`/`write_datetime` rules (factor them into one
@@ -239,33 +239,53 @@ must pass `pytest` (coverage ≥ 80), `ruff check src tests` and
       `bulk_actions=[{"label": "Delete", "style": "btn-outline-danger",
       "confirm": "Delete the selected transactions?", ...}]` + select cells
 
-## greentechhub-ui v0.14 adoption: slimming PyFinBot
+## greentechhub adoption: ui v0.14, core v0.9, fastapi v0.11 (slimming PyFinBot)
 
-> From a review of PyFinBot's web layer (2026-10-03): hand-rolled pieces that belong in the gth repos move there
-> (opt-in), and PyFinBot drops its copies. Registered in each repo's TODO; one PR at a time.
+> From a review of PyFinBot's web layer (2026-10-03): hand-rolled pieces that belong in the gth repos moved there
+> (opt-in), and PyFinBot drops its copies. One PR at a time, in this order; each puts its tests in its own new test
+> file and must pass `pytest` (coverage ≥ 80), `ruff check src tests` and `mypy src/pyfinbot` (≤ 55 errors).
 
-greentechhub-ui first, then a ui release (v0.14.0):
-- [ ] ui: the row actions column (`gth_data_table(row_actions=True)` + `gth_table_actions_cell`)
-- [ ] ui: `gth_busy_button(..., submit=True)`
-- [ ] ui: inline `gth_alert`
-- [ ] ui: `gth_select(..., hide_label=True)`
-- [ ] Cut greentechhub-ui v0.14.0
+Shipped in the gth repos:
+- [x] greentechhub-ui v0.14.0 — row actions (#61), submit busy buttons (#62), inline `gth_alert` (#63),
+  `gth_select(hide_label=True)` (#64), a branded `login_page.html` on `layout="auth"` (#65)
+- [x] greentechhub-core v0.9.0 — `ApplicationError(status_code=…)` + `BadRequestError` (#28),
+  `site_banner_settings()` (#29), `sqlalchemy.order_by`/`paginate` (#30), `FilterGroup` + `where` (#32),
+  `page()` (#33), `dates` fiscal years (#34)
+- [x] greentechhub-fastapi v0.11.0 — the status hint + `BadRequestError` honoured (#27),
+  `register_api_error_handlers` (#28), the opt-in site banner (#29), JSON filter groups (#30), `LoginViews`
+  defaulting to ui's login page (#31)
 
-Then PyFinBot, pinned to it:
-- [ ] `feat(transactions): CSV export and column view options` (above, now with row actions on both tables)
-- [ ] `refactor(web): adopt gth_alert, submit busy buttons and gth_select`:
-  - the raw alerts in `emails.html` (×2), `_sync_result.html`, `_import_result.html` and `login.html` → `gth_alert`;
+PyFinBot, in order:
+- [ ] 1. `build(deps): greentechhub ui v0.14, core v0.9, fastapi v0.11` — pin all three in `requirements.txt`.
+  fastapi v0.11's `LoginViews` renders ui's `login_page.html` and `PyFinBotLoginViews` doesn't override it, so the
+  bump itself switches the login page: delete `web/templates/login.html` in the same PR. Check nothing else moves:
+  core v0.9's `status_code` hint is read by fastapi's handlers, and `StatusError` already carries a matching
+  `status_code`, so API statuses must stay as they are
+- [ ] 2. `feat(transactions): CSV export and column view options` (the v0.11 item above), with
+  `row_actions=True` + `gth_table_actions_cell` replacing the hand-built edit/delete cells on the transactions
+  **and** stocks tables
+- [ ] 3. `refactor(web): adopt gth_alert, submit busy buttons and gth_select`:
+  - the raw alerts in `emails.html` (×2), `_sync_result.html` and `_import_result.html` → `gth_alert`;
   - the hand-copied busy submit buttons in `import.html` and `dividends.html` → `gth_busy_button(submit=True)`;
   - the filter-bar selects in `transactions.html`/`stocks.html` and the report panes' FY/as-of fields →
-    `gth_select(hide_label=True)` / `gth_form_field`.
+    `gth_select(hide_label=True)` / `gth_form_field`
+- [ ] 4. `refactor(api): fastapi's API error handlers` — `register_api_error_handlers(app, prefix="/api")` replaces
+  `web/api_errors.py`; `StatusError` raises become core's `BadRequestError` or
+  `ApplicationError(..., status_code=…)`, deleting `core/errors.py`. The existing envelope tests hold unchanged
+- [ ] 5. `refactor(web): the site banner from core + fastapi` — `*site_banner_settings(edit_permission=SETTINGS_MANAGE)`
+  replaces the hand-written `site.banner`/`site.banner_tone` definitions (same keys, so saved values carry over), and
+  fastapi's `settings_context` replaces `templating.site_banners_context`
+- [ ] 6. `refactor(query): core's where / order_by / page` — the web tables use `order_by` + `paginate` (deleting
+  `web/paging.py` and `core/sorting.py`); the API list routes use `PageParams` / `parse_filter_json` + `page()`
+  (deleting `core/sa_filters_compat.py`). Check whether anything still sends the Tabulator `sorters` JSON: convert it
+  to `Sort`s, or drop it if nothing does
+- [ ] 7. `refactor(core): core's fiscal years` — `greentechhub_core.dates` replaces `core/fiscal_year.py`; the `|fy`
+  filter uses `fiscal_year_label`
+- [ ] 8. `refactor(core): core's password hashing` — `greentechhub_core.security.passwords` replaces the bcrypt
+  helpers in `core/security.py`; same bcrypt format, so existing hashes still verify (test it)
 
-Later, cross-repo (core / fastapi / ui), when asked:
-- [ ] `login.html` → ui's `login_page.html`, which fastapi's `LoginViews` defaults to; delete ours
-- [ ] `web/api_errors.py` + `core/errors.StatusError` → fastapi's `register_api_error_handlers(prefix="/api")` and
-  core's explicit-status error
-- [ ] `templating.site_banners_context` + the `site.banner*` settings → fastapi's opt-in site banner
-- [ ] `web/paging.paginate` + `core/sorting.py` (+ maybe `core/sa_filters_compat.py`) → core's `sqlalchemy` helpers.
-  Its docstring's "neither shared package depends on SQLAlchemy" is stale: core has a `sqlalchemy` extra
+The remaining greentechhub-ui v0.11.0 items above (stocks bulk archive, form polish, transactions bulk delete) follow
+these.
 
 ## Known limitations (accepted, not bugs)
 
