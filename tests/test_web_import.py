@@ -120,7 +120,7 @@ class TestFileErrors:
         await web_login(client, "web-import")
         resp = await client.post("/import", files=_upload("date,stock\n2024-08-01,ASX:BHP\n", "short.csv"))
         assert resp.status_code == 422
-        assert "Couldn't import short.csv" in resp.text
+        assert "Couldn&#39;t import short.csv" in resp.text  # gth_alert escapes the title
         assert "Missing required columns" in resp.text
         triggers = hx_triggers(resp)
         assert triggers["showToast"]["kind"] == "danger"

@@ -20,12 +20,7 @@
         {{ gth_combobox("stock_id", "Stock", "/stocks/options", placeholder="Search symbol or name…",
             help_text="Any tracked stock, whether or not you've traded it.") }}
         <div class="d-flex justify-content-end">
-          <button type="submit" class="btn btn-outline-secondary gth-busy-button">
-            <span class="gth-busy-button-idle"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Sync</span>
-            <span class="gth-busy-button-busy" role="status">
-              <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Syncing…
-            </span>
-          </button>
+          {{ gth_busy_button("Sync", "Syncing…", icon="arrow-repeat", submit=True) }}
         </div>
       </form>
     {% endcall %}

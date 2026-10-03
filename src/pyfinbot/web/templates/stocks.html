@@ -2,6 +2,7 @@
 {% from "page_header.html" import gth_page_header %}
 {% from "table.html" import gth_table_filter %}
 {% from "busy_button.html" import gth_busy_button %}
+{% from "select.html" import gth_select %}
 {% block title %}Stocks{% endblock %}
 {% block content %}
 
@@ -18,17 +19,10 @@
 {% endcall %}
 
 {% call gth_table_filter(table, placeholder="Symbol or name", label="Search stocks") %}
-  {% set market = table.filters.get("market", "") %}
-  <select class="form-select w-auto" name="market" aria-label="Market">
-    <option value="">All markets</option>
-    {% for m in markets %}<option value="{{ m }}"{% if m == market %} selected{% endif %}>{{ m }}</option>{% endfor %}
-  </select>
-  {% set current = table.filters.get("status", "active") %}
-  <select class="form-select w-auto" name="status" aria-label="Status">
-    {% for value, label in statuses.items() %}
-    <option value="{{ value }}"{% if value == current %} selected{% endif %}>{{ label }}</option>
-    {% endfor %}
-  </select>
+  {{ gth_select("market", "Market", markets, value=table.filters.get("market"), placeholder="All markets",
+      hide_label=True, field_class="mb-0") }}
+  {{ gth_select("status", "Status", statuses.items()|list, value=table.filters.get("status", "active"),
+      hide_label=True, field_class="mb-0") }}
 {% endcall %}
 
 {% include "_stock_table.html" %}
