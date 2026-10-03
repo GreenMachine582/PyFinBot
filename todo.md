@@ -205,7 +205,8 @@ must pass `pytest` (coverage ≥ 80), `ruff check src tests` and
       and raises `ImportFileError("File is larger than 5 MB.")` — the existing
       422 result panel + toast. Update `test_web_import.py:42`'s `accept`
       assertion
-- [ ] `feat(transactions): CSV export and column view options` — split
+- [x] `feat(transactions): CSV export and column view options` — done; covered by
+      `tests/test_web_transactions_export.py`. Originally: split
       `_query_transactions` into a statement builder + paging so a new
       `GET /transactions.csv` takes the table's filters and sort with no paging
       (the `reports.py` CSV pattern; `pyfinbot-transactions.csv`: Date, Market,
@@ -262,7 +263,8 @@ PyFinBot, in order:
   bump itself switches the login page: delete `web/templates/login.html` in the same PR. Check nothing else moves:
   core v0.9's `status_code` hint is read by fastapi's handlers, and `StatusError` already carries a matching
   `status_code`, so API statuses must stay as they are
-- [ ] 2. `feat(transactions): CSV export and column view options` (the v0.11 item above), with
+- [x] 2. `feat(transactions): CSV export and column view options` — done; covered by
+  `tests/test_web_transactions_export.py`. The v0.11 item above, with
   `row_actions=True` + `gth_table_actions_cell` replacing the hand-built edit/delete cells on the transactions
   **and** stocks tables
 - [ ] 3. `refactor(web): adopt gth_alert, submit busy buttons and gth_select`:

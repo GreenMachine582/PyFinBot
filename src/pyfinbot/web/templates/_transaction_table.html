@@ -1,8 +1,11 @@
-{% from "table.html" import gth_data_table %}
+{% from "table.html" import gth_data_table, gth_table_actions_cell %}
 {% from "badge.html" import gth_badge %}
+{#- view_options: a View menu to hide columns (Date and Stock always shown,
+    Notes hidden until asked for) and switch density, remembered per browser.
+    row_actions: the edit/delete column, which the View menu never lists. -#}
 {% call(txn) gth_data_table(table, [
-    {"label": "Date", "sort_key": "transaction_date"},
-    "Stock",
+    {"label": "Date", "sort_key": "transaction_date", "hideable": False},
+    {"label": "Stock", "hideable": False},
     {"label": "Type", "sort_key": "type"},
     {"label": "Units", "sort_key": "units", "class": "text-end"},
     {"label": "Price", "sort_key": "price", "class": "text-end"},
@@ -10,9 +13,9 @@
     {"label": "Total", "sort_key": "total_value", "class": "text-end"},
     {"label": "Cost", "sort_key": "cost", "class": "text-end"},
     "FY",
-    "Notes",
-    "",
-  ], transactions, empty_message="No transactions match these filters.", refresh_event="transactionsChanged") %}
+    {"label": "Notes", "hidden": True},
+  ], transactions, empty_message="No transactions match these filters.", refresh_event="transactionsChanged",
+  view_options=True, row_actions=True) %}
 <tr>
   <td class="text-nowrap">{{ txn.transaction_date|date }}</td>
   <td class="text-nowrap" title="{{ txn.stock.name }}">
@@ -26,15 +29,11 @@
   <td class="text-end {{ 'text-danger' if txn.cost < 0 else 'text-success' }}">{{ txn.cost|money }}</td>
   <td class="text-nowrap">{{ txn.fy|fy }}</td>
   <td class="text-truncate" style="max-width: 12rem" title="{{ txn.notes or '' }}">{{ txn.notes or "" }}</td>
-  <td class="text-end text-nowrap">
-    <button type="button" class="btn btn-sm btn-outline-secondary" aria-label="Edit transaction"
-      hx-get="/transactions/{{ txn.id }}/edit" hx-target="#gth-modal-host">
-      <i class="bi bi-pencil" aria-hidden="true"></i>
-    </button>
-    <button type="button" class="btn btn-sm btn-outline-danger" aria-label="Delete transaction"
-      hx-get="/transactions/{{ txn.id }}/delete" hx-target="#gth-modal-host">
-      <i class="bi bi-trash" aria-hidden="true"></i>
-    </button>
-  </td>
+  {{ gth_table_actions_cell([
+      {"label": "Edit", "icon": "pencil", "method": "get", "url": "/transactions/" ~ txn.id ~ "/edit",
+       "attrs": {"hx-target": "#gth-modal-host"}},
+      {"label": "Delete", "icon": "trash", "method": "get", "url": "/transactions/" ~ txn.id ~ "/delete",
+       "attrs": {"hx-target": "#gth-modal-host"}, "danger": True},
+    ], label=txn.type.value ~ " " ~ txn.stock.symbol) }}
 </tr>
 {% endcall %}

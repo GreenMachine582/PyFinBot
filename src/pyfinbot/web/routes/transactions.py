@@ -1,4 +1,5 @@
 from datetime import date, datetime, timezone
+from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -17,6 +18,7 @@ from ...db.session import get_session
 from ...models.stock_models import Stock
 from ...models.transaction_models import Transaction, TypeEnum
 from ...schemas.transaction_schemas import TransactionCreate
+from ..csv_response import csv_download
 from ..deps import page_identity
 from ..htmx import CLOSE_MODAL, hx_response
 from ..paging import PAGE_SIZE, PAGE_SIZES, paginate, sort_string
@@ -66,11 +68,15 @@ def _table_state(request: Request, user_settings: dict[str, Any]) -> TableState:
         default_sort="transaction_date",
         default_direction="desc",
         filter_params=("stock", "type", "fy", "date_from", "date_to"),
+        # gth_data_table's "Export CSV" link: this endpoint with the current
+        # filters and sort, never page or size.
+        export_base_url="/transactions.csv",
     )
 
 
-async def _query_transactions(session: AsyncSession, identity: Identity,
-                              state: TableState) -> tuple[list[Transaction], TableState]:
+def _transactions_stmt(identity: Identity, state: TableState) -> Any:
+    """The user's transactions with the table's filters and sort: paged for
+    the table, whole for the CSV export."""
     stmt = (
         select(Transaction)
         .options(selectinload(Transaction.stock))
@@ -89,8 +95,45 @@ async def _query_transactions(session: AsyncSession, identity: Identity,
     if (fy := filters.get("fy", "")).isdigit():
         stmt = stmt.where(Transaction.fy == int(fy))
     sort = sort_string(state, "transaction_date", "id")
-    stmt = stmt.order_by(*buildSortOrderBy(Transaction, ALLOWED_FILTERING_FIELDS, None, sort))
-    return await paginate(session, stmt, state)
+    return stmt.order_by(*buildSortOrderBy(Transaction, ALLOWED_FILTERING_FIELDS, None, sort))
+
+
+async def _query_transactions(session: AsyncSession, identity: Identity,
+                              state: TableState) -> tuple[list[Transaction], TableState]:
+    return await paginate(session, _transactions_stmt(identity, state), state)
+
+
+CSV_HEADER = ["Date", "Market", "Symbol", "Type", "Units", "Price", "Fees", "Total", "Cost", "FY", "Notes"]
+
+
+@router.get(".csv")
+async def export_csv(
+    request: Request,
+    identity: Identity = Depends(page_identity),
+    session: AsyncSession = Depends(get_session),
+    user_settings: dict[str, Any] = Depends(get_effective_settings),
+):
+    """Every transaction the table's current filters and sort match, as a CSV
+    download — the table's "Export CSV" link (TableState.export_url)."""
+    state = _table_state(request, user_settings)
+    transactions = (await session.exec(_transactions_stmt(identity, state))).all()
+    fy_label = templates.env.filters["fy"]
+    rows = [CSV_HEADER, *(
+        [t.transaction_date.isoformat(), t.stock.market, t.stock.symbol, t.type.value,
+         _plain(t.units), _plain(t.price), _plain(t.fees), _plain(t.total_value), _plain(t.cost),
+         fy_label(t.fy), t.notes or ""]
+        for t in transactions
+    )]
+    return csv_download(rows, "pyfinbot-transactions.csv")
+
+
+def _plain(value: Any) -> str:
+    """A Decimal at full precision, trailing zeros trimmed, never in E-notation."""
+    if value is None:
+        return ""
+    if isinstance(value, Decimal):
+        return f"{value.normalize():f}"
+    return str(value)
 
 
 @router.get("")
