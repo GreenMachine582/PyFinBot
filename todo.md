@@ -158,8 +158,8 @@ the v0.11 items: each PR's tests in their own new file, `pytest` (coverage ≥ 8
 - [x] 6. `chore(web): adopt register_logging, register_health and register_exception_handlers` — done: JSON logs
   via core's `configure_logging` (with `service`/`version`, which `register_logging` doesn't pass), `/health` and
   `/health/ready` (`db.session.database_ready`, plus a docker-compose healthcheck), and every `/api` error as the
-  `{code, message, details}` envelope at its old status (`core/errors.StatusError` for 400/502/503,
-  `web/api_errors.py` for the 401 challenge, framework errors and validation). Pages keep FastAPI's defaults.
+  `{code, message, details}` envelope at its old status (since item 4 of the adoption below: core's
+  `BadRequestError` / `status_code` hint and fastapi's `register_api_error_handlers`). Pages keep FastAPI's defaults.
   - Structured JSON logs, `/health` with core's `check_database` against the async engine, and JSON error envelopes
     for `/api`. The pages' login redirect and HX-Redirect flow must be unchanged.
 - [ ] 7. Then the greentechhub-ui v0.11.0 adoption below: #21 (date range presets, open) first, then the rest in order.
@@ -277,7 +277,8 @@ PyFinBot, in order:
   `gth_form_field(id=)` (greentechhub-ui #71, not released yet): pin it, then
   `gth_select("fy", "Financial year", fys|fy_options, value=report.fy, id="gains-fy", field_class="mb-0")` in
   `_report_gains.html` and the same with `placeholder="All time"`, `id="dividends-fy"` in `_report_dividends.html`
-- [ ] 4. `refactor(api): fastapi's API error handlers` — `register_api_error_handlers(app, prefix="/api")` replaces
+- [x] 4. `refactor(api): fastapi's API error handlers` — done; covered by `tests/test_api_error_handlers.py`.
+  `register_api_error_handlers(app, prefix="/api")` replaces
   `web/api_errors.py`; `StatusError` raises become core's `BadRequestError` or
   `ApplicationError(..., status_code=…)`, deleting `core/errors.py`. The existing envelope tests hold unchanged
 - [ ] 5. `refactor(web): the site banner from core + fastapi` — `*site_banner_settings(edit_permission=SETTINGS_MANAGE)`

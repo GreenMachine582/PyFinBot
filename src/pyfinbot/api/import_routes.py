@@ -6,7 +6,7 @@ with the web Import page).
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, UploadFile, status
-from ..core.errors import StatusError
+from greentechhub_core.types import ApplicationError
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..core.dependencies import get_current_user
@@ -42,4 +42,4 @@ async def import_transactions(
         content = await read_upload(file)  # at most 5 MB, else 413
         return await _import_transactions(session, current_user.id, content, file.filename or "")
     except ImportFileError as exc:
-        raise StatusError(exc.detail, status_code=exc.status_code, code="import_failed")
+        raise ApplicationError(exc.detail, code="import_failed", status_code=exc.status_code)

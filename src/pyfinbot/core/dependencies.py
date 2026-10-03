@@ -19,7 +19,7 @@ async def get_current_user(
     token: str = Depends(oauth2_scheme),
     session: AsyncSession = Depends(get_session),
 ) -> User:
-    # 401 envelope + WWW-Authenticate: Bearer (web/api_errors.py).
+    # 401 envelope + WWW-Authenticate: Bearer (fastapi's register_api_error_handlers).
     unauthorized = UnauthorizedError("Could not validate credentials")
     try:
         payload = decode_access_token(token)

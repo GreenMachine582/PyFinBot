@@ -5,8 +5,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, status
-from greentechhub_core.types import ForbiddenError, NotFoundError
-from ..core.errors import StatusError
+from greentechhub_core.types import BadRequestError, ForbiddenError, NotFoundError
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlmodel import apaginate
 from sqlalchemy.exc import IntegrityError
@@ -82,7 +81,7 @@ async def create_transaction(
         await session.refresh(new_transaction, attribute_names=["stock"])
     except IntegrityError:
         await session.rollback()
-        raise StatusError("Failed to create transaction", code="create_failed")
+        raise BadRequestError("Failed to create transaction", code="create_failed")
 
     return new_transaction
 
@@ -124,7 +123,7 @@ async def list_transactions(
         try:
             filters_spec = json.loads(filters)
         except json.JSONDecodeError:
-            raise StatusError("Invalid 'filters' JSON", code="invalid_filters")
+            raise BadRequestError("Invalid 'filters' JSON", code="invalid_filters")
 
         # If a client tries to filter a different user_id, override it with the
         # authenticated user by appending (AND) our user filter afterwards.
@@ -193,7 +192,7 @@ async def update_transaction(
         await session.refresh(transaction, attribute_names=["stock"])
     except IntegrityError:
         await session.rollback()
-        raise StatusError("Failed to update transaction", code="update_failed")
+        raise BadRequestError("Failed to update transaction", code="update_failed")
 
     return transaction
 
