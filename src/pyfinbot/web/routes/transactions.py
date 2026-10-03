@@ -1,7 +1,11 @@
+import csv
+import io
 from datetime import date, datetime, timezone
+from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import Response
 from greentechhub_core.identity import Identity
 from greentechhub_fastapi.settings import get_effective_settings
 from greentechhub_ui import TableState
@@ -66,11 +70,15 @@ def _table_state(request: Request, user_settings: dict[str, Any]) -> TableState:
         default_sort="transaction_date",
         default_direction="desc",
         filter_params=("stock", "type", "fy", "date_from", "date_to"),
+        # gth_data_table's "Export CSV" link: this endpoint with the current
+        # filters and sort, never page or size.
+        export_base_url="/transactions.csv",
     )
 
 
-async def _query_transactions(session: AsyncSession, identity: Identity,
-                              state: TableState) -> tuple[list[Transaction], TableState]:
+def _transactions_stmt(identity: Identity, state: TableState) -> Any:
+    """The user's transactions with the table's filters and sort: paged for
+    the table, whole for the CSV export."""
     stmt = (
         select(Transaction)
         .options(selectinload(Transaction.stock))
@@ -89,8 +97,49 @@ async def _query_transactions(session: AsyncSession, identity: Identity,
     if (fy := filters.get("fy", "")).isdigit():
         stmt = stmt.where(Transaction.fy == int(fy))
     sort = sort_string(state, "transaction_date", "id")
-    stmt = stmt.order_by(*buildSortOrderBy(Transaction, ALLOWED_FILTERING_FIELDS, None, sort))
-    return await paginate(session, stmt, state)
+    return stmt.order_by(*buildSortOrderBy(Transaction, ALLOWED_FILTERING_FIELDS, None, sort))
+
+
+async def _query_transactions(session: AsyncSession, identity: Identity,
+                              state: TableState) -> tuple[list[Transaction], TableState]:
+    return await paginate(session, _transactions_stmt(identity, state), state)
+
+
+CSV_HEADER = ["Date", "Market", "Symbol", "Type", "Units", "Price", "Fees", "Total", "Cost", "FY", "Notes"]
+
+
+@router.get(".csv")
+async def export_csv(
+    request: Request,
+    identity: Identity = Depends(page_identity),
+    session: AsyncSession = Depends(get_session),
+    user_settings: dict[str, Any] = Depends(get_effective_settings),
+):
+    """Every transaction the table's current filters and sort match, as a CSV
+    download — the table's "Export CSV" link (TableState.export_url)."""
+    state = _table_state(request, user_settings)
+    rows = (await session.exec(_transactions_stmt(identity, state))).all()
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(CSV_HEADER)
+    for t in rows:
+        writer.writerow([
+            t.transaction_date.isoformat(), t.stock.market, t.stock.symbol, t.type.value,
+            _plain(t.units), _plain(t.price), _plain(t.fees), _plain(t.total_value), _plain(t.cost),
+            templates.env.filters["fy"](t.fy), t.notes or "",
+        ])
+    return Response(buf.getvalue(), media_type="text/csv", headers={
+        "Content-Disposition": 'attachment; filename="pyfinbot-transactions.csv"',
+    })
+
+
+def _plain(value: Any) -> str:
+    """A Decimal at full precision, trailing zeros trimmed, never in E-notation."""
+    if value is None:
+        return ""
+    if isinstance(value, Decimal):
+        return f"{value.normalize():f}"
+    return str(value)
 
 
 @router.get("")

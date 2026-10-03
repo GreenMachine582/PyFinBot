@@ -1,26 +1,21 @@
-{% from "table.html" import gth_data_table %}
+{% from "table.html" import gth_data_table, gth_table_actions_cell %}
 {% from "badge.html" import gth_badge %}
 {% call(stock) gth_data_table(table, [
     {"label": "Symbol", "sort_key": "symbol"},
     {"label": "Market", "sort_key": "market"},
     {"label": "Name", "sort_key": "name"},
     "Status",
-    "",
-  ], stocks, empty_message="No stocks match these filters.", refresh_event="stocksChanged") %}
+  ], stocks, empty_message="No stocks match these filters.", refresh_event="stocksChanged", row_actions=True) %}
 <tr>
   <td class="fw-semibold">{{ stock.symbol }}</td>
   <td>{{ stock.market }}</td>
   <td>{{ stock.name }}</td>
   <td>{{ gth_badge("Active", "good") if stock.is_active else gth_badge("Archived", "neutral") }}</td>
-  <td class="text-end text-nowrap">
-    <button type="button" class="btn btn-sm btn-outline-secondary" aria-label="Edit {{ stock.symbol }}"
-      hx-get="/stocks/{{ stock.id }}/edit" hx-target="#gth-modal-host">
-      <i class="bi bi-pencil" aria-hidden="true"></i>
-    </button>
-    <button type="button" class="btn btn-sm btn-outline-danger" aria-label="Delete {{ stock.symbol }}"
-      hx-get="/stocks/{{ stock.id }}/delete" hx-target="#gth-modal-host">
-      <i class="bi bi-trash" aria-hidden="true"></i>
-    </button>
-  </td>
+  {{ gth_table_actions_cell([
+      {"label": "Edit", "icon": "pencil", "method": "get", "url": "/stocks/" ~ stock.id ~ "/edit",
+       "attrs": {"hx-target": "#gth-modal-host"}},
+      {"label": "Delete", "icon": "trash", "method": "get", "url": "/stocks/" ~ stock.id ~ "/delete",
+       "attrs": {"hx-target": "#gth-modal-host"}, "danger": True},
+    ], label=stock.symbol) }}
 </tr>
 {% endcall %}
