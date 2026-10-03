@@ -23,7 +23,7 @@ async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     session: AsyncSession = Depends(get_session),
 ):
-    # 401 envelope + WWW-Authenticate: Bearer (web/api_errors.py).
+    # 401 envelope + WWW-Authenticate: Bearer (fastapi's register_api_error_handlers).
     unauthorized = UnauthorizedError("Incorrect user ID or password")
 
     user = await session.get(User, form_data.username)

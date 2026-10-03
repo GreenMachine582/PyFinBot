@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, status
-from greentechhub_core.types import ForbiddenError, NotFoundError
-from ..core.errors import StatusError
+from greentechhub_core.types import BadRequestError, ForbiddenError, NotFoundError
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -26,7 +25,7 @@ async def create_user(
     """Create a user (users.manage only: there's no open registration — the
     first user comes from scripts/create_user.py plus ROLE_BOOTSTRAP)."""
     if await session.get(User, user_in.id):
-        raise StatusError("User already registered", code="user_exists")
+        raise BadRequestError("User already registered", code="user_exists")
 
     new_user = User(id=user_in.id, active=True, password_hash=hash_password(user_in.password))
     session.add(new_user)
@@ -35,7 +34,7 @@ async def create_user(
         await session.refresh(new_user)
     except IntegrityError:
         await session.rollback()
-        raise StatusError("Failed to create user", code="create_failed")
+        raise BadRequestError("Failed to create user", code="create_failed")
 
     return new_user
 
@@ -92,7 +91,7 @@ async def update_user(
         await session.refresh(user)
     except IntegrityError:
         await session.rollback()
-        raise StatusError("Failed to update user", code="update_failed")
+        raise BadRequestError("Failed to update user", code="update_failed")
 
     return user
 

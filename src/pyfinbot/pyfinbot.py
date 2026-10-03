@@ -19,7 +19,7 @@ from greentechhub_fastapi import (
     register_permissions,
     register_settings,
 )
-from greentechhub_fastapi.exceptions import register_exception_handlers
+from greentechhub_fastapi.exceptions import register_api_error_handlers, register_exception_handlers
 from greentechhub_fastapi.permissions import RoleAdminViews
 from greentechhub_fastapi.settings import SettingsViews
 from greentechhub_fastapi.templating import mount_static_dirs
@@ -30,7 +30,6 @@ from .core.settings import settings, settings_cipher_key
 from .core.user_settings import USER_SETTINGS
 from .db.session import database_ready, init_db, session_factory
 from .models.settings_models import ROLE_GRANTS_TABLE, SETTINGS_TABLE
-from .web.api_errors import register_api_error_handlers
 from .web.templating import templates
 from .web.routes import (
     auth as web_auth,
@@ -70,11 +69,12 @@ app = FastAPI(
     version=version.VERSION
 )
 
-# /api errors as greentechhub's {code, message, details} envelope (core's
-# ApplicationError hierarchy, plus web/api_errors.py's StatusError, OAuth2
-# 401 header and framework errors); pages keep FastAPI's defaults.
+# /api errors as greentechhub's {code, message, details} envelope: core's
+# ApplicationError hierarchy (at its status_code hint when it has one, e.g. a
+# 502 sync failure), plus framework errors and the OAuth2 401 challenge under
+# /api; pages keep FastAPI's defaults.
 register_exception_handlers(app)
-register_api_error_handlers(app)
+register_api_error_handlers(app, prefix="/api")
 
 # /health (liveness) and /health/ready (SELECT 1 against the database).
 register_health(app, checks=[database_ready])
