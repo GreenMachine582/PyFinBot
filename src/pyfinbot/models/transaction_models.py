@@ -5,10 +5,10 @@ from decimal import Decimal
 from enum import Enum
 from typing import Optional, TYPE_CHECKING
 
+from greentechhub_core.dates import fiscal_year
 from sqlalchemy import Numeric
 from sqlmodel import SQLModel, Field, Relationship
 
-from ..core.fiscal_year import au_fiscal_year
 
 if TYPE_CHECKING:
     # only for type checkers; avoids runtime import cycles
@@ -87,4 +87,4 @@ class Transaction(SQLModel, table=True):
             self.cost = (self.total_value - self.fees).quantize(Decimal("0.000001"))
 
         # Compute fiscal year (AU: FY ends June 30)
-        self.fy = au_fiscal_year(self.transaction_date)
+        self.fy = fiscal_year(self.transaction_date)

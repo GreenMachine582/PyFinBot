@@ -3,6 +3,7 @@ from pathlib import Path
 
 import greentechhub_ui
 from fastapi.templating import Jinja2Templates
+from greentechhub_core.dates import fiscal_year_label
 from greentechhub_fastapi.settings import settings_context
 from greentechhub_fastapi.templating import ui_context
 
@@ -40,19 +41,15 @@ greentechhub_ui.install(
 
 # money / number / date come from greentechhub_ui.install() above:
 # |money → "$1,234.50", |number → full precision with trailing zeros trimmed
-# (floats too), |date → "5 Feb 2025". Only the FY label is ours.
-
-
-def _fy(value: int) -> str:
-    """core.fiscal_year's FY N (1 Jul N – 30 Jun N+1) as "N–(N+1)", e.g.
-    2024 → "2024–25" — a bare "FY2024" reads as the opposite year to many."""
-    return f"{value}–{(value + 1) % 100:02d}"
+# (floats too), |date → "5 Feb 2025". |fy is core's fiscal_year_label: FY N
+# (1 Jul N – 30 Jun N+1) as "2024–25", since a bare "FY2024" reads as the
+# opposite year to many.
 
 
 def _fy_options(fys: Iterable[int]) -> list[tuple[int, str]]:
     """(value, label) pairs for gth_select: 2024 → (2024, "2024–25")."""
-    return [(fy, _fy(fy)) for fy in fys]
+    return [(fy, fiscal_year_label(fy)) for fy in fys]
 
 
-templates.env.filters["fy"] = _fy
+templates.env.filters["fy"] = fiscal_year_label
 templates.env.filters["fy_options"] = _fy_options

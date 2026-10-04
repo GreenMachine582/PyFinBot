@@ -42,8 +42,6 @@ PyFinBot, in order:
   `gth_select("fy", "Financial year", fys|fy_options, value=report.fy, id="gains-fy", field_class="mb-0")` in
   `_report_gains.html` and the same with `placeholder="All time"`, `id="dividends-fy"` in `_report_dividends.html`.
   Both are `name="fy"` in report panes that stay in the DOM, so without `id=` they'd share `id="gth-field-fy"`
-- [ ] 7. `refactor(core): core's fiscal years` — `greentechhub_core.dates` replaces `core/fiscal_year.py`; the `|fy`
-  filter uses `fiscal_year_label`
 - [ ] 8. `refactor(core): core's password hashing` — `greentechhub_core.security.passwords` replaces the bcrypt
   helpers in `core/security.py`; same bcrypt format, so existing hashes still verify (test it)
 
