@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Optional, Union
 
 from fastapi import APIRouter, Depends, status
@@ -98,11 +97,11 @@ async def update_stock(
     if not stock:
         raise NotFoundError("Stock not found")
 
-    for key, value in stock_update.model_dump(exclude_unset=True).items():
+    changes = stock_update.model_dump(exclude_unset=True)
+    if "is_active" in changes:
+        stock.set_active(changes.pop("is_active"))
+    for key, value in changes.items():
         setattr(stock, key, value)
-
-    if not stock.is_active and not stock.archived_at:
-        stock.archived_at = datetime.now(timezone.utc)
 
     session.add(stock)
     try:

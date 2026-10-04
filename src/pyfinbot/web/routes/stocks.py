@@ -9,7 +9,7 @@ from greentechhub_fastapi.settings import get_effective_settings
 from greentechhub_ui import TableState
 from greentechhub_ui.htmx import wants_fragment
 from sqlalchemy import func, or_
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ...api.stock_routes import ALLOWED_FIELDS
@@ -148,15 +148,42 @@ async def update_stock(request: Request, stock_id: int, session: AsyncSession = 
         return _form_error(request, stock, values, {"name": ["This field is required."]})
 
     stock.name = values["name"].strip()
-    stock.is_active = values["is_active"]
-    # Mirrors the API's archive stamp, and also clears it on reactivation
-    # so archived_at never lingers on an active stock.
-    stock.archived_at = None if stock.is_active else (stock.archived_at or datetime.now(timezone.utc))
-    stock.write_datetime = datetime.now(timezone.utc)
+    stock.set_active(bool(values["is_active"]))
     label = f"{stock.market}:{stock.symbol}"
     session.add(stock)
     await session.commit()
     return hx_response(f"Saved {label}", title="Stock saved", events=(CLOSE_MODAL, CHANGED))
+
+
+async def _bulk_set_active(request: Request, session: AsyncSession, active: bool):
+    """Archive or unarchive the checked rows (gth_data_table's bulk bar posts
+    them as repeated `ids`). Counts only the stocks whose state changed."""
+    ids = [int(v) for v in (await request.form()).getlist("ids") if isinstance(v, str) and v.isdigit()]
+    stocks = (await session.exec(select(Stock).where(col(Stock.id).in_(ids)))).all() if ids else []
+    now = datetime.now(timezone.utc)
+    changed = 0
+    for stock in stocks:
+        if stock.set_active(active, now):
+            changed += 1
+            session.add(stock)
+    await session.commit()
+
+    verb = "Unarchived" if active else "Archived"
+    if not changed:
+        action = "unarchive" if active else "archive"
+        return hx_response(f"No stocks to {action}.", "info", events=(CHANGED,))
+    noun = "stock" if changed == 1 else "stocks"
+    return hx_response(f"{verb} {changed} {noun}", title=f"Stocks {verb.lower()}", events=(CHANGED,))
+
+
+@router.post("/bulk-archive")
+async def bulk_archive(request: Request, session: AsyncSession = Depends(get_session)):
+    return await _bulk_set_active(request, session, active=False)
+
+
+@router.post("/bulk-unarchive")
+async def bulk_unarchive(request: Request, session: AsyncSession = Depends(get_session)):
+    return await _bulk_set_active(request, session, active=True)
 
 
 @router.get("/{stock_id:int}/delete")

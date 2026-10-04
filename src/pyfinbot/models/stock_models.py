@@ -29,6 +29,19 @@ class Stock(SQLModel, table=True):
     transactions: List["Transaction"] = Relationship(back_populates="stock")
     dividends: List["Dividend"] = Relationship(back_populates="stock")
 
+    def set_active(self, active: bool, now: Optional[datetime] = None) -> bool:
+        """Activate or archive this stock: the one archive rule for the web
+        form, bulk archive, the API and market sync. archived_at is stamped
+        when archiving (an existing stamp is kept) and cleared on
+        reactivation, so it never lingers on an active stock. Returns
+        whether is_active changed."""
+        now = now or datetime.now(timezone.utc)
+        changed = self.is_active != active
+        self.is_active = active
+        self.archived_at = None if active else (self.archived_at or now)
+        self.write_datetime = now
+        return changed
+
     @classmethod
     async def search(
             cls, session: AsyncSession, *, market: str, symbol: str
