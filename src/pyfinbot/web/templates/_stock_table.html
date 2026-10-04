@@ -1,12 +1,17 @@
-{% from "table.html" import gth_data_table, gth_table_actions_cell %}
+{% from "table.html" import gth_data_table, gth_table_actions_cell, gth_table_select_cell %}
 {% from "badge.html" import gth_badge %}
 {% call(stock) gth_data_table(table, [
     {"label": "Symbol", "sort_key": "symbol"},
     {"label": "Market", "sort_key": "market"},
     {"label": "Name", "sort_key": "name"},
     "Status",
-  ], stocks, empty_message="No stocks match these filters.", refresh_event="stocksChanged", row_actions=True) %}
+  ], stocks, empty_message="No stocks match these filters.", refresh_event="stocksChanged", row_actions=True,
+  bulk_actions=[
+    {"label": "Archive", "url": "/stocks/bulk-archive", "icon": "archive"},
+    {"label": "Unarchive", "url": "/stocks/bulk-unarchive", "icon": "arrow-counterclockwise"},
+  ]) %}
 <tr>
+  {{ gth_table_select_cell(stock.id, stock.market ~ ":" ~ stock.symbol) }}
   <td class="fw-semibold">{{ stock.symbol }}</td>
   <td>{{ stock.market }}</td>
   <td>{{ stock.name }}</td>

@@ -102,9 +102,7 @@ async def syncMarket(session: AsyncSession, market: str, fetch_data: Callable = 
             # Name changed, or it was previously archived, reactivate/update
             if stock.name != company_name or not stock.is_active:
                 stock.name = company_name
-                stock.is_active = True
-                stock.archived_at = None
-                stock.write_datetime = now
+                stock.set_active(True, now)
                 session.add(stock)
                 updated.append(sym)
         else:
@@ -121,9 +119,7 @@ async def syncMarket(session: AsyncSession, market: str, fetch_data: Callable = 
     for sym in to_archive:
         stock = existing[sym]
         if stock.is_active:
-            stock.is_active = False
-            stock.archived_at = now
-            stock.write_datetime = now
+            stock.set_active(False, now)
             session.add(stock)
             archived.append(sym)
 

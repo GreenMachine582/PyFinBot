@@ -51,12 +51,6 @@ The remaining greentechhub-ui v0.11.0 items below follow these.
 
 v0.11.0 (the Data & forms release) is already pinned (now v0.14). One PR per item, in this order.
 
-- [ ] `feat(stocks): bulk archive and unarchive` — `POST /stocks/bulk-archive`
-      and `/stocks/bulk-unarchive` read `ids` and share `update_stock`'s
-      `is_active`/`archived_at`/`write_datetime` rules (factor them into one
-      helper); toast "Archived 3 stocks" + `stocksChanged`.
-      `_stock_table.html`: `bulk_actions` + `gth_table_select_cell`. (Stocks
-      are global, not per-user, like the existing stock routes)
 - [ ] `feat(web): form polish` — `_transaction_form.html`: `prefix="$"` on
       Price and Fees; Notes → `type="textarea", rows=3, maxlength=500`.
       `notes` gets `max_length=500` in the create/update schemas (the form's
