@@ -14,9 +14,9 @@ import getpass
 import sys
 from typing import Optional, Sequence
 
+from greentechhub_core.security import hash_password
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ..core.security import hash_password
 from ..models.user_models import User
 
 

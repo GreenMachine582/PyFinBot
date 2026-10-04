@@ -7,11 +7,12 @@ password form's "username" is the same string as User.id.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
+from greentechhub_core.security import verify_password
 from greentechhub_core.types import UnauthorizedError
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ..core.security import create_access_token, verify_password
+from ..core.security import create_access_token
 from ..db.session import get_session
 from ..models.user_models import User
 

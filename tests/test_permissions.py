@@ -7,13 +7,13 @@ from types import SimpleNamespace
 import pytest
 from fastapi import FastAPI
 from greentechhub_core.identity import Identity
+from greentechhub_core.security import verify_password
 from greentechhub_fastapi import register_permissions
 from sqlalchemy import select
 
 from pyfinbot.admin import create_user as create_user_module
 from pyfinbot.admin.create_user import UserExists, create_user
 from pyfinbot.core.permissions import ADMIN, ROLES, SETTINGS_MANAGE, USERS_MANAGE
-from pyfinbot.core.security import verify_password
 from pyfinbot.dev.seed import DEMO_ADMIN, seed_demo
 from pyfinbot.models.settings_models import ROLE_GRANTS_TABLE
 from pyfinbot.models.user_models import User
