@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 from greentechhub_core.identity import DevelopmentIdentityProvider, Identity
+from greentechhub_core.security import verify_password
 from greentechhub_fastapi.auth import LoginViews, resolve_dependency
 
-from ...core.security import verify_password
 from ...core.settings import settings
 from ...db.session import get_session
 from ...models.user_models import User

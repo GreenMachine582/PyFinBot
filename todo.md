@@ -36,16 +36,14 @@ Waiting on a gth release:
 - [ ] greentechhub-core, unreleased — `paginate` without SQLModel's `execute()` DeprecationWarning (#37). Until it's
   pinned, every web table page and API list logs two of those warnings; pinning it needs no PyFinBot code change
 
-PyFinBot, in order:
+PyFinBot, once that ui release is pinned:
 - [ ] 3a. `refactor(reports): FY selects as gth_select` — after a greentechhub-ui release with `gth_select(id=)` /
   `gth_form_field(id=)` (greentechhub-ui #71, not released yet): pin it, then
   `gth_select("fy", "Financial year", fys|fy_options, value=report.fy, id="gains-fy", field_class="mb-0")` in
   `_report_gains.html` and the same with `placeholder="All time"`, `id="dividends-fy"` in `_report_dividends.html`.
   Both are `name="fy"` in report panes that stay in the DOM, so without `id=` they'd share `id="gth-field-fy"`
-- [ ] 8. `refactor(core): core's password hashing` — `greentechhub_core.security.passwords` replaces the bcrypt
-  helpers in `core/security.py`; same bcrypt format, so existing hashes still verify (test it)
 
-The remaining greentechhub-ui v0.11.0 items below follow these.
+The remaining greentechhub-ui v0.11.0 items below don't wait for it.
 
 ## greentechhub-ui v0.11.0 adoption (remaining)
 

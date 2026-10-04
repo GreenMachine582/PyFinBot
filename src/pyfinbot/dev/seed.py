@@ -22,11 +22,11 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, Sequence, cast
 
+from greentechhub_core.security import hash_password
 from sqlalchemy import CursorResult, delete, func
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ..core.security import hash_password
 from ..core.settings import settings
 from ..core.permissions import ADMIN
 from ..models.dividend_models import Dividend

@@ -1,21 +1,14 @@
+"""The API's bearer JWTs. Password hashing is greentechhub_core.security's
+hash_password / verify_password (bcrypt, the same $2b$ hashes as before)."""
+
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
-import bcrypt
 import jwt
 
 from .settings import settings
 
 ALGORITHM = "HS256"
-
-
-def hash_password(password: str) -> str:
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
-
-
-def verify_password(password: str, hashed: str) -> bool:
-    return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
 
 
 def create_access_token(data: dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:

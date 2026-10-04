@@ -3,9 +3,9 @@ from collections import defaultdict
 from decimal import Decimal
 
 import pytest
+from greentechhub_core.security import verify_password
 from sqlmodel import select
 
-from pyfinbot.core.security import verify_password
 from pyfinbot.dev import seed as seed_module
 from pyfinbot.dev.seed import (
     DEMO_STOCKS,

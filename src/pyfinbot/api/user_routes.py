@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, status
+from greentechhub_core.security import hash_password
 from greentechhub_core.types import BadRequestError, ForbiddenError, NotFoundError
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
@@ -8,7 +9,6 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..core.dependencies import get_current_user, require_api_permission
 from ..core.permissions import USERS_MANAGE
-from ..core.security import hash_password
 from ..models.user_models import User
 from ..schemas.user_schemas import UserBase, UserCreate, UserUpdate
 from ..db.session import get_session
