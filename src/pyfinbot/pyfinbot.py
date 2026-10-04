@@ -8,7 +8,6 @@ import pkgutil
 
 import greentechhub_ui
 from fastapi import FastAPI
-from fastapi_pagination import add_pagination
 from greentechhub_core.settings.crypto import FernetCipher
 from greentechhub_core.sqlalchemy import SQLAlchemyGrantStore, SQLAlchemySettingsStore
 from greentechhub_core.logging import configure_logging
@@ -149,6 +148,3 @@ for _, module_name, _ in pkgutil.iter_modules(api.__path__):
     if hasattr(module, "router"):
         app.include_router(module.router, prefix="/api")
 
-
-# Enable pagination for all routes
-add_pagination(app)

@@ -3,6 +3,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from greentechhub_core.query.types import Sort
+from greentechhub_core.sqlalchemy.query import order_by, paginate
 from greentechhub_fastapi.settings import get_effective_settings
 from greentechhub_ui import TableState
 from greentechhub_ui.htmx import wants_fragment
@@ -10,15 +12,14 @@ from sqlalchemy import func, or_
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ...api.stock_routes import ALLOWED_FILTERING_FIELDS
+from ...api.stock_routes import ALLOWED_FIELDS
 from ...core.market_sync import MARKET_FETCHERS, market_sync_guard, syncMarket
-from ...core.sorting import buildSortOrderBy
+from ...core.user_settings import DEFAULT_ROWS_PER_PAGE, PAGE_SIZES
 from ...db.session import get_session
 from ...models.stock_models import Stock
 from ...models.transaction_models import Transaction
 from ..deps import page_identity
 from ..htmx import CLOSE_MODAL, hx_response
-from ..paging import PAGE_SIZE, PAGE_SIZES, paginate, sort_string
 from ..templating import templates
 
 logger = logging.getLogger(__name__)
@@ -43,7 +44,7 @@ def _table_state(request: Request, user_settings: dict[str, Any]) -> TableState:
         user_settings=user_settings,  # their rows per page
         id="stocks",
         base_url="/stocks",
-        page_size=PAGE_SIZE,
+        page_size=DEFAULT_ROWS_PER_PAGE,
         page_sizes=PAGE_SIZES,
         sortable=("symbol", "market", "name"),
         default_sort="market",
@@ -63,9 +64,11 @@ async def _query_stocks(session: AsyncSession, state: TableState) -> tuple[list[
         stmt = stmt.where(Stock.is_active.is_(True))
     elif status_ == "archived":
         stmt = stmt.where(Stock.is_active.is_(False))
-    sort = sort_string(state, "market", "symbol", "id")
-    stmt = stmt.order_by(*buildSortOrderBy(Stock, ALLOWED_FILTERING_FIELDS, None, sort))
-    return await paginate(session, stmt, state)
+    # The table's sort, then tie-breakers in the same direction so paging is stable.
+    sorts = [Sort(field=f, direction=state.direction) for f in (state.sort, "market", "symbol", "id") if f]
+    stmt = stmt.order_by(*order_by(sorts, ALLOWED_FIELDS))
+    stocks, total = await paginate(session, stmt, offset=state.offset, limit=state.limit)
+    return list(stocks), state.with_result(total=total)
 
 
 @router.get("")

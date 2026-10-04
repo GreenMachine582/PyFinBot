@@ -33,6 +33,8 @@ Scope and architecture: see `web-implementation-brief.md`.
 
 Waiting on a gth release:
 - [ ] greentechhub-ui, unreleased — `gth_select`/`gth_form_field` `id=` element-id prefix (#71)
+- [ ] greentechhub-core, unreleased — `paginate` without SQLModel's `execute()` DeprecationWarning (#37). Until it's
+  pinned, every web table page and API list logs two of those warnings; pinning it needs no PyFinBot code change
 
 PyFinBot, in order:
 - [ ] 3a. `refactor(reports): FY selects as gth_select` — after a greentechhub-ui release with `gth_select(id=)` /
@@ -40,10 +42,6 @@ PyFinBot, in order:
   `gth_select("fy", "Financial year", fys|fy_options, value=report.fy, id="gains-fy", field_class="mb-0")` in
   `_report_gains.html` and the same with `placeholder="All time"`, `id="dividends-fy"` in `_report_dividends.html`.
   Both are `name="fy"` in report panes that stay in the DOM, so without `id=` they'd share `id="gth-field-fy"`
-- [ ] 6. `refactor(query): core's where / order_by / page` — the web tables use `order_by` + `paginate` (deleting
-  `web/paging.py` and `core/sorting.py`); the API list routes use `PageParams` / `parse_filter_json` + `page()`
-  (deleting `core/sa_filters_compat.py`). Check whether anything still sends the Tabulator `sorters` JSON: convert it
-  to `Sort`s, or drop it if nothing does
 - [ ] 7. `refactor(core): core's fiscal years` — `greentechhub_core.dates` replaces `core/fiscal_year.py`; the `|fy`
   filter uses `fiscal_year_label`
 - [ ] 8. `refactor(core): core's password hashing` — `greentechhub_core.security.passwords` replaces the bcrypt

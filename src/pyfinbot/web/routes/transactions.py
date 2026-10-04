@@ -4,6 +4,8 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from greentechhub_core.identity import Identity
+from greentechhub_core.query.types import Sort
+from greentechhub_core.sqlalchemy.query import order_by, paginate
 from greentechhub_fastapi.settings import get_effective_settings
 from greentechhub_ui import TableState
 from greentechhub_ui.htmx import wants_fragment
@@ -12,8 +14,8 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ...api.transaction_routes import ALLOWED_FILTERING_FIELDS, fetchTransaction
-from ...core.sorting import buildSortOrderBy
+from ...api.transaction_routes import ALLOWED_FIELDS, fetchTransaction
+from ...core.user_settings import DEFAULT_ROWS_PER_PAGE, PAGE_SIZES
 from ...db.session import get_session
 from ...models.stock_models import Stock
 from ...models.transaction_models import Transaction, TypeEnum
@@ -21,7 +23,6 @@ from ...schemas.transaction_schemas import TransactionCreate
 from ..csv_response import csv_download
 from ..deps import page_identity
 from ..htmx import CLOSE_MODAL, hx_response
-from ..paging import PAGE_SIZE, PAGE_SIZES, paginate, sort_string
 from ..templating import templates
 
 router = APIRouter(prefix="/transactions")
@@ -62,7 +63,7 @@ def _table_state(request: Request, user_settings: dict[str, Any]) -> TableState:
         user_settings=user_settings,  # their rows per page
         id="transactions",
         base_url="/transactions",
-        page_size=PAGE_SIZE,
+        page_size=DEFAULT_ROWS_PER_PAGE,
         page_sizes=PAGE_SIZES,
         sortable=("transaction_date", "type", "units", "price", "fees", "total_value", "cost"),
         default_sort="transaction_date",
@@ -94,13 +95,16 @@ def _transactions_stmt(identity: Identity, state: TableState) -> Any:
         stmt = stmt.where(Transaction.transaction_date <= end)
     if (fy := filters.get("fy", "")).isdigit():
         stmt = stmt.where(Transaction.fy == int(fy))
-    sort = sort_string(state, "transaction_date", "id")
-    return stmt.order_by(*buildSortOrderBy(Transaction, ALLOWED_FILTERING_FIELDS, None, sort))
+    # The table's sort, then tie-breakers in the same direction so paging is stable.
+    sorts = [Sort(field=f, direction=state.direction) for f in (state.sort, "transaction_date", "id") if f]
+    return stmt.order_by(*order_by(sorts, ALLOWED_FIELDS))
 
 
 async def _query_transactions(session: AsyncSession, identity: Identity,
                               state: TableState) -> tuple[list[Transaction], TableState]:
-    return await paginate(session, _transactions_stmt(identity, state), state)
+    transactions, total = await paginate(session, _transactions_stmt(identity, state),
+                                         offset=state.offset, limit=state.limit)
+    return list(transactions), state.with_result(total=total)
 
 
 CSV_HEADER = ["Date", "Market", "Symbol", "Type", "Units", "Price", "Fees", "Total", "Cost", "FY", "Notes"]
