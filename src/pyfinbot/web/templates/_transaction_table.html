@@ -1,8 +1,10 @@
-{% from "table.html" import gth_data_table, gth_table_actions_cell %}
+{% from "table.html" import gth_data_table, gth_table_actions_cell, gth_table_select_cell %}
 {% from "badge.html" import gth_badge %}
 {#- view_options: a View menu to hide columns (Date and Stock always shown,
     Notes hidden until asked for) and switch density, remembered per browser.
-    row_actions: the edit/delete column, which the View menu never lists. -#}
+    row_actions: the edit/delete column, which the View menu never lists.
+    bulk_actions: a select column (also never in the View menu) and a bar to
+    delete the checked rows, after a confirm. -#}
 {% call(txn) gth_data_table(table, [
     {"label": "Date", "sort_key": "transaction_date", "hideable": False},
     {"label": "Stock", "hideable": False},
@@ -15,8 +17,11 @@
     "FY",
     {"label": "Notes", "hidden": True},
   ], transactions, empty_message="No transactions match these filters.", refresh_event="transactionsChanged",
-  view_options=True, row_actions=True) %}
+  view_options=True, row_actions=True,
+  bulk_actions=[{"label": "Delete", "url": "/transactions/bulk-delete", "icon": "trash", "style": "btn-outline-danger",
+                 "confirm": "Delete the selected transactions? This can't be undone."}]) %}
 <tr>
+  {{ gth_table_select_cell(txn.id, txn.type.value ~ " " ~ txn.stock.symbol ~ " on " ~ txn.transaction_date|date) }}
   <td class="text-nowrap">{{ txn.transaction_date|date }}</td>
   <td class="text-nowrap" title="{{ txn.stock.name }}">
     <span class="fw-semibold">{{ txn.stock.symbol }}</span> · {{ txn.stock.market }}

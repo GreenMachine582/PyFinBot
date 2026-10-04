@@ -10,8 +10,9 @@ from greentechhub_fastapi.settings import get_effective_settings
 from greentechhub_ui import TableState
 from greentechhub_ui.htmx import wants_fragment
 from pydantic import ValidationError
+from sqlalchemy import delete
 from sqlalchemy.orm import selectinload
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ...api.transaction_routes import ALLOWED_FIELDS, fetchTransaction
@@ -284,6 +285,25 @@ async def update_transaction(request: Request, transaction_id: int,
     session.add(transaction)
     await session.commit()
     return hx_response(f"Saved {label}", title="Transaction saved", events=(CLOSE_MODAL, CHANGED))
+
+
+@router.post("/bulk-delete")
+async def bulk_delete_transactions(request: Request, identity: Identity = Depends(page_identity),
+                                   session: AsyncSession = Depends(get_session)):
+    """Delete the checked rows (gth_data_table's bulk bar posts them as
+    repeated `ids`). Scoped to the signed-in user in the query itself, so
+    another user's ids are silently ignored, as the single delete 404s them."""
+    ids = [int(v) for v in (await request.form()).getlist("ids") if isinstance(v, str) and v.isdigit()]
+    deleted = 0
+    if ids:
+        result = await session.exec(delete(Transaction).where(
+            col(Transaction.user_id) == identity.subject, col(Transaction.id).in_(ids)))
+        deleted = result.rowcount
+        await session.commit()
+    if not deleted:
+        return hx_response("No transactions to delete.", "info", events=(CHANGED,))
+    noun = "transaction" if deleted == 1 else "transactions"
+    return hx_response(f"Deleted {deleted} {noun}", title="Transactions deleted", events=(CHANGED,))
 
 
 @router.get("/{transaction_id:int}/delete")
