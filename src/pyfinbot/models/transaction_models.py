@@ -16,6 +16,10 @@ if TYPE_CHECKING:
     from .user_models import User
 
 
+#: The longest notes a transaction keeps: the forms, schemas and API reject
+#: more, and the CSV / Commsec importers truncate to it.
+NOTES_MAX = 500
+
 class TypeEnum(str, Enum):
     BUY = "Buy"
     SELL = "Sell"
@@ -44,7 +48,8 @@ class Transaction(SQLModel, table=True):
     fees: Decimal = Field(default=Decimal("0"), sa_type=Numeric(18, 6), description="Brokerage/fees")
     cost: Decimal = Field(default=Decimal("0"), sa_type=Numeric(18, 6),
                           description="Net cash movement (+sell -fees | -buy +fees)")
-    notes: Optional[str] = Field(default=None, description="Transaction notes")
+    # No DB limit; NOTES_MAX is enforced by the schemas and the importers truncate to it.
+    notes: Optional[str] = Field(default=None, description=f"Transaction notes (at most {NOTES_MAX} characters)")
 
     # FY (AU: FY ends Jun 30 → July = new FY)
     fy: int = Field(default=0, description="Fiscal year")

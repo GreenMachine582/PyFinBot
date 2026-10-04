@@ -16,7 +16,7 @@ from ...api.stock_routes import ALLOWED_FIELDS
 from ...core.market_sync import MARKET_FETCHERS, market_sync_guard, syncMarket
 from ...core.user_settings import DEFAULT_ROWS_PER_PAGE, PAGE_SIZES
 from ...db.session import get_session
-from ...models.stock_models import Stock
+from ...models.stock_models import CODE_MAX, Stock
 from ...models.transaction_models import Transaction
 from ..deps import page_identity
 from ..htmx import CLOSE_MODAL, hx_response
@@ -129,6 +129,9 @@ async def create_stock(request: Request, session: AsyncSession = Depends(get_ses
     symbol = values.get("symbol", "").strip().upper()
     name = values.get("name", "").strip()
     errors = {f: ["This field is required."] for f, v in (("market", market), ("symbol", symbol), ("name", name)) if not v}
+    for field, code in (("market", market), ("symbol", symbol)):
+        if len(code) > CODE_MAX:
+            errors[field] = [f"At most {CODE_MAX} characters."]
     if not errors and await Stock.search(session, market=market, symbol=symbol):
         errors["symbol"] = [f"{market}:{symbol} already exists."]
     if errors:

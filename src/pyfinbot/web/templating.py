@@ -4,6 +4,9 @@ from pathlib import Path
 import greentechhub_ui
 from fastapi.templating import Jinja2Templates
 from greentechhub_core.dates import fiscal_year_label
+
+from ..models.stock_models import CODE_MAX
+from ..models.transaction_models import NOTES_MAX
 from greentechhub_fastapi.settings import settings_context
 from greentechhub_fastapi.templating import ui_context
 
@@ -53,3 +56,5 @@ def _fy_options(fys: Iterable[int]) -> list[tuple[int, str]]:
 
 templates.env.filters["fy"] = fiscal_year_label
 templates.env.filters["fy_options"] = _fy_options
+# Field limits the forms show (maxlength) and the schemas enforce.
+templates.env.globals.update(NOTES_MAX=NOTES_MAX, STOCK_CODE_MAX=CODE_MAX)

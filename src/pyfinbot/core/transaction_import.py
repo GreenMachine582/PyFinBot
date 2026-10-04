@@ -12,7 +12,7 @@ for accepted alternative names):
   units       Number of units traded.
   price       Price per unit.
   fees        (Optional) Brokerage / commission. Defaults to 0.
-  notes       (Optional) Free-text notes.
+  notes       (Optional) Free-text notes, cut to NOTES_MAX (500) characters.
 """
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ import pandas as pd
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..models.stock_models import Stock
-from ..models.transaction_models import Transaction, TypeEnum
+from ..models.transaction_models import NOTES_MAX, Transaction, TypeEnum
 from ..schemas.import_schemas import ImportRowError, ImportSummary
 from ..schemas.transaction_schemas import parse_transaction_date
 from .dedupe import is_duplicate_transaction
@@ -178,7 +178,7 @@ async def import_transactions(session: AsyncSession, user_id: str, content: byte
             units=units,
             price=price,
             fees=fees,
-            notes=str(getattr(row, "notes", "") or "").strip() or None,
+            notes=str(getattr(row, "notes", "") or "").strip()[:NOTES_MAX] or None,  # truncate, don't fail
         )
 
         if await is_duplicate_transaction(session, txn):

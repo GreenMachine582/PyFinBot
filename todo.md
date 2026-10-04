@@ -49,14 +49,6 @@ The remaining greentechhub-ui v0.11.0 items below don't wait for it.
 
 v0.11.0 (the Data & forms release) is already pinned (now v0.14). One PR per item, in this order.
 
-- [ ] `feat(web): form polish` — `_transaction_form.html`: `prefix="$"` on
-      Price and Fees; Notes → `type="textarea", rows=3, maxlength=500`.
-      `notes` gets `max_length=500` in the create/update schemas (the form's
-      422 re-render shows the error; the API enforces it too) via a shared
-      `NOTES_MAX`; the CSV importer and Commsec email import truncate notes to
-      500 instead of failing the row. No DB migration (enforced in the app).
-      `_stock_form.html`: `maxlength=20` on symbol and market (the model's
-      limit)
 - [ ] `feat(transactions): bulk delete` — `POST /transactions/bulk-delete` reads `ids` and
       deletes only the current user's rows (a user-scoped query, so another
       user's ids are silently ignored, like the 404-not-403 single delete);

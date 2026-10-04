@@ -10,13 +10,17 @@ if TYPE_CHECKING:
     from .transaction_models import Transaction
 
 
+#: The longest symbol or market (the columns' limit).
+CODE_MAX = 20
+
+
 class Stock(SQLModel, table=True):
     __table_args__ = (
         UniqueConstraint("symbol", "market", name="unique_symbol_market"),
     )
     id: Optional[int] = Field(default=None, primary_key=True)
-    symbol: str = Field(index=True, max_length=20, description="Stock symbol")
-    market: str = Field(index=True, max_length=20, description="Stock market")
+    symbol: str = Field(index=True, max_length=CODE_MAX, description="Stock symbol")
+    market: str = Field(index=True, max_length=CODE_MAX, description="Stock market")
     name: str = Field(index=True, description="Full name of the stock")
 
     create_datetime: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
