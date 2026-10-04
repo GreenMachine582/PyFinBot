@@ -25,7 +25,8 @@ from greentechhub_core.settings.builtins import (
     site_banner_settings,
 )
 
-DEFAULT_ROWS_PER_PAGE = 50  # web.paging.PAGE_SIZE (a test keeps them equal)
+DEFAULT_ROWS_PER_PAGE = 50  # also the web tables' page_size (TableState)
+PAGE_SIZES = (10, 25, DEFAULT_ROWS_PER_PAGE)  # the tables' rows-per-page choices
 
 DEFAULTS = {PAGE_SIZE.key: DEFAULT_ROWS_PER_PAGE, DATE_FORMAT.key: "long"}
 

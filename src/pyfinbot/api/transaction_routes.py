@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status
-from greentechhub_core.types import BadRequestError, ForbiddenError, NotFoundError
+from fastapi import APIRouter, Depends, status
 from fastapi_pagination import Page
-from fastapi_pagination.ext.sqlmodel import apaginate
+from greentechhub_core.query.envelope import to_envelope
+from greentechhub_core.query.types import Sort
+from greentechhub_core.sqlalchemy.query import page
+from greentechhub_core.types import BadRequestError, ForbiddenError, NotFoundError
+from greentechhub_fastapi.query import PageParams
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
@@ -15,33 +17,34 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..api.stock_routes import _searchForStock
 from ..core.dependencies import get_current_user
-from ..core.sa_filters_compat import buildWhereFromSAFSpec
-from ..core.sorting import buildSortOrderBy
 from ..models.transaction_models import Transaction
 from ..models.user_models import User
 from ..schemas.transaction_schemas import TransactionCreate, TransactionRead, TransactionUpdate
 from ..db.session import get_session
+from .query import page_request
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
-# Allowed field map (external -> model attribute). Add/adjust to match your Transaction model.
-# Unknown fields in filters/sorters will be ignored by the helpers.
-ALLOWED_FILTERING_FIELDS = {
-    "id": "id",
-    "user_id": "user_id",
-    "stock_id": "stock_id",
-    "type": "type",
-    "units": "units",
-    "price": "price",
-    "fees": "fees",
-    "total_value": "total_value",
-    "cost": "cost",
-    "fy": "fy",
-    "transaction_date": "transaction_date",
-    "date": "transaction_date",  # alias
-    "create_datetime": "create_datetime",
-    "write_datetime": "write_datetime",
+# What the list's `filters` and `sort` may name (public name -> column); the
+# web table sorts through it too. Anything else is ignored. The list is
+# always scoped to the signed-in user, so filtering on user_id can only narrow.
+ALLOWED_FIELDS = {
+    "id": Transaction.id,
+    "user_id": Transaction.user_id,
+    "stock_id": Transaction.stock_id,
+    "type": Transaction.type,
+    "units": Transaction.units,
+    "price": Transaction.price,
+    "fees": Transaction.fees,
+    "total_value": Transaction.total_value,
+    "cost": Transaction.cost,
+    "fy": Transaction.fy,
+    "transaction_date": Transaction.transaction_date,
+    "date": Transaction.transaction_date,  # alias
+    "create_datetime": Transaction.create_datetime,
+    "write_datetime": Transaction.write_datetime,
 }
+DEFAULT_SORT = (Sort(field="transaction_date", direction="desc"), Sort(field="id"))
 
 
 async def fetchTransaction(session: AsyncSession, transaction_id: int,
@@ -90,55 +93,18 @@ async def create_transaction(
 async def list_transactions(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
-
-    # Complex filters: sqlalchemy-filters schema (JSON string)
-    filters: Optional[str] = Query(
-        None, description="sqlalchemy-filters JSON spec"
-    ),
-
-    # Tabulator sends sorters as JSON list; keep 'sort' too for compatibility
-    sorters: Optional[str] = Query(None, description="Tabulator sorters JSON"),
-    sort: Optional[str] = Query(
-        "-transaction_date,id",
-        description="Comma list of fields, '-' for desc (fallback if no sorters)",
-    ),
+    params: PageParams = Depends(),
 ):
-    """
-    List transactions with optional filtering/sorting.
-
-    - `filters`: JSON per sqlalchemy-filters (AND/OR groups, ops, etc.)
-    - `sorters`: Tabulator sorters JSON (list of {field, dir})
-    - `sort`:    Simple fallback (e.g. "-transaction_date,id")
-    - Results are always hard-scoped to the authenticated user.
-    """
+    """List the signed-in user's transactions: `page`/`size`, `sort`
+    (default "-transaction_date,id"), and `filters` / `filter` on the fields
+    in ALLOWED_FIELDS (api/query.py)."""
     stmt = (
         select(Transaction)
         .options(selectinload(Transaction.stock))  # eager-load nested stock
+        .where(Transaction.user_id == current_user.id)  # hard user scope
     )
-    # Hard user scope (AND)
-    stmt = stmt.where(Transaction.user_id == current_user.id)
-
-    # Parse + apply sqlalchemy-filters
-    if filters:
-        try:
-            filters_spec = json.loads(filters)
-        except json.JSONDecodeError:
-            raise BadRequestError("Invalid 'filters' JSON", code="invalid_filters")
-
-        # If a client tries to filter a different user_id, override it with the
-        # authenticated user by appending (AND) our user filter afterwards.
-        where_expr = buildWhereFromSAFSpec(
-            model=Transaction, spec=filters_spec, allowed_fields=ALLOWED_FILTERING_FIELDS
-        )
-        if where_expr is not None:
-            stmt = stmt.where(where_expr)
-
-    # Sorting (Tabulator sorters > fallback 'sort')
-    order_by = buildSortOrderBy(Transaction, ALLOWED_FILTERING_FIELDS, sorters, sort)
-    if order_by:
-        stmt = stmt.order_by(*order_by)
-
-    return await apaginate(session, stmt)
+    result = await page(session, stmt, page_request(params), ALLOWED_FIELDS, default_sort=DEFAULT_SORT)
+    return to_envelope(result)
 
 
 @router.get("/{transaction_id:int}", response_model=TransactionRead)

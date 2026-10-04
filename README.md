@@ -53,7 +53,7 @@ tracking.
 ```
 src/pyfinbot/
 ├── api/       # FastAPI routers — users, stocks, transactions, import, reports (auto-registered under /api)
-├── core/      # Settings, auth dependencies, sorting/filtering helpers, market sync
+├── core/      # Settings, auth dependencies, market sync
 ├── db/        # Async SQLAlchemy engine/session setup
 ├── models/    # SQLModel ORM models (User, Stock, Transaction)
 ├── schemas/   # Pydantic request/response schemas
@@ -142,11 +142,21 @@ All routes are mounted under `/api`. See `/docs` for full request/response schem
 | Dividends | `/api/dividends` | Sync per-stock dividend history (yfinance) |
 | Reports | `/api/reports` | Holdings, FY capital-gains, and dividend-income reports |
 
+**Listing.** `GET /api/stocks/` and `GET /api/transactions/` return `{items, total, page, size, pages}` and take:
+- `page`, `size`: 1-based page, and 1–100 rows (default 50);
+- `sort`: `field,-other` (`-` is descending), defaulting to `market,symbol` and `-transaction_date,id`;
+- `filters`: JSON clauses, AND-ed, e.g. `[{"field": "market", "op": "eq", "value": "ASX"}]`, with `{"and": [...]}` /
+  `{"or": [...]}` groups. The ops are `eq ne gt gte lt lte in not_in contains starts_with ends_with is_null`, or the
+  symbols `== != > >= < <=`;
+- `filter`: the same as flat `field:op:value,...` text.
+
+Only the model's own fields can be named; others are ignored. Transactions are always your own.
+
 **Errors.** Every `/api` error is a JSON envelope with a stable machine-readable `code`:
 ```json
 {"code": "not_found", "message": "Stock not found", "details": null}
 ```
-Statuses are the usual ones: 400 (e.g. `stock_exists`, `invalid_filters`), 401 `unauthorized` (with
+Statuses are the usual ones: 400 (e.g. `stock_exists`, `invalid_filters`, `invalid_sort`), 401 `unauthorized` (with
 `WWW-Authenticate: Bearer`), 403 `forbidden`, 404 `not_found`, 409 `conflict`, 422 `validation_error` (with the
 field errors in `details`), 502/503 for email sync and import failures. *(Changed: errors used to be FastAPI's
 `{"detail": ...}`; read `message` instead.)*

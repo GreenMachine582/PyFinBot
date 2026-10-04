@@ -10,7 +10,6 @@ from pathlib import Path
 
 from pyfinbot.core.user_settings import DEFAULT_ROWS_PER_PAGE, USER_SETTINGS
 from pyfinbot.dev.seed import seed_demo
-from pyfinbot.web import paging
 
 from .conftest import create_stock, web_login
 from .test_web_reports import HX, _txn
@@ -40,7 +39,7 @@ def test_registry_is_the_shared_preferences_with_pyfinbots_defaults():
     keys = {s.key for s in USER_SETTINGS}
     assert {"ui.theme", "locale.timezone", "locale.date_format", "ui.page_size",
             "locale.number_format", "locale.time_format"} <= keys
-    assert USER_SETTINGS.get("ui.page_size").default == DEFAULT_ROWS_PER_PAGE == paging.PAGE_SIZE
+    assert USER_SETTINGS.get("ui.page_size").default == DEFAULT_ROWS_PER_PAGE
     assert USER_SETTINGS.get("locale.date_format").default == "long"
     assert "ui.sidebar_default" not in USER_SETTINGS  # navbar layout: it would do nothing
     # Everything is per user except the admins' Site group (Settings › App).

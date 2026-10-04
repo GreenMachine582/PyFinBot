@@ -1,34 +1,37 @@
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
 from typing import Optional, Union
 
-from fastapi import APIRouter, Depends, Query, status
-from greentechhub_core.types import BadRequestError, ConflictError, NotFoundError
+from fastapi import APIRouter, Depends, status
 from fastapi_pagination import Page
-from fastapi_pagination.ext.sqlmodel import apaginate
+from greentechhub_core.query.envelope import to_envelope
+from greentechhub_core.query.types import Sort
+from greentechhub_core.sqlalchemy.query import page
+from greentechhub_core.types import BadRequestError, ConflictError, NotFoundError
+from greentechhub_fastapi.query import PageParams
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..core.market_sync import syncMarket, MARKET_FETCHERS, market_sync_guard
-from ..core.sorting import buildSortOrderBy
-from ..core.sa_filters_compat import buildWhereFromSAFSpec
 from ..models.stock_models import Stock
 from ..schemas.stock_schemas import StockCreate, StockRead, StockUpdate, SyncResult
 from ..db.session import get_session
+from .query import page_request
 
 router = APIRouter(prefix="/stocks", tags=["Stocks"])
 
-# Allowed field map (external -> model attribute). Add more as needed.
-ALLOWED_FILTERING_FIELDS = {
-    "id": "id",
-    "market": "market",
-    "symbol": "symbol",
-    "name": "name",
-    "is_active": "is_active",
+# What the list's `filters` and `sort` may name (public name -> column); the
+# web table sorts through it too. Anything else is ignored.
+ALLOWED_FIELDS = {
+    "id": Stock.id,
+    "market": Stock.market,
+    "symbol": Stock.symbol,
+    "name": Stock.name,
+    "is_active": Stock.is_active,
 }
+DEFAULT_SORT = (Sort(field="market"), Sort(field="symbol"))
 
 
 async def _searchForStock(session: AsyncSession, stock_id: int | str) -> Optional[Stock]:
@@ -68,34 +71,13 @@ async def create_stock(stock_in: StockCreate, session: AsyncSession = Depends(ge
 @router.get("/", response_model=Page[StockRead])
 async def list_stocks(
     session: AsyncSession = Depends(get_session),
-
-    # Complex filters: sqlalchemy-filters schema (JSON string)
-    filters: Optional[str] = Query(None, description="sqlalchemy-filters JSON spec"),
-
-    # Tabulator sends sorters as JSON list; keep 'sort' too for compatibility
-    sorters: Optional[str] = Query(None, description="Tabulator sorters JSON"),
-    sort: Optional[str] = Query("market,symbol", description="Comma list of fields, '-' for desc"),
+    params: PageParams = Depends(),
 ):
-    stmt = select(Stock)
-
-    # Build WHERE from sqlalchemy-filters spec
-    if filters:
-        try:
-            filters_spec = json.loads(filters)
-        except json.JSONDecodeError:
-            raise BadRequestError("Invalid 'filters' JSON", code="invalid_filters")
-
-        where_expr = buildWhereFromSAFSpec(model=Stock, spec=filters_spec, allowed_fields=ALLOWED_FILTERING_FIELDS)
-        if where_expr is not None:
-            stmt = stmt.where(where_expr)
-
-    # Sorting (Tabulator sorters > fallback 'sort')
-    order_by = buildSortOrderBy(Stock, ALLOWED_FILTERING_FIELDS, sorters, sort)
-    if order_by:
-        stmt = stmt.order_by(*order_by)
-
-    # Let fastapi_pagination handle page/size params
-    return await apaginate(session, stmt)
+    """List stocks: `page`/`size`, `sort` (default "market,symbol"), and
+    `filters` / `filter` on the fields in ALLOWED_FIELDS (api/query.py)."""
+    result = await page(session, select(Stock), page_request(params), ALLOWED_FIELDS,
+                        default_sort=DEFAULT_SORT)
+    return to_envelope(result)
 
 
 @router.get("/{stock_id}", response_model=StockRead)
