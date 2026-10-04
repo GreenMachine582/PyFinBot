@@ -43,19 +43,6 @@ PyFinBot, once that ui release is pinned:
   `_report_gains.html` and the same with `placeholder="All time"`, `id="dividends-fy"` in `_report_dividends.html`.
   Both are `name="fy"` in report panes that stay in the DOM, so without `id=` they'd share `id="gth-field-fy"`
 
-The remaining greentechhub-ui v0.11.0 items below don't wait for it.
-
-## greentechhub-ui v0.11.0 adoption (remaining)
-
-v0.11.0 (the Data & forms release) is already pinned (now v0.14). One PR per item, in this order.
-
-- [ ] `feat(transactions): bulk delete` — `POST /transactions/bulk-delete` reads `ids` and
-      deletes only the current user's rows (a user-scoped query, so another
-      user's ids are silently ignored, like the 404-not-403 single delete);
-      toast "Deleted N transactions" + `transactionsChanged`. The table gets
-      `bulk_actions=[{"label": "Delete", "style": "btn-outline-danger",
-      "confirm": "Delete the selected transactions?", ...}]` + select cells
-
 ## Known limitations (accepted, not bugs)
 
 - Stateless JWT, 24h expiry, no refresh/revocation — a leaked token is valid
