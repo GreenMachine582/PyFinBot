@@ -5,7 +5,7 @@ from typing import Optional, Union
 
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
-from ..models.transaction_models import TypeEnum
+from ..models.transaction_models import NOTES_MAX, TypeEnum
 
 
 def parse_transaction_date(v):
@@ -52,6 +52,8 @@ class TransactionBase(BaseModel):
 
 class TransactionCreate(TransactionBase):
     stock_id: Union[int, str]  # int or market:symbol key
+    # Limited on the way in only, so TransactionRead still reads older, longer notes.
+    notes: Optional[str] = Field(default=None, max_length=NOTES_MAX)
 
 
 class TransactionRead(TransactionBase):
@@ -76,6 +78,6 @@ class TransactionUpdate(BaseModel):
     units: Optional[float] = None
     price: Optional[float] = None
     fees: Optional[float] = None
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(default=None, max_length=NOTES_MAX)
 
     _parse_transaction_date = field_validator("transaction_date", mode="before")(parse_transaction_date)

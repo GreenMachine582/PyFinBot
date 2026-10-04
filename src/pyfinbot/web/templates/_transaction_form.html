@@ -32,14 +32,15 @@
     </div>
     <div class="col-md-4">
       {{ gth_form_field("price", "Price per unit", value=values.get("price"), type="number", step="any", min="0",
-          errors=errors.get("price")) }}
+          errors=errors.get("price"), prefix="$") }}
     </div>
     <div class="col-md-4">
       {{ gth_form_field("fees", "Fees", value=values.get("fees"), type="number", step="any", min="0",
-          errors=errors.get("fees"), help_text="Brokerage; defaults to 0.") }}
+          errors=errors.get("fees"), help_text="Brokerage; defaults to 0.", prefix="$") }}
     </div>
   </div>
-  {{ gth_form_field("notes", "Notes", value=values.get("notes"), errors=errors.get("notes")) }}
+  {{ gth_form_field("notes", "Notes", value=values.get("notes"), errors=errors.get("notes"),
+      type="textarea", rows=3, maxlength=NOTES_MAX) }}
   <p class="form-text">Total, cost, and financial year are calculated when you save.</p>
   <div class="d-flex justify-content-end gap-2">
     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>

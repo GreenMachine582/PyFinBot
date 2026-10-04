@@ -12,7 +12,7 @@ from typing import Callable, List, Optional, Tuple
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..models.stock_models import Stock
-from ..models.transaction_models import Transaction, TypeEnum
+from ..models.transaction_models import NOTES_MAX, Transaction, TypeEnum
 from ..schemas.email_schemas import EmailSyncSummary
 from .commsec_parser import CommsecParseError, parse_commsec_email
 from .dedupe import is_duplicate_transaction
@@ -92,7 +92,7 @@ async def sync_commsec_emails(
             notes=(
                 f"Commsec email import — {parsed.action} {parsed.units} {parsed.symbol} "
                 f"on {parsed.trade_date}, trading account {parsed.trading_account}"
-            ),
+            )[:NOTES_MAX],
         )
 
         try:

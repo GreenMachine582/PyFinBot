@@ -1,12 +1,14 @@
 
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from ..models.stock_models import CODE_MAX
 
 
 class StockBase(BaseModel):
-    market: str
-    symbol: str
+    market: str = Field(max_length=CODE_MAX)
+    symbol: str = Field(max_length=CODE_MAX)
     name: str
     is_active: bool = True
 
