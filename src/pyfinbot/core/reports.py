@@ -12,6 +12,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Optional
 
+from greentechhub_core.dates import fiscal_year, fiscal_year_bounds
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -26,7 +27,6 @@ from ..schemas.report_schemas import (
     HoldingItem,
     HoldingsReport,
 )
-from .fiscal_year import au_fiscal_year
 from .holdings import units_held_as_of
 
 
@@ -126,7 +126,7 @@ async def capital_gains_report(session: AsyncSession, user_id: Optional[str], fy
     A positive gain_loss means profit; negative means a loss.
     """
     # Load all transactions up to end of the FY (30 Jun of fy+1)
-    fy_end = date(fy + 1, 6, 30)
+    fy_end = fiscal_year_bounds(fy)[1]
 
     stmt = (
         select(Transaction)
@@ -228,7 +228,7 @@ async def dividends_report(session: AsyncSession, user_id: Optional[str],
     items: list[DividendItem] = []
     total = Decimal("0")
     for d in dividends:
-        if fy is not None and au_fiscal_year(d.ex_date) != fy:
+        if fy is not None and fiscal_year(d.ex_date) != fy:
             continue
         units = units_held_as_of(txns_by_stock.get(d.stock_id, []), d.ex_date)
         if units <= 0:

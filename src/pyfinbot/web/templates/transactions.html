@@ -20,7 +20,7 @@
   {{ gth_select("fy", "Financial year", fys|fy_options, value=f.get("fy"), placeholder="All years",
       hide_label=True, field_class="mb-0") }}
   {# From/To + Today / This month / This FY / Last FY chips (FY from 1 July,
-     as core.fiscal_year); a chip fires one change, so the table re-queries once. #}
+     as greentechhub_core.dates); a chip fires one change, so the table re-queries once. #}
   {{ gth_date_range(value_from=f.get("date_from"), value_to=f.get("date_to"), label="Transaction date",
       hide_label=True, field_class="mb-0") }}
 {% endcall %}

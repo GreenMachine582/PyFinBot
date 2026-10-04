@@ -1,12 +1,12 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from greentechhub_core.dates import fiscal_year
 from greentechhub_core.identity import Identity
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ...core import reports
-from ...core.fiscal_year import au_fiscal_year
 from ...db.session import get_session
 from ...models.transaction_models import Transaction
 from ...schemas.report_schemas import CapitalGainsReport, DividendsReport, HoldingsReport
@@ -46,7 +46,7 @@ async def _gains_fy(session: AsyncSession, identity: Identity, value: str | None
     fys = await _user_fys(session, identity)
     fy = _parse_int(value)
     if fy is None:
-        fy = fys[0] if fys else au_fiscal_year(date.today())
+        fy = fys[0] if fys else fiscal_year(date.today())
     return fy, fys
 
 

@@ -16,7 +16,7 @@ def test_filters_are_gth_uis_not_app_overrides():
     for name in ("money", "number", "date"):
         assert filters[name] is greentechhub_ui.formatting.FILTERS[name]
     assert "qty" not in filters
-    assert filters["fy"](2024) == "2024–25"  # still PyFinBot's own
+    assert filters["fy"](2024) == "2024–25"  # core's fiscal_year_label
 
 
 class TestTransactionsTable:
