@@ -26,14 +26,11 @@ Scope and architecture: see `web-implementation-brief.md`.
       `register_core`'s `TRUSTED_PROXIES` wired first); real Grafana panels
       once embedding is configured
 
-## greentechhub adoption: core v0.11, fastapi v0.13, ui v0.15
+## greentechhub adoption: core v0.11, fastapi v0.13, ui v0.15 (pinned)
 
 > From a review on 2026-10-05: core v0.10–v0.11, fastapi v0.12–v0.13 and ui v0.15 shipped the pieces this section
 > was waiting on, plus opt-in features PyFinBot can use as they are. One PR at a time, in this order.
 
-- [ ] 1. `build(deps): core v0.11.0, fastapi v0.13.0, ui v0.15.0` (ui v0.16.0 if it's out by then). Brings core's
-  `paginate` without SQLModel's `execute()` DeprecationWarning (every web table page and API list logs two today)
-  with no code change. Check the alembic baseline still matches: none of the new gth tables is used yet
 - [ ] 2. `refactor(settings): core's settings_cipher` — drop `core/settings.py`'s `settings_cipher_key` and the
   `SETTINGS_CIPHER_KEY` field (core's `GTHBaseSettings` has `settings_cipher_key` now) and pass
   `cipher=settings_cipher(settings, context="pyfinbot-settings")`. Same derivation, so saved app passwords stay

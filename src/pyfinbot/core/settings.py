@@ -107,8 +107,10 @@ def settings_cipher_key(config: Settings = settings) -> str:
     """The Fernet key for secret settings: SETTINGS_CIPHER_KEY, else one
     derived from secret_key (with a warning), so a dev setup works without
     configuring a second key."""
-    if config.SETTINGS_CIPHER_KEY:
-        return config.SETTINGS_CIPHER_KEY
+    # greentechhub-core v0.11's GTHBaseSettings has its own settings_cipher_key
+    # field for the same env var; a constructor argument lands in either one.
+    if key := config.SETTINGS_CIPHER_KEY or config.settings_cipher_key:
+        return key
     warnings.warn(
         "SETTINGS_CIPHER_KEY is not set — deriving the key that encrypts saved app passwords "
         "from SECRET_KEY. Changing SECRET_KEY will make them unreadable; set "
