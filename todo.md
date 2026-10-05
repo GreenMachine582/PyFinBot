@@ -26,22 +26,32 @@ Scope and architecture: see `web-implementation-brief.md`.
       `register_core`'s `TRUSTED_PROXIES` wired first); real Grafana panels
       once embedding is configured
 
-## greentechhub adoption: ui v0.14, core v0.9, fastapi v0.11 (slimming PyFinBot)
+## greentechhub adoption: core v0.11, fastapi v0.13, ui v0.15
 
-> From a review of PyFinBot's web layer (2026-10-03): hand-rolled pieces that belong in the gth repos moved there
-> (opt-in), and PyFinBot drops its copies. One PR at a time, in this order.
+> From a review on 2026-10-05: core v0.10–v0.11, fastapi v0.12–v0.13 and ui v0.15 shipped the pieces this section
+> was waiting on, plus opt-in features PyFinBot can use as they are. One PR at a time, in this order.
 
-Waiting on a gth release:
-- [ ] greentechhub-ui, unreleased — `gth_select`/`gth_form_field` `id=` element-id prefix (#71)
-- [ ] greentechhub-core, unreleased — `paginate` without SQLModel's `execute()` DeprecationWarning (#37). Until it's
-  pinned, every web table page and API list logs two of those warnings; pinning it needs no PyFinBot code change
+- [ ] 1. `build(deps): core v0.11.0, fastapi v0.13.0, ui v0.15.0` (ui v0.16.0 if it's out by then). Brings core's
+  `paginate` without SQLModel's `execute()` DeprecationWarning (every web table page and API list logs two today)
+  with no code change. Check the alembic baseline still matches: none of the new gth tables is used yet
+- [ ] 2. `refactor(settings): core's settings_cipher` — drop `core/settings.py`'s `settings_cipher_key` and the
+  `SETTINGS_CIPHER_KEY` field (core's `GTHBaseSettings` has `settings_cipher_key` now) and pass
+  `cipher=settings_cipher(settings, context="pyfinbot-settings")`. Same derivation, so saved app passwords stay
+  readable; keep a test that a value encrypted the old way still decrypts
+- [ ] 3. `refactor(reports): FY selects as gth_select` — `gth_select("fy", "Financial year", fys|fy_options,
+  value=report.fy, id="gains-fy", field_class="mb-0")` in `_report_gains.html` and the same with
+  `placeholder="All time"`, `id="dividends-fy"` in `_report_dividends.html`. Both are `name="fy"` in report panes
+  that stay in the DOM, so without `id=` they'd share `id="gth-field-fy"`
+- [ ] 4. `feat(settings): change password` — `SettingsViews(change_password=...)`: verify the current password
+  against `User.password_hash` (core's `verify_password`) and store the new hash (`hash_password`)
+- [ ] 5. `feat(auth): login throttling` — `throttle=LoginThrottle(SQLAlchemyAttemptStore(...))` on
+  `PyFinBotLoginViews`, with an alembic migration for core's `gth_login_attempts` table (`login_attempts_table`)
+- [ ] 6. `feat(auth): CSRF on the sign-in form` — `csrf = True` on `PyFinBotLoginViews` (ui v0.15 renders the field).
+  Needs HTTPS, as the session cookie already does
 
-PyFinBot, once that ui release is pinned:
-- [ ] 3a. `refactor(reports): FY selects as gth_select` — after a greentechhub-ui release with `gth_select(id=)` /
-  `gth_form_field(id=)` (greentechhub-ui #71, not released yet): pin it, then
-  `gth_select("fy", "Financial year", fys|fy_options, value=report.fy, id="gains-fy", field_class="mb-0")` in
-  `_report_gains.html` and the same with `placeholder="All time"`, `id="dividends-fy"` in `_report_dividends.html`.
-  Both are `name="fy"` in report panes that stay in the DOM, so without `id=` they'd share `id="gth-field-fy"`
+Later, once `User` has an email address (a decision first): the profile section, password reset, email
+verification and notifications (`register_email` with core's `smtp_settings`, `register_notifications` for sync
+results).
 
 ## Known limitations (accepted, not bugs)
 
