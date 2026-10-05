@@ -1,13 +1,11 @@
 """Per-user email accounts for Commsec sync (greentechhub v0.12 adoption,
 item 4): each user's mailbox comes from their own settings, the app password
 a write-only, encrypted greentechhub secret setting."""
-import base64
 import importlib
 import warnings
 from unittest.mock import patch
 
 import pytest
-from cryptography.fernet import Fernet
 from greentechhub_core.settings.crypto import FernetCipher
 from sqlalchemy import select
 
@@ -143,16 +141,3 @@ def test_retired_settings_warn_and_still_load(monkeypatch):
         assert settings_module._warn_retired({}) == []
     monkeypatch.setenv("GMAIL_APP_PASSWORD", "x")
     assert settings_module.Settings(secret_key="k").ENVIRONMENT  # extra env keys are ignored
-
-
-def test_cipher_key_is_explicit_or_derived():
-    explicit = Fernet.generate_key().decode()
-    config = settings_module.Settings(secret_key="k", SETTINGS_CIPHER_KEY=explicit)
-    assert settings_module.settings_cipher_key(config) == explicit
-
-    with pytest.warns(UserWarning, match="SETTINGS_CIPHER_KEY is not set"):
-        derived = settings_module.settings_cipher_key(settings_module.Settings(secret_key="k"))
-    assert len(base64.urlsafe_b64decode(derived)) == 32
-    FernetCipher(derived)  # a valid Fernet key
-    with pytest.warns(UserWarning):
-        assert settings_module.settings_cipher_key(settings_module.Settings(secret_key="other")) != derived

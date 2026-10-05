@@ -8,7 +8,7 @@ import pkgutil
 
 import greentechhub_ui
 from fastapi import FastAPI
-from greentechhub_core.settings.crypto import FernetCipher
+from greentechhub_core.settings.crypto import settings_cipher
 from greentechhub_core.sqlalchemy import SQLAlchemyGrantStore, SQLAlchemySettingsStore
 from greentechhub_core.logging import configure_logging
 from greentechhub_fastapi import (
@@ -25,7 +25,7 @@ from greentechhub_fastapi.templating import mount_static_dirs
 
 from . import version, api
 from .core.permissions import ROLES, SETTINGS_MANAGE, USERS_MANAGE
-from .core.settings import settings, settings_cipher_key
+from .core.settings import settings
 from .core.user_settings import USER_SETTINGS
 from .db.session import database_ready, init_db, session_factory
 from .models.settings_models import ROLE_GRANTS_TABLE, SETTINGS_TABLE
@@ -106,6 +106,10 @@ register_permissions(
     grants=SQLAlchemyGrantStore(ROLE_GRANTS_TABLE, async_session_factory=session_factory),
 )
 
+# The context PyFinBot derived its cipher key under before core's settings_cipher
+# existed: the same key, so saved app passwords stay readable.
+CIPHER_CONTEXT = "pyfinbot-settings"
+
 # Per-user preferences and app settings (greentechhub-core settings in the
 # gth_settings table): /settings (its App section for SETTINGS_MANAGE), the
 # navbar user menu (Settings, Log out), the server-saved theme, and
@@ -119,7 +123,7 @@ register_settings(
     manage_permission=SETTINGS_MANAGE,
     logout_url="/logout",
     # Encrypts secret settings (each user's email app password) at rest.
-    cipher=FernetCipher(settings_cipher_key()),
+    cipher=settings_cipher(settings, context=CIPHER_CONTEXT),
 )
 
 # greentechhub-ui static assets its templates reference.
