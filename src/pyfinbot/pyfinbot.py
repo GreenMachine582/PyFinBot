@@ -112,14 +112,15 @@ CIPHER_CONTEXT = "pyfinbot-settings"
 
 # Per-user preferences and app settings (greentechhub-core settings in the
 # gth_settings table): /settings (its App section for SETTINGS_MANAGE), the
-# navbar user menu (Settings, Log out), the server-saved theme, and
-# user_settings for the date/money/number filters and table page sizes.
+# navbar user menu (Settings, Log out), the server-saved theme, a Password
+# section (web_auth.change_password), and user_settings for the
+# date/money/number filters and table page sizes.
 register_settings(
     app,
     settings,
     registry=USER_SETTINGS,
     store=SQLAlchemySettingsStore(SETTINGS_TABLE, async_session_factory=session_factory),
-    views=SettingsViews(templates=templates),
+    views=SettingsViews(templates=templates, change_password=web_auth.change_password),
     manage_permission=SETTINGS_MANAGE,
     logout_url="/logout",
     # Encrypts secret settings (each user's email app password) at rest.
