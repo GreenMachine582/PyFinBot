@@ -31,8 +31,6 @@ Scope and architecture: see `web-implementation-brief.md`.
 > From a review on 2026-10-05: core v0.10–v0.11, fastapi v0.12–v0.13 and ui v0.15 shipped the pieces this section
 > was waiting on, plus opt-in features PyFinBot can use as they are. One PR at a time, in this order.
 
-- [ ] 4. `feat(settings): change password` — `SettingsViews(change_password=...)`: verify the current password
-  against `User.password_hash` (core's `verify_password`) and store the new hash (`hash_password`)
 - [ ] 5. `feat(auth): login throttling` — `throttle=LoginThrottle(SQLAlchemyAttemptStore(...))` on
   `PyFinBotLoginViews`, with an alembic migration for core's `gth_login_attempts` table (`login_attempts_table`)
 - [ ] 6. `feat(auth): CSRF on the sign-in form` — `csrf = True` on `PyFinBotLoginViews` (ui v0.15 renders the field).

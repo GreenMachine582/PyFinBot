@@ -1,6 +1,8 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter
 from greentechhub_core.identity import DevelopmentIdentityProvider, Identity
-from greentechhub_core.security import verify_password
+from greentechhub_core.security import hash_password, verify_password
 from greentechhub_fastapi.auth import LoginViews, resolve_dependency
 
 from ...core.settings import settings
@@ -24,6 +26,25 @@ class PyFinBotLoginViews(LoginViews):
             if not user or not user.password_hash or not verify_password(password, user.password_hash):
                 return None
             return Identity(subject=user.id, username=user.id, email=None, groups=[], claims={})
+
+
+async def change_password(user: Identity, current: str, new: str) -> bool:
+    """SettingsViews' change_password hook (/settings › Password): False when
+    `current` isn't the user's password, else store the new one's hash.
+    greentechhub-fastapi has already checked the new password's length,
+    that it differs and that it's confirmed. Sessions already issued stay
+    valid; they're stateless JWTs."""
+    from ...pyfinbot import app  # deferred for the same reason as authenticate's
+
+    async with resolve_dependency(app, get_session) as session:
+        row = await session.get(User, user.subject)
+        if not row or not row.password_hash or not verify_password(current, row.password_hash):
+            return False
+        row.password_hash = hash_password(new)
+        row.write_datetime = datetime.now(timezone.utc)
+        session.add(row)
+        await session.commit()
+    return True
 
 
 def build_router() -> APIRouter | None:
