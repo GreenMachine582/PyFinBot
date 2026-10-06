@@ -72,5 +72,5 @@ async def test_logout_clears_session(client: AsyncClient):
 def test_build_router_returns_none_for_non_local_adapter(monkeypatch):
     from pyfinbot.web.routes import auth as web_auth_module
 
-    monkeypatch.setattr(settings, "AUTH_ADAPTER", "forward_auth")
+    monkeypatch.setattr(settings, "auth_adapter", "forward_auth")
     assert web_auth_module.build_router() is None
