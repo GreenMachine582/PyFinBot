@@ -42,11 +42,6 @@ pins.
 From a review of PyFinBot against the gth repos (2026-10-07): generic code PyFinBot
 can drop today, using what the pinned releases already offer. One PR each.
 
-- [ ] `refactor(errors)`: `ImportFileError` (`core/transaction_import.py:51`) and
-  `EmailSyncError` (`core/commsec_import.py:29`) subclass core's `ApplicationError`
-  with its `status_code` hint, instead of plain `Exception` plus a `status_code`
-  attribute. The try/except remapping in `api/import_routes.py` and
-  `api/email_routes.py` goes; fastapi's handlers answer them.
 - [ ] `refactor(web)`: templates use the ui macros that already exist:
   - `gth_switch` for `_stock_form.html`'s hand-built "Active" checkbox;
   - `gth_segmented(errors=)` for `_transaction_form.html:25`'s error div;
