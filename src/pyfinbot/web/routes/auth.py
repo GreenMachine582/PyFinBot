@@ -5,6 +5,7 @@ from greentechhub_core.identity import DevelopmentIdentityProvider, Identity
 from greentechhub_core.security import hash_password, verify_password
 from greentechhub_fastapi.auth import LoginViews, resolve_dependency
 
+from ...core.login_throttle import LOGIN_THROTTLE
 from ...core.settings import settings
 from ...db.session import get_session
 from ...models.user_models import User
@@ -14,7 +15,8 @@ from ..templating import templates
 class PyFinBotLoginViews(LoginViews):
     """Local-auth /login and /logout. The page is greentechhub-ui's
     login_page.html (LoginViews' default since greentechhub-fastapi v0.11),
-    so PyFinBot only checks the password."""
+    so PyFinBot only checks the password. Repeated failures are locked out
+    by core.login_throttle (429 + Retry-After, before authenticate runs)."""
 
     async def authenticate(self, user_id: str, password: str) -> Identity | None:
         # Deferred import: pyfinbot.py imports this module at load time, so a
@@ -65,4 +67,5 @@ def build_router() -> APIRouter | None:
     return PyFinBotLoginViews(
         templates=templates,
         identity_provider=DevelopmentIdentityProvider(secret_key=settings.secret_key),
+        throttle=LOGIN_THROTTLE,
     ).router()
