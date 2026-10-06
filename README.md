@@ -88,7 +88,7 @@ cp .env.example .env
 
 `ENVIRONMENT`/`CORS_ALLOWED_ORIGINS` control cross-origin access: in `development` (the default), all origins are allowed when `CORS_ALLOWED_ORIGINS` is unset, for frictionless local testing; in `production`, no cross-origin access is allowed unless `CORS_ALLOWED_ORIGINS` is set to an explicit comma-separated allow-list.
 
-**Sign-in lockout.** 5 failed sign-ins for an account, or from one client, within 15 minutes lock it out for 15 minutes. Behind a reverse proxy, set `TRUSTED_PROXIES` to the proxy's address(es) so each client is counted by its own IP (from `X-Forwarded-For`); otherwise every request has the proxy's address and one guesser locks everyone out.
+**Sign-in lockout.** 5 failed sign-ins for an account, or from one client, within 15 minutes lock it out for 15 minutes. The web sign-in form and the API's `/api/auth/login` share the count, so a lockout on one covers the other; the API answers 429 with `Retry-After`. Behind a reverse proxy, set `TRUSTED_PROXIES` to the proxy's address(es) so each client is counted by its own IP (from `X-Forwarded-For`); otherwise every request has the proxy's address and one guesser locks everyone out.
 
 ### Database Migrations
 Apply the schema to your database:
