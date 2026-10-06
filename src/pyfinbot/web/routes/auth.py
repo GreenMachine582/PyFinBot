@@ -57,12 +57,13 @@ def build_router() -> APIRouter | None:
     driven by the same AUTH_ADAPTER setting register_auth itself reads,
     rather than this module assuming "local" the way it did before.
 
-    Safe to check settings.AUTH_ADAPTER without re-validating it here:
+    Safe to check settings.auth_adapter (core's GTHBaseSettings field, env
+    AUTH_ADAPTER) without re-validating it here:
     register_auth(app, settings) is called earlier in pyfinbot.py and
     raises ValueError on anything other than "local"/"forward_auth", so by
     the time this runs it's already known-valid.
     """
-    if settings.AUTH_ADAPTER != "local":
+    if settings.auth_adapter != "local":
         return None
     return PyFinBotLoginViews(
         templates=templates,

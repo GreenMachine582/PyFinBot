@@ -62,9 +62,9 @@ async def test_one_client_guessing_many_accounts_is_locked_out(client: AsyncClie
 
 
 async def test_trusted_proxies_gives_each_forwarded_client_its_own_address(monkeypatch):
-    # PyFinBot's Settings must carry TRUSTED_PROXIES for register_core to see it
-    # (extra="ignore" drops undeclared env vars), so the throttle's client key
-    # is the real client's, not the proxy's.
+    # TRUSTED_PROXIES must reach register_core through PyFinBot's Settings (now
+    # core's GTHBaseSettings.trusted_proxies; extra="ignore" would drop an
+    # undeclared one), so the throttle's client key is the real client's.
     from fastapi import FastAPI, Request
     from greentechhub_fastapi import register_core
     from httpx import ASGITransport

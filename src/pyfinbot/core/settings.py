@@ -33,18 +33,20 @@ class Settings(GTHBaseSettings):
     secret_key: str = ""
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
 
-    # AUTH_ADAPTER for greentechhub_fastapi.register_auth: "local" (default,
-    # a locally-issued session JWT) or "forward_auth" (Authentik outpost —
-    # not wired up yet, deferred).
-    AUTH_ADAPTER: str = "local"
-
-    # Roles (greentechhub-fastapi's register_permissions reads these):
-    # ROLE_BOOTSTRAP maps user ids to roles — the first admin, and recovery if
-    # every admin grant is removed, e.g. "alice=admin". ROLE_GROUPS maps
-    # directory groups to roles (forward_auth/Authentik), e.g. "admins=admin".
-    # Roles assigned at /admin/roles are stored in gth_role_grants instead.
-    ROLE_BOOTSTRAP: str = ""
-    ROLE_GROUPS: str = ""
+    # The adapter settings greentechhub-fastapi reads are greentechhub-core's
+    # GTHBaseSettings fields (env vars in brackets), not declared here:
+    #   auth_adapter (AUTH_ADAPTER): "local" (default, a locally-issued
+    #     session JWT) or "forward_auth" (Authentik outpost — deferred).
+    #   role_bootstrap (ROLE_BOOTSTRAP): user ids → roles, the first admin and
+    #     recovery if every admin grant is removed, e.g. "alice=admin".
+    #   role_groups (ROLE_GROUPS): directory groups → roles (forward_auth),
+    #     e.g. "admins=admin". Roles assigned at /admin/roles are stored in
+    #     gth_role_grants instead.
+    #   cors_allowed_origins (CORS_ALLOWED_ORIGINS): see ENVIRONMENT below.
+    #   trusted_proxies (TRUSTED_PROXIES): the reverse proxy's address(es)
+    #     (e.g. Caddy), so register_core takes the client IP from
+    #     X-Forwarded-For; unset, every request has the proxy's address and
+    #     the login throttle's per-client count is one count for everybody.
 
     # SETTINGS_CIPHER_KEY, the Fernet key that encrypts secret settings at rest
     # (each user's email app password, in gth_settings), is greentechhub-core's
@@ -58,13 +60,6 @@ class Settings(GTHBaseSettings):
     # (via its own tolerant read_list_setting, which has no such dev-mode
     # default — the "*" fallback is applied in pyfinbot.py, not here).
     ENVIRONMENT: str = "development"
-    CORS_ALLOWED_ORIGINS: str = ""
-
-    # Comma-separated addresses of the reverse proxy in front of the app (e.g.
-    # Caddy). register_core's ProxyHeadersMiddleware then takes the client IP
-    # from X-Forwarded-For; unset, every request has the proxy's address and
-    # the login throttle's per-client count is one count for everybody.
-    TRUSTED_PROXIES: str = ""
 
     # Directory for greentechhub_core FileLock files (e.g. the market-sync
     # "already running" guard). Must be shared by every worker/replica on the
@@ -105,7 +100,7 @@ def _warn_retired(environ=os.environ) -> list[str]:
 _warn_retired()
 
 
-if settings.ENVIRONMENT == "production" and not settings.CORS_ALLOWED_ORIGINS:
+if settings.ENVIRONMENT == "production" and not settings.cors_allowed_origins:
     warnings.warn(
         "ENVIRONMENT is 'production' but CORS_ALLOWED_ORIGINS is not set — no "
         "cross-origin requests will be allowed until CORS_ALLOWED_ORIGINS is "
