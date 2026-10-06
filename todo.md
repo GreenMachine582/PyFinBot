@@ -33,9 +33,6 @@ Scope and architecture: see `web-implementation-brief.md`.
 
 - [ ] 6. `feat(auth): CSRF on the sign-in form` — `csrf = True` on `PyFinBotLoginViews` (ui v0.15 renders the field).
   Needs HTTPS, as the session cookie already does
-- [ ] 9. `chore(dev): local GTH mode` — `scripts/use-local-gth.sh` and a CONTRIBUTING/README pointer, as in
-  greentechhub-fastapi, once greentechhub-core's `scripts/local_gth.py` is on `dev` (greentechhub-core#58); links
-  the sibling core, fastapi and ui checkouts into `.venv`
 
 Later, once `User` has an email address (a decision first): the profile section, password reset, email
 verification and notifications (`register_email` with core's `smtp_settings`, `register_notifications` for sync

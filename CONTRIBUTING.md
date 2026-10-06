@@ -39,6 +39,14 @@ docs/z ─┘                                                                   
 Never bump versions or edit released `CHANGELOG.md` sections by hand, and never move a `v*` tag (the tag ruleset
 blocks it).
 
+## Developing against local GTH repos
+
+With greentechhub-core, greentechhub-fastapi and greentechhub-ui checked out next to this repo,
+`./scripts/use-local-gth.sh` runs this venv against those checkouts instead of the pinned releases. `--status` shows
+which is in use, with each checkout's branch and commit, and `--undo` goes back to the pins. It changes only the
+venv, never `requirements.txt`, so CI keeps testing the pins. Details, invariants and the release order:
+[greentechhub-core's CONTRIBUTING.md](https://github.com/GreenMachine582/greentechhub-core/blob/dev/CONTRIBUTING.md#developing-against-local-gth-repos).
+
 ## Rules
 
 Repository rulesets (source of truth: [`.github/rulesets/`](.github/rulesets/), applied with
