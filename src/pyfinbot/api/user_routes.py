@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, status
-from greentechhub_core.security import hash_password
 from greentechhub_core.types import BadRequestError, ForbiddenError, NotFoundError
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
@@ -9,6 +8,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..core.dependencies import get_current_user, require_api_permission
 from ..core.permissions import USERS_MANAGE
+from ..core.users import new_user, set_password
 from ..models.user_models import User
 from ..schemas.user_schemas import UserBase, UserCreate, UserUpdate
 from ..db.session import get_session
@@ -27,16 +27,16 @@ async def create_user(
     if await session.get(User, user_in.id):
         raise BadRequestError("User already registered", code="user_exists")
 
-    new_user = User(id=user_in.id, active=True, password_hash=hash_password(user_in.password))
-    session.add(new_user)
+    user = new_user(user_in.id, user_in.password)
+    session.add(user)
     try:
         await session.commit()
-        await session.refresh(new_user)
+        await session.refresh(user)
     except IntegrityError:
         await session.rollback()
         raise BadRequestError("Failed to create user", code="create_failed")
 
-    return new_user
+    return user
 
 
 @router.get("/", response_model=list[UserBase])
@@ -81,7 +81,7 @@ async def update_user(
     update_data = user_update.model_dump(exclude_unset=True)
     password = update_data.pop("password", None)
     if password is not None:
-        user.password_hash = hash_password(password)
+        set_password(user, password)
     for key, value in update_data.items():
         setattr(user, key, value)
 
