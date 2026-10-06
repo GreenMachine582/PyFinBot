@@ -37,6 +37,33 @@ pins.
   - **Now:** `scripts/` has `create_user.py` and `seed_demo.py` only.
   - **Plan:** one entry point over the same `core/reports.py` functions, so the CLI and the web never disagree.
 
+## Lean now — no gth release needed
+
+From a review of PyFinBot against the gth repos (2026-10-07): generic code PyFinBot
+can drop today, using what the pinned releases already offer. One PR each.
+
+- [ ] `refactor(errors)`: `ImportFileError` (`core/transaction_import.py:51`) and
+  `EmailSyncError` (`core/commsec_import.py:29`) subclass core's `ApplicationError`
+  with its `status_code` hint, instead of plain `Exception` plus a `status_code`
+  attribute. The try/except remapping in `api/import_routes.py` and
+  `api/email_routes.py` goes; fastapi's handlers answer them.
+- [ ] `refactor(web)`: templates use the ui macros that already exist:
+  - `gth_switch` for `_stock_form.html`'s hand-built "Active" checkbox;
+  - `gth_segmented(errors=)` for `_transaction_form.html:25`'s error div;
+  - `gth_page_header` for `dashboard.html`'s bare `<h2>`;
+  - `gth_form` for `dividends.html`'s raw sync `<form>`;
+  - `gth_table` for `import.html`'s raw columns `<table>`;
+  - the existing `fy_options` filter instead of the inline loops in `_report_gains.html` and
+    `_report_dividends.html`.
+- [ ] `refactor(auth)`: one password-user module
+  - The User lookup + `verify_password` is written twice: `web/routes/auth.py` (with a deferred
+    `from ...pyfinbot import app`) and `api/auth_routes.py`.
+  - User creation is written three times: `admin/create_user.py`, `api/user_routes.py` and `dev/seed.py`.
+  - **Plan:** one `core/users.py` with `check_password(session, user_id, password)` and
+    `create_user(session, ...)`.
+- [ ] `test`: the local `_create_stock` helpers in 6 test files use conftest's
+  `create_stock`
+
 ## Web UI (greentechhub-fastapi / greentechhub-ui)
 
 Scope and architecture: see `web-implementation-brief.md`.
@@ -76,6 +103,32 @@ PR here: bump the pin, adopt, remove the item.
   - **Then:** show it as an activity feed with ui's planned `gth_timeline`.
 - [ ] Charts on the reports — gains by FY, dividends over time — with greentechhub-ui's planned SVG charts (same
   wait as the dashboard)
+
+### Leaner, once the gth repos ship them
+
+Registered as "Leaner services" in greentechhub-core's TODO (C1–C7), greentechhub-fastapi's (F1–F6) and
+greentechhub-ui's (U1–U3). Each is one PR here after its release: bump the pin, adopt, delete.
+
+- [ ] Bearer API auth (fastapi F1): delete `core/security.py`, most of `core/dependencies.py` and
+  `ACCESS_TOKEN_EXPIRE_MINUTES`. API routes take an `Identity` (`identity.subject`) instead of a `User`. This
+  also ends the session cookie being accepted as an API token (same secret and HS256 today).
+- [ ] Query errors (fastapi F2): delete `api/query.py`; use `PageParams.to_page_request` directly.
+- [ ] Logging (fastapi F3): `register_logging(app, settings, service="pyfinbot", version=...)` replaces
+  `pyfinbot.py`'s direct `configure_logging` call and the uvicorn re-routing.
+- [ ] CSV export (fastapi F4): delete `web/csv_response.py` and `_plain` in `web/routes/transactions.py`.
+- [ ] htmx helpers (fastapi F5): drop the 5 hand-set `HX-Trigger`s (`dividends.py`, `emails.py`, `imports.py`), and
+  `_field_errors` in `transactions.py`.
+- [ ] Settings basics (core C3): drop `ENVIRONMENT`, `LOCK_DIR` and the ephemeral `secret_key` from
+  `core/settings.py`, and the dev CORS block in `pyfinbot.py`.
+- [ ] Database (core C4): `db/session.py` becomes a few lines over core's `Database`.
+- [ ] Sync locks (core C5): `held(lock, name, ttl)` replaces `market_sync.py`'s `sync_guard`.
+- [ ] IMAP (core C6): core's `imap_settings` and `ImapReader` replace the generic half of `core/email_sync.py`
+  and `core/email_accounts.py`; the Commsec sender criteria and parser stay.
+- [ ] Tests (core C7, greentechhub-testing): `tests/conftest.py` keeps only PyFinBot's own fixtures (about 110
+  lines go).
+- [ ] Templates (ui U3): `gth_result_panel` for `_import_result.html`/`_sync_result.html`; `gth_filter_bar` and
+  `gth_download_button` for the three report panes; `gth_form_actions` for the stock/transaction forms; the
+  amount tone and `fy` filters (drop `templating.py`'s `fy`); `gth_stat_grid`.
 
 ## Waiting on a decision: user email addresses
 
