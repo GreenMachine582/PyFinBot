@@ -1,16 +1,11 @@
 """Integration tests for /api/transactions routes."""
 import pytest
 
-from .conftest import register_and_login
+from .conftest import create_stock, register_and_login
 
 USER_ID = "user-abc"
 OTHER_USER_ID = "user-other"
 
-
-async def _create_stock(client, symbol="BHP", market="ASX", name="BHP Group"):
-    resp = await client.post("/api/stocks/", json={"symbol": symbol, "market": market, "name": name})
-    assert resp.status_code == 201
-    return resp.json()
 
 
 async def _create_transaction(client, stock_id, headers, **overrides):
@@ -31,7 +26,7 @@ async def _create_transaction(client, stock_id, headers, **overrides):
 class TestCreateTransaction:
     async def test_creates_with_stock_id_int(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         data = await _create_transaction(client, stock["id"], headers)
         assert data["units"] == 10
         assert data["price"] == 25.5
@@ -42,20 +37,20 @@ class TestCreateTransaction:
 
     async def test_creates_with_market_symbol_string(self, client):
         headers = await register_and_login(client, USER_ID)
-        await _create_stock(client)
+        await create_stock(client)
         data = await _create_transaction(client, "ASX:BHP", headers)
         assert data["stock"]["market"] == "ASX"
         assert data["stock"]["symbol"] == "BHP"
 
     async def test_user_id_comes_from_token(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         data = await _create_transaction(client, stock["id"], headers)
         assert data["user_id"] == USER_ID
 
     async def test_user_id_in_body_is_ignored(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         payload = {"stock_id": stock["id"], "type": "Buy", "units": 5, "price": 10,
                    "user_id": "body-user"}
         resp = await client.post("/api/transactions/", json=payload, headers=headers)
@@ -64,7 +59,7 @@ class TestCreateTransaction:
         assert resp.json()["user_id"] == USER_ID
 
     async def test_no_token_returns_401(self, client):
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         payload = {"stock_id": stock["id"], "type": "Buy", "units": 5, "price": 10}
         resp = await client.post("/api/transactions/", json=payload)
         assert resp.status_code == 401
@@ -77,7 +72,7 @@ class TestCreateTransaction:
 
     async def test_sell_cost_is_positive(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         data = await _create_transaction(
             client, stock["id"], headers, type="Sell", units=10, price=30, fees=9.95
         )
@@ -92,7 +87,7 @@ class TestListTransactions:
     async def test_returns_only_requesting_users_transactions(self, client):
         headers = await register_and_login(client, USER_ID)
         other_headers = await register_and_login(client, OTHER_USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         await _create_transaction(client, stock["id"], headers)
         # Create for other user
         payload = {"stock_id": stock["id"], "type": "Buy", "units": 1, "price": 1}
@@ -105,7 +100,7 @@ class TestListTransactions:
 
     async def test_paginated_response_shape(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         await _create_transaction(client, stock["id"], headers)
         resp = await client.get("/api/transactions/", headers=headers)
         data = resp.json()
@@ -116,7 +111,7 @@ class TestListTransactions:
 class TestGetTransaction:
     async def test_get_returns_transaction_with_stock(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         created = await _create_transaction(client, stock["id"], headers)
         resp = await client.get(f"/api/transactions/{created['id']}", headers=headers)
         assert resp.status_code == 200
@@ -127,7 +122,7 @@ class TestGetTransaction:
     async def test_other_user_gets_403(self, client):
         headers = await register_and_login(client, USER_ID)
         other_headers = await register_and_login(client, OTHER_USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         created = await _create_transaction(client, stock["id"], headers)
         resp = await client.get(f"/api/transactions/{created['id']}", headers=other_headers)
         assert resp.status_code == 403
@@ -141,7 +136,7 @@ class TestGetTransaction:
 class TestUpdateTransaction:
     async def test_update_notes(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         created = await _create_transaction(client, stock["id"], headers)
         resp = await client.put(f"/api/transactions/{created['id']}",
                                 json={"notes": "updated note"}, headers=headers)
@@ -150,8 +145,8 @@ class TestUpdateTransaction:
 
     async def test_full_update_recomputes_derived_fields(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
-        other = await _create_stock(client, symbol="CBA", name="Commonwealth Bank")
+        stock = await create_stock(client)
+        other = await create_stock(client, symbol="CBA", name="Commonwealth Bank")
         created = await _create_transaction(client, stock["id"], headers, transaction_date="2024-06-30")
 
         resp = await client.put(f"/api/transactions/{created['id']}", headers=headers, json={
@@ -169,7 +164,7 @@ class TestUpdateTransaction:
 
     async def test_null_fields_other_than_notes_are_ignored(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         created = await _create_transaction(client, stock["id"], headers, notes="keep?")
         resp = await client.put(f"/api/transactions/{created['id']}", headers=headers,
                                 json={"units": None, "notes": None})
@@ -179,7 +174,7 @@ class TestUpdateTransaction:
 
     async def test_update_to_unknown_stock_returns_404(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         created = await _create_transaction(client, stock["id"], headers)
         resp = await client.put(f"/api/transactions/{created['id']}", headers=headers,
                                 json={"stock_id": 999999})
@@ -188,7 +183,7 @@ class TestUpdateTransaction:
     async def test_other_user_gets_403(self, client):
         headers = await register_and_login(client, USER_ID)
         other_headers = await register_and_login(client, OTHER_USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         created = await _create_transaction(client, stock["id"], headers)
         resp = await client.put(f"/api/transactions/{created['id']}",
                                 json={"notes": "hack"}, headers=other_headers)
@@ -198,7 +193,7 @@ class TestUpdateTransaction:
 class TestDeleteTransaction:
     async def test_delete_returns_204(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         created = await _create_transaction(client, stock["id"], headers)
         resp = await client.delete(f"/api/transactions/{created['id']}", headers=headers)
         assert resp.status_code == 204
@@ -206,7 +201,7 @@ class TestDeleteTransaction:
     async def test_other_user_gets_403(self, client):
         headers = await register_and_login(client, USER_ID)
         other_headers = await register_and_login(client, OTHER_USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         created = await _create_transaction(client, stock["id"], headers)
         resp = await client.delete(f"/api/transactions/{created['id']}", headers=other_headers)
         assert resp.status_code == 403

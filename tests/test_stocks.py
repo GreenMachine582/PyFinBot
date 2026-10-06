@@ -4,7 +4,7 @@
 STOCK_PAYLOAD = {"symbol": "BHP", "market": "ASX", "name": "BHP Group Limited"}
 
 
-async def _create_stock(client, payload=None):
+async def _post_stock(client, payload=None):
     resp = await client.post("/api/stocks/", json=payload or STOCK_PAYLOAD)
     assert resp.status_code == 201
     return resp.json()
@@ -12,7 +12,7 @@ async def _create_stock(client, payload=None):
 
 class TestCreateStock:
     async def test_creates_and_returns_stock(self, client):
-        data = await _create_stock(client)
+        data = await _post_stock(client)
         assert data["symbol"] == "BHP"
         assert data["market"] == "ASX"
         assert data["name"] == "BHP Group Limited"
@@ -27,14 +27,14 @@ class TestCreateStock:
         assert data["market"] == "ASX"
 
     async def test_duplicate_returns_400(self, client):
-        await _create_stock(client)
+        await _post_stock(client)
         resp = await client.post("/api/stocks/", json=STOCK_PAYLOAD)
         assert resp.status_code == 400
 
 
 class TestListStocks:
     async def test_returns_paginated_response(self, client):
-        await _create_stock(client)
+        await _post_stock(client)
         resp = await client.get("/api/stocks/")
         assert resp.status_code == 200
         data = resp.json()
@@ -42,7 +42,7 @@ class TestListStocks:
         assert data["total"] >= 1
 
     async def test_filter_by_market(self, client):
-        await _create_stock(client)
+        await _post_stock(client)
         await client.post("/api/stocks/", json={"symbol": "AAPL", "market": "NASDAQ", "name": "Apple"})
         import json
         filters = json.dumps([{"field": "market", "op": "==", "value": "ASX"}])
@@ -54,13 +54,13 @@ class TestListStocks:
 
 class TestGetStock:
     async def test_get_by_id(self, client):
-        created = await _create_stock(client)
+        created = await _post_stock(client)
         resp = await client.get(f"/api/stocks/{created['id']}")
         assert resp.status_code == 200
         assert resp.json()["id"] == created["id"]
 
     async def test_get_by_market_symbol(self, client):
-        await _create_stock(client)
+        await _post_stock(client)
         resp = await client.get("/api/stocks/ASX:BHP")
         assert resp.status_code == 200
         assert resp.json()["symbol"] == "BHP"
@@ -76,13 +76,13 @@ class TestGetStock:
 
 class TestUpdateStock:
     async def test_update_name(self, client):
-        created = await _create_stock(client)
+        created = await _post_stock(client)
         resp = await client.put(f"/api/stocks/{created['id']}", json={"name": "BHP Billiton"})
         assert resp.status_code == 200
         assert resp.json()["name"] == "BHP Billiton"
 
     async def test_deactivate_sets_archived_at(self, client):
-        created = await _create_stock(client)
+        created = await _post_stock(client)
         resp = await client.put(f"/api/stocks/{created['id']}", json={"name": created["name"], "is_active": False})
         assert resp.status_code == 200
         data = resp.json()
@@ -95,12 +95,12 @@ class TestUpdateStock:
 
 class TestDeleteStock:
     async def test_delete_returns_204(self, client):
-        created = await _create_stock(client)
+        created = await _post_stock(client)
         resp = await client.delete(f"/api/stocks/{created['id']}")
         assert resp.status_code == 204
 
     async def test_deleted_stock_is_gone(self, client):
-        created = await _create_stock(client)
+        created = await _post_stock(client)
         await client.delete(f"/api/stocks/{created['id']}")
         resp = await client.get(f"/api/stocks/{created['id']}")
         assert resp.status_code == 404

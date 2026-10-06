@@ -61,9 +61,6 @@ can drop today, using what the pinned releases already offer. One PR each.
   - User creation is written three times: `admin/create_user.py`, `api/user_routes.py` and `dev/seed.py`.
   - **Plan:** one `core/users.py` with `check_password(session, user_id, password)` and
     `create_user(session, ...)`.
-- [ ] `test`: the local `_create_stock` helpers in 6 test files use conftest's
-  `create_stock`
-
 ## Web UI (greentechhub-fastapi / greentechhub-ui)
 
 Scope and architecture: see `web-implementation-brief.md`.
