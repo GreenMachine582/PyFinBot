@@ -90,6 +90,8 @@ cp .env.example .env
 
 **Sign-in lockout.** 5 failed sign-ins for an account, or from one client, within 15 minutes lock it out for 15 minutes. The web sign-in form and the API's `/api/auth/login` share the count, so a lockout on one covers the other; the API answers 429 with `Retry-After`. Behind a reverse proxy, set `TRUSTED_PROXIES` to the proxy's address(es) so each client is counted by its own IP (from `X-Forwarded-For`); otherwise every request has the proxy's address and one guesser locks everyone out.
 
+**Sign-in form CSRF.** The sign-in form carries a CSRF token: greentechhub-fastapi's double-submit `gth_csrf` cookie with the same value in the form, so a page on another site can't post it. Like the session cookie, the token cookie is `Secure`: sign in over HTTPS, or `http://localhost` (which browsers treat as secure). Over plain HTTP on another address, every sign-in is refused with "Your session expired". The API's `/api/auth/login` takes no token (bearer tokens, not cookies). `POST /logout` and the in-app htmx forms aren't covered yet; that waits on greentechhub-fastapi's planned CSRF for htmx forms.
+
 ### Database Migrations
 Apply the schema to your database:
 ```bash

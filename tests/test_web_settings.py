@@ -11,7 +11,7 @@ from pathlib import Path
 from pyfinbot.core.user_settings import DEFAULT_ROWS_PER_PAGE, USER_SETTINGS
 from pyfinbot.dev.seed import seed_demo
 
-from .conftest import create_stock, web_login
+from .conftest import create_stock, post_login, web_login
 from .test_web_reports import HX, _txn
 
 HTML = {"Accept": "text/html"}
@@ -92,7 +92,7 @@ async def test_dates_follow_the_users_format(client):
 
 async def test_rows_per_page_follow_the_user(client, session):
     await seed_demo(session, environment="development")  # demo-user: 52 transactions
-    login = await client.post("/login", data={"user_id": "demo-user", "password": "demo-user-pass"},
+    login = await post_login(client, "demo-user", "demo-user-pass",
                               follow_redirects=False)
     client.cookies.set("gth_session", login.cookies["gth_session"])
 

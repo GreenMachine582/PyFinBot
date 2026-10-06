@@ -16,7 +16,14 @@ class PyFinBotLoginViews(LoginViews):
     """Local-auth /login and /logout. The page is greentechhub-ui's
     login_page.html (LoginViews' default since greentechhub-fastapi v0.11),
     so PyFinBot only checks the password. Repeated failures are locked out
-    by core.login_throttle (429 + Retry-After, before authenticate runs)."""
+    by core.login_throttle (429 + Retry-After, before authenticate runs).
+
+    The form carries a CSRF token (fastapi's double-submit `gth_csrf`
+    cookie, rendered by ui's login page): a POST without it is refused 403
+    before anything else. Like the session cookie it needs HTTPS, or
+    localhost, which browsers treat as secure."""
+
+    csrf = True
 
     async def authenticate(self, user_id: str, password: str) -> Identity | None:
         # Deferred import: pyfinbot.py imports this module at load time, so a
