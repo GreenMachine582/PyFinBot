@@ -38,6 +38,10 @@ Scope and architecture: see `web-implementation-brief.md`.
   and `client_address(request)`, so a lockout on the sign-in form also covers the API. Check the password in its own
   short-lived session, not `Depends(get_session)`: the tests' per-test connection would roll the throttle's writes
   back with that session
+- [ ] 8. `refactor(settings): adapter settings from GTHBaseSettings` — once greentechhub-core#55 and fastapi's
+  lowercase-first reads (the #56 rework) are released: drop `Settings`' own `AUTH_ADAPTER`, `CORS_ALLOWED_ORIGINS`,
+  `TRUSTED_PROXIES`, `ROLE_BOOTSTRAP` and `ROLE_GROUPS` and read core's lowercase fields (`settings.auth_adapter`
+  in `web/routes/auth.py`, `pyfinbot.py`'s CORS dev default)
 
 Later, once `User` has an email address (a decision first): the profile section, password reset, email
 verification and notifications (`register_email` with core's `smtp_settings`, `register_notifications` for sync
