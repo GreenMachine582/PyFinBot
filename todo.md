@@ -31,10 +31,6 @@ Scope and architecture: see `web-implementation-brief.md`.
 > From a review on 2026-10-05: core v0.10–v0.11, fastapi v0.12–v0.13 and ui v0.15 shipped the pieces this section
 > was waiting on, plus opt-in features PyFinBot can use as they are. One PR at a time, in this order.
 
-- [ ] 3. `refactor(reports): FY selects as gth_select` — `gth_select("fy", "Financial year", fys|fy_options,
-  value=report.fy, id="gains-fy", field_class="mb-0")` in `_report_gains.html` and the same with
-  `placeholder="All time"`, `id="dividends-fy"` in `_report_dividends.html`. Both are `name="fy"` in report panes
-  that stay in the DOM, so without `id=` they'd share `id="gth-field-fy"`
 - [ ] 4. `feat(settings): change password` — `SettingsViews(change_password=...)`: verify the current password
   against `User.password_hash` (core's `verify_password`) and store the new hash (`hash_password`)
 - [ ] 5. `feat(auth): login throttling` — `throttle=LoginThrottle(SQLAlchemyAttemptStore(...))` on
