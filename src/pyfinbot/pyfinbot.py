@@ -24,6 +24,7 @@ from greentechhub_fastapi.settings import SettingsViews
 from greentechhub_fastapi.templating import mount_static_dirs
 
 from . import version, api
+from .core.login_throttle import LOGIN_THROTTLE
 from .core.permissions import ROLES, SETTINGS_MANAGE, USERS_MANAGE
 from .core.settings import settings
 from .core.user_settings import USER_SETTINGS
@@ -48,6 +49,8 @@ async def lifespan(app: FastAPI):
     Lifespan context manager to initialise the database on startup.
     """
     await init_db()
+    # Nothing else deletes old gth_login_attempts rows; once a start is enough.
+    await LOGIN_THROTTLE.prune()
     yield
 
 

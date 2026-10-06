@@ -86,7 +86,9 @@ cp .env.example .env
 
 > **Upgrading:** the server-wide `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD`, `GMAIL_IMAP_HOST`, `GMAIL_IMAP_PORT`, `GMAIL_MAILBOX` and `COMMSEC_SENDER` settings are no longer read (the app warns at startup while they're set). Enter those details in each user's Settings instead, then remove them from `.env`.
 
-`ENVIRONMENT`/`CORS_ORIGINS` control cross-origin access: in `development` (the default), all origins are allowed when `CORS_ORIGINS` is unset, for frictionless local testing; in `production`, no cross-origin access is allowed unless `CORS_ORIGINS` is set to an explicit comma-separated allow-list.
+`ENVIRONMENT`/`CORS_ALLOWED_ORIGINS` control cross-origin access: in `development` (the default), all origins are allowed when `CORS_ALLOWED_ORIGINS` is unset, for frictionless local testing; in `production`, no cross-origin access is allowed unless `CORS_ALLOWED_ORIGINS` is set to an explicit comma-separated allow-list.
+
+**Sign-in lockout.** 5 failed sign-ins for an account, or from one client, within 15 minutes lock it out for 15 minutes. Behind a reverse proxy, set `TRUSTED_PROXIES` to the proxy's address(es) so each client is counted by its own IP (from `X-Forwarded-For`); otherwise every request has the proxy's address and one guesser locks everyone out.
 
 ### Database Migrations
 Apply the schema to your database:

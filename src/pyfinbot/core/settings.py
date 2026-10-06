@@ -60,6 +60,12 @@ class Settings(GTHBaseSettings):
     ENVIRONMENT: str = "development"
     CORS_ALLOWED_ORIGINS: str = ""
 
+    # Comma-separated addresses of the reverse proxy in front of the app (e.g.
+    # Caddy). register_core's ProxyHeadersMiddleware then takes the client IP
+    # from X-Forwarded-For; unset, every request has the proxy's address and
+    # the login throttle's per-client count is one count for everybody.
+    TRUSTED_PROXIES: str = ""
+
     # Directory for greentechhub_core FileLock files (e.g. the market-sync
     # "already running" guard). Must be shared by every worker/replica on the
     # host for the lock to span them; the default is fine for one container.
