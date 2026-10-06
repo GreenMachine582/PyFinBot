@@ -86,8 +86,8 @@ register_health(app, checks=[database_ready])
 # CORS_ALLOWED_ORIGINS is set. register_core's own CORS wiring has no such
 # dev-friendly default (empty means empty), so it's applied here, before
 # calling it, the same way this dev-default logic always has.
-if settings.ENVIRONMENT == "development" and not settings.CORS_ALLOWED_ORIGINS:
-    settings.CORS_ALLOWED_ORIGINS = "*"
+if settings.ENVIRONMENT == "development" and not settings.cors_allowed_origins:
+    settings.cors_allowed_origins = "*"
 
 # request-id/timing/security-header/CORS/trusted-proxy middleware, and
 # session-cookie auth (AUTH_ADAPTER=local for now — see
