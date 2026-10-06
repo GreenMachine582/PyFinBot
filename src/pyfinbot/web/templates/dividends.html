@@ -3,6 +3,7 @@
 {% from "busy_button.html" import gth_busy_button %}
 {% from "card.html" import gth_card %}
 {% from "combobox.html" import gth_combobox %}
+{% from "form.html" import gth_form %}
 {% block title %}Dividends{% endblock %}
 {% block content %}
 
@@ -16,13 +17,14 @@
 <div class="row g-3">
   <div class="col-lg-5">
     {% call gth_card("Sync one stock") %}
-      <form hx-post="/dividends/sync" hx-target="#sync-result" hx-disabled-elt="find button[type=submit]">
+      {% call gth_form("/dividends/sync", form_attrs={"hx-post": "/dividends/sync", "hx-target": "#sync-result",
+          "hx-disabled-elt": "find button[type=submit]"}) %}
         {{ gth_combobox("stock_id", "Stock", "/stocks/options", placeholder="Search symbol or name…",
             help_text="Any tracked stock, whether or not you've traded it.") }}
         <div class="d-flex justify-content-end">
           {{ gth_busy_button("Sync", "Syncing…", icon="arrow-repeat", submit=True) }}
         </div>
-      </form>
+      {% endcall %}
     {% endcall %}
     <p class="form-text mt-2">
       "Sync all" covers every stock you've ever bought or sold. Dividend history is shared between users.

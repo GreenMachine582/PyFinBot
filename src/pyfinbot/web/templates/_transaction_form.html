@@ -21,8 +21,7 @@
       {{ gth_segmented("type", [
           {"value": "Buy", "label": "Buy", "style": "btn-outline-primary", "icon": "plus-circle"},
           {"value": "Sell", "label": "Sell", "style": "btn-outline-warning", "icon": "dash-circle"},
-        ], value=values.get("type") or "Buy", label="Type") }}
-      {% if errors.get("type") %}<div class="invalid-feedback d-block">{{ errors["type"]|join(" ") }}</div>{% endif %}
+        ], value=values.get("type") or "Buy", label="Type", errors=errors.get("type")) }}
     </div>
   </div>
   <div class="row g-2">
