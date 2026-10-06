@@ -33,6 +33,11 @@ Scope and architecture: see `web-implementation-brief.md`.
 
 - [ ] 6. `feat(auth): CSRF on the sign-in form` — `csrf = True` on `PyFinBotLoginViews` (ui v0.15 renders the field).
   Needs HTTPS, as the session cookie already does
+- [ ] 7. `feat(auth): throttle API logins` — once greentechhub-fastapi ships `throttled_login`
+  (greentechhub-fastapi#56): bump the pin, then `/api/auth/login` calls it with `core.login_throttle.LOGIN_THROTTLE`
+  and `client_address(request)`, so a lockout on the sign-in form also covers the API. Check the password in its own
+  short-lived session, not `Depends(get_session)`: the tests' per-test connection would roll the throttle's writes
+  back with that session
 
 Later, once `User` has an email address (a decision first): the profile section, password reset, email
 verification and notifications (`register_email` with core's `smtp_settings`, `register_notifications` for sync

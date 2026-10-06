@@ -1,5 +1,6 @@
 """Login throttling (greentechhub adoption, item 5): core's LoginThrottle over
-gth_login_attempts, shared by the web sign-in form and /api/auth/login."""
+gth_login_attempts on the web sign-in form, and TRUSTED_PROXIES so each
+client behind the reverse proxy is counted by its own address."""
 import os
 import sqlite3
 import subprocess
@@ -21,10 +22,6 @@ CLIENT = "127.0.0.1"  # httpx's ASGITransport client address
 async def _web(client: AsyncClient, user_id: str, password: str):
     return await client.post("/login", data={"user_id": user_id, "password": password},
                              follow_redirects=False)
-
-
-async def _api(client: AsyncClient, user_id: str, password: str):
-    return await client.post("/api/auth/login", data={"username": user_id, "password": password})
 
 
 async def test_fifth_wrong_password_locks_the_web_form(client: AsyncClient):
@@ -55,30 +52,6 @@ async def test_a_good_sign_in_clears_the_accounts_count(client: AsyncClient):
     assert (await LOGIN_THROTTLE.check(client_key(CLIENT))).failures == 4
 
 
-async def test_web_lockout_also_locks_the_api(client: AsyncClient):
-    await create_user(client, "throttle-c")
-    for _ in range(5):
-        await _web(client, "throttle-c", "wrong-pass")
-
-    resp = await _api(client, "throttle-c", "hunter2!")
-    assert resp.status_code == 429
-    assert resp.json()["code"] == "http_429"
-    assert resp.json()["message"].startswith(LOCKED)
-    assert int(resp.headers["Retry-After"]) > 0
-
-
-async def test_api_failures_lock_the_web_form(client: AsyncClient):
-    await create_user(client, "throttle-d")
-    for _ in range(4):
-        resp = await _api(client, "throttle-d", "wrong-pass")
-        assert resp.status_code == 401
-        assert resp.headers["WWW-Authenticate"] == "Bearer"
-    assert (await _api(client, "throttle-d", "wrong-pass")).status_code == 429
-
-    resp = await _web(client, "throttle-d", "hunter2!")
-    assert resp.status_code == 429 and LOCKED in resp.text
-
-
 async def test_one_client_guessing_many_accounts_is_locked_out(client: AsyncClient):
     for n in range(5):
         resp = await _web(client, f"nobody-{n}", "wrong-pass")
@@ -86,6 +59,34 @@ async def test_one_client_guessing_many_accounts_is_locked_out(client: AsyncClie
 
     await create_user(client, "throttle-e")
     assert (await _web(client, "throttle-e", "hunter2!")).status_code == 429
+
+
+async def test_trusted_proxies_gives_each_forwarded_client_its_own_address(monkeypatch):
+    # PyFinBot's Settings must carry TRUSTED_PROXIES for register_core to see it
+    # (extra="ignore" drops undeclared env vars), so the throttle's client key
+    # is the real client's, not the proxy's.
+    from fastapi import FastAPI, Request
+    from greentechhub_fastapi import register_core
+    from httpx import ASGITransport
+
+    from pyfinbot.core.settings import Settings
+
+    monkeypatch.setenv("TRUSTED_PROXIES", "10.0.0.5")
+    app = FastAPI()
+    register_core(app, Settings())
+
+    @app.get("/whoami")
+    async def whoami(request: Request):
+        return request.client.host if request.client else None
+
+    async def seen(peer: str) -> str:
+        transport = ASGITransport(app=app, client=(peer, 1234))
+        async with AsyncClient(transport=transport, base_url="http://test") as c:
+            resp = await c.get("/whoami", headers={"X-Forwarded-For": "203.0.113.9"})
+            return resp.json()
+
+    assert await seen("10.0.0.5") == "203.0.113.9"  # via the proxy: the real client
+    assert await seen("198.51.100.7") == "198.51.100.7"  # anyone else can't spoof it
 
 
 def test_migration_creates_and_drops_gth_login_attempts(tmp_path):
