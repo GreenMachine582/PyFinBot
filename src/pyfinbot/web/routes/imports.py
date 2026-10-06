@@ -48,9 +48,9 @@ async def upload(request: Request, file: UploadFile | None = File(None),
         summary = await import_transactions(session, identity.subject, content, filename or "")
     except ImportFileError as exc:
         return templates.TemplateResponse(
-            request, "_import_result.html", {"error": exc.detail, "filename": filename},
+            request, "_import_result.html", {"error": exc.message, "filename": filename},
             status_code=422,  # swapped in like a gth-form error
-            headers={"HX-Trigger": greentechhub_ui.toast(exc.detail, "danger", title="Import failed")},
+            headers={"HX-Trigger": greentechhub_ui.toast(exc.message, "danger", title="Import failed")},
         )
 
     if not summary.total_rows:
