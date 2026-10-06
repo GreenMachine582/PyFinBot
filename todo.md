@@ -31,10 +31,6 @@ Scope and architecture: see `web-implementation-brief.md`.
 > From a review on 2026-10-05: core v0.10–v0.11, fastapi v0.12–v0.13 and ui v0.15 shipped the pieces this section
 > was waiting on, plus opt-in features PyFinBot can use as they are. One PR at a time, in this order.
 
-- [ ] 2. `refactor(settings): core's settings_cipher` — drop `core/settings.py`'s `settings_cipher_key` and the
-  `SETTINGS_CIPHER_KEY` field (core's `GTHBaseSettings` has `settings_cipher_key` now) and pass
-  `cipher=settings_cipher(settings, context="pyfinbot-settings")`. Same derivation, so saved app passwords stay
-  readable; keep a test that a value encrypted the old way still decrypts
 - [ ] 3. `refactor(reports): FY selects as gth_select` — `gth_select("fy", "Financial year", fys|fy_options,
   value=report.fy, id="gains-fy", field_class="mb-0")` in `_report_gains.html` and the same with
   `placeholder="All time"`, `id="dividends-fy"` in `_report_dividends.html`. Both are `name="fy"` in report panes

@@ -5,8 +5,6 @@ import tempfile
 import warnings
 from os import path as os_path
 
-import base64
-import hashlib
 
 from dotenv import load_dotenv
 from greentechhub_core.config import GTHBaseSettings
@@ -48,12 +46,10 @@ class Settings(GTHBaseSettings):
     ROLE_BOOTSTRAP: str = ""
     ROLE_GROUPS: str = ""
 
-    # Encrypts secret settings at rest — each user's email app password, in
-    # gth_settings. A Fernet key: generate one with
-    #   python -c "from greentechhub_core.settings.crypto import FernetCipher; print(FernetCipher.generate_key())"
-    # Unset, one is derived from secret_key (see settings_cipher_key) — then
-    # changing SECRET_KEY makes saved app passwords unreadable.
-    SETTINGS_CIPHER_KEY: str = ""
+    # SETTINGS_CIPHER_KEY, the Fernet key that encrypts secret settings at rest
+    # (each user's email app password, in gth_settings), is greentechhub-core's
+    # GTHBaseSettings.settings_cipher_key; pyfinbot.py builds the cipher with
+    # core's settings_cipher, which derives one from secret_key when it's unset.
 
     # "development" or "production". Controls the CORS default in pyfinbot.py:
     # development allows all origins when CORS_ALLOWED_ORIGINS is unset
@@ -101,24 +97,6 @@ def _warn_retired(environ=os.environ) -> list[str]:
 
 
 _warn_retired()
-
-
-def settings_cipher_key(config: Settings = settings) -> str:
-    """The Fernet key for secret settings: SETTINGS_CIPHER_KEY, else one
-    derived from secret_key (with a warning), so a dev setup works without
-    configuring a second key."""
-    # greentechhub-core v0.11's GTHBaseSettings has its own settings_cipher_key
-    # field for the same env var; a constructor argument lands in either one.
-    if key := config.SETTINGS_CIPHER_KEY or config.settings_cipher_key:
-        return key
-    warnings.warn(
-        "SETTINGS_CIPHER_KEY is not set — deriving the key that encrypts saved app passwords "
-        "from SECRET_KEY. Changing SECRET_KEY will make them unreadable; set "
-        "SETTINGS_CIPHER_KEY explicitly for any persistent deployment.",
-        stacklevel=2,
-    )
-    digest = hashlib.sha256(f"pyfinbot-settings:{config.secret_key}".encode()).digest()
-    return base64.urlsafe_b64encode(digest).decode("ascii")
 
 
 if settings.ENVIRONMENT == "production" and not settings.CORS_ALLOWED_ORIGINS:
