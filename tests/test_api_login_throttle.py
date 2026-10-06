@@ -2,13 +2,13 @@
 form's LoginThrottle through greentechhub-fastapi's throttled_login."""
 from httpx import AsyncClient
 
-from .conftest import create_user
+from .conftest import create_user, post_login
 
 LOCKED = "Too many failed sign-ins"
 
 
 async def _web(client: AsyncClient, user_id: str, password: str):
-    return await client.post("/login", data={"user_id": user_id, "password": password},
+    return await post_login(client, user_id, password,
                              follow_redirects=False)
 
 

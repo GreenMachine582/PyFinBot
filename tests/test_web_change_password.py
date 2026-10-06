@@ -7,7 +7,7 @@ from greentechhub_core.security import verify_password
 
 from pyfinbot.models.user_models import User
 
-from .conftest import web_login
+from .conftest import post_login, web_login
 from .test_web_reports import HX
 
 GOOD = {"current_password": "hunter2!", "new_password": "brand-new-pass",
@@ -57,10 +57,10 @@ async def test_changing_it_signs_in_with_the_new_password_only(client, session):
     assert "hunter2!" not in resp.text and "brand-new-pass" not in resp.text
     assert verify_password("brand-new-pass", await _hash(session, "pw-change"))
 
-    old = await client.post("/login", data={"user_id": "pw-change", "password": "hunter2!"},
+    old = await post_login(client, "pw-change", "hunter2!",
                             follow_redirects=False)
     assert old.status_code == 401
-    new = await client.post("/login", data={"user_id": "pw-change", "password": "brand-new-pass"},
+    new = await post_login(client, "pw-change", "brand-new-pass",
                             follow_redirects=False)
     assert new.status_code == 303
 

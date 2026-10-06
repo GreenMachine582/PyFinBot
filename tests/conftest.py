@@ -141,6 +141,19 @@ async def register_and_login(client: AsyncClient, user_id: str, password: str = 
     return {"Authorization": f"Bearer {token}"}
 
 
+async def post_login(client: AsyncClient, user_id: str, password: str, **kwargs):
+    """POST the web sign-in form the way a browser would, CSRF token
+    included: GET /login first for the gth_csrf cookie, then send it back
+    with the same token as the form's csrf_token field. The cookie is marked
+    Secure, so it's re-set without that flag for the tests' http:// base URL
+    (as web_login does for gth_session). kwargs go to client.post."""
+    page = await client.get("/login", headers={"Accept": "text/html"})
+    token = page.cookies["gth_csrf"]
+    client.cookies.set("gth_csrf", token)
+    data = {"user_id": user_id, "password": password, "csrf_token": token}
+    return await client.post("/login", data=data, **kwargs)
+
+
 async def web_login(client: AsyncClient, user_id: str, password: str = "hunter2!") -> None:
     """Register a user and log in through the web form, leaving the
     gth_session cookie on `client` for subsequent page requests. Calling
@@ -149,7 +162,7 @@ async def web_login(client: AsyncClient, user_id: str, password: str = "hunter2!
     The cookie is marked Secure, so httpx's jar won't send it back over the
     tests' http:// base URL on its own — it's re-set without that flag."""
     await create_user(client, user_id, password)
-    resp = await client.post("/login", data={"user_id": user_id, "password": password}, follow_redirects=False)
+    resp = await post_login(client, user_id, password, follow_redirects=False)
     assert resp.status_code == 303, resp.text
     client.cookies.set("gth_session", resp.cookies["gth_session"])
 

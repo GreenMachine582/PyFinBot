@@ -12,7 +12,7 @@ from httpx import AsyncClient
 
 from pyfinbot.core.login_throttle import LOGIN_THROTTLE
 
-from .conftest import create_user
+from .conftest import create_user, post_login
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCKED = "Too many failed sign-ins"
@@ -20,7 +20,7 @@ CLIENT = "127.0.0.1"  # httpx's ASGITransport client address
 
 
 async def _web(client: AsyncClient, user_id: str, password: str):
-    return await client.post("/login", data={"user_id": user_id, "password": password},
+    return await post_login(client, user_id, password,
                              follow_redirects=False)
 
 

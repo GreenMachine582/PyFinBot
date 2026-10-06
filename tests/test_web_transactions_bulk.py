@@ -1,7 +1,7 @@
 """Bulk delete on the Transactions table: gth_data_table's bulk bar posts
 the checked rows as repeated `ids` (after a confirm) to
 POST /transactions/bulk-delete, which deletes only the signed-in user's."""
-from .conftest import create_stock, hx_triggers, web_login
+from .conftest import create_stock, hx_triggers, post_login, web_login
 
 HX = {"HX-Request": "true"}
 
@@ -22,7 +22,7 @@ async def _my_ids(client) -> list[int]:
 
 async def _sign_in_again(client, user_id: str) -> None:
     """Switch back to an existing user (web_login would create them again)."""
-    resp = await client.post("/login", data={"user_id": user_id, "password": "hunter2!"}, follow_redirects=False)
+    resp = await post_login(client, user_id, "hunter2!", follow_redirects=False)
     assert resp.status_code == 303, resp.text
     client.cookies.set("gth_session", resp.cookies["gth_session"])
 

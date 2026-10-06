@@ -3,7 +3,7 @@ fastapi's LoginViews renders greentechhub-ui's login_page.html by default, so
 PyFinBot no longer ships its own login.html."""
 from httpx import AsyncClient
 
-from .conftest import create_user, make_admin, web_login
+from .conftest import create_user, make_admin, post_login, web_login
 
 HTML = {"Accept": "text/html"}
 HX = {"HX-Request": "true"}
@@ -22,7 +22,7 @@ async def test_login_is_greentechhub_uis_sign_in_page(client: AsyncClient):
 
 async def test_wrong_password_keeps_the_user_id_but_not_the_password(client: AsyncClient):
     await create_user(client, "login-a")
-    resp = await client.post("/login", data={"user_id": "login-a", "password": "not-it-123"})
+    resp = await post_login(client, "login-a", "not-it-123")
     assert resp.status_code == 401
     assert "gth-toast-inline gth-toast-danger" in resp.text
     assert "Incorrect user ID or password" in resp.text
@@ -32,7 +32,7 @@ async def test_wrong_password_keeps_the_user_id_but_not_the_password(client: Asy
 
 async def test_sign_in_still_lands_on_the_dashboard(client: AsyncClient):
     await create_user(client, "login-b")
-    resp = await client.post("/login", data={"user_id": "login-b", "password": "hunter2!"},
+    resp = await post_login(client, "login-b", "hunter2!",
                              follow_redirects=False)
     assert resp.status_code == 303 and resp.headers["location"] == "/"
     assert "gth_session" in resp.headers.get("set-cookie", "")

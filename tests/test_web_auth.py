@@ -4,7 +4,7 @@ from httpx import AsyncClient
 
 from pyfinbot.core.settings import settings
 
-from .conftest import create_user
+from .conftest import create_user, post_login
 
 
 async def _register(client: AsyncClient, user_id: str, password: str = "hunter2!") -> None:
@@ -25,24 +25,20 @@ async def test_dashboard_redirects_when_not_logged_in(client: AsyncClient):
 
 async def test_login_wrong_password_shows_error(client: AsyncClient):
     await _register(client, "weba")
-    resp = await client.post("/login", data={"user_id": "weba", "password": "wrong"})
+    resp = await post_login(client, "weba", "wrong")
     assert resp.status_code == 401
     assert "Incorrect user ID or password" in resp.text
 
 
 async def test_login_unknown_user_shows_error(client: AsyncClient):
-    resp = await client.post("/login", data={"user_id": "nobody", "password": "wrong"})
+    resp = await post_login(client, "nobody", "wrong")
     assert resp.status_code == 401
     assert "Incorrect user ID or password" in resp.text
 
 
 async def test_login_success_sets_session_cookie_and_dashboard_loads(client: AsyncClient):
     await _register(client, "webb")
-    resp = await client.post(
-        "/login",
-        data={"user_id": "webb", "password": "hunter2!"},
-        follow_redirects=False,
-    )
+    resp = await post_login(client, "webb", "hunter2!", follow_redirects=False)
     assert resp.status_code == 303
     assert resp.headers["location"] == "/"
     assert "gth_session" in resp.cookies
@@ -55,11 +51,7 @@ async def test_login_success_sets_session_cookie_and_dashboard_loads(client: Asy
 
 async def test_logout_clears_session(client: AsyncClient):
     await _register(client, "webc")
-    login_resp = await client.post(
-        "/login",
-        data={"user_id": "webc", "password": "hunter2!"},
-        follow_redirects=False,
-    )
+    login_resp = await post_login(client, "webc", "hunter2!", follow_redirects=False)
     cookie = login_resp.cookies["gth_session"]
 
     logout_resp = await client.post(

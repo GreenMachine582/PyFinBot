@@ -19,6 +19,8 @@ from pyfinbot.models.stock_models import Stock
 from pyfinbot.models.transaction_models import Transaction, TypeEnum
 from pyfinbot.models.user_models import User
 
+from .conftest import post_login
+
 HX = {"HX-Request": "true"}
 
 
@@ -112,7 +114,7 @@ def test_cli_refuses_in_production(monkeypatch, capsys):
 
 async def test_seeded_transactions_page_for_demo_user(client, session):
     await seed_demo(session, environment="development")
-    login = await client.post("/login", data={"user_id": "demo-user", "password": "demo-user-pass"},
+    login = await post_login(client, "demo-user", "demo-user-pass",
                               follow_redirects=False)
     assert login.status_code == 303
     # Secure cookie over the tests' http:// base URL: re-set it, as web_login does.
