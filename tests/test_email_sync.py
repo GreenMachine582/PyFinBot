@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from pyfinbot.core.email_sync import GmailNotConfiguredError
 
-from .conftest import register_and_login
+from .conftest import create_stock, register_and_login
 
 USER_ID = "email-user"
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "commsec_emails"
@@ -21,11 +21,6 @@ def _load_fixture(name: str) -> email.message.Message:
 def _fake_messages(*names: str):
     return [(f"{i}".encode(), _load_fixture(name)) for i, name in enumerate(names, start=1)]
 
-
-async def _create_stock(client, symbol, market="ASX", name="Test Co"):
-    resp = await client.post("/api/stocks/", json={"symbol": symbol, "market": market, "name": name})
-    assert resp.status_code == 201
-    return resp.json()
 
 
 class TestSyncCommsecEmails:
@@ -50,7 +45,7 @@ class TestSyncCommsecEmails:
 
     async def test_creates_transaction_from_bought_email(self, client):
         headers = await register_and_login(client, USER_ID)
-        await _create_stock(client, "RMD", name="ResMed Inc")
+        await create_stock(client, "RMD", name="ResMed Inc")
 
         with patch(
             "pyfinbot.api.email_routes.fetch_commsec_emails",
@@ -76,7 +71,7 @@ class TestSyncCommsecEmails:
 
     async def test_creates_transaction_from_sold_email(self, client):
         headers = await register_and_login(client, USER_ID)
-        await _create_stock(client, "WOW", name="Woolworths Group")
+        await create_stock(client, "WOW", name="Woolworths Group")
 
         with patch(
             "pyfinbot.api.email_routes.fetch_commsec_emails",
@@ -111,7 +106,7 @@ class TestSyncCommsecEmails:
 
     async def test_duplicate_email_skipped_on_resync(self, client):
         headers = await register_and_login(client, USER_ID)
-        await _create_stock(client, "RMD", name="ResMed Inc")
+        await create_stock(client, "RMD", name="ResMed Inc")
 
         with patch(
             "pyfinbot.api.email_routes.fetch_commsec_emails",

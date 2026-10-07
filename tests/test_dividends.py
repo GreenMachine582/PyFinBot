@@ -1,15 +1,10 @@
 """Integration tests for /api/dividends/sync (syncDividends mocked — no yfinance calls)."""
 from unittest.mock import AsyncMock, patch
 
-from .conftest import register_and_login
+from .conftest import create_stock, register_and_login
 
 USER_ID = "div-user"
 
-
-async def _create_stock(client, symbol="BHP", market="ASX", name="BHP Group"):
-    resp = await client.post("/api/stocks/", json={"symbol": symbol, "market": market, "name": name})
-    assert resp.status_code == 201
-    return resp.json()
 
 
 async def _buy(client, stock_id, headers, units=10, price=25, date="2024-08-01"):
@@ -26,7 +21,7 @@ class TestSyncDividendsEndpoint:
 
     async def test_syncs_stocks_from_users_transactions(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         await _buy(client, stock["id"], headers)
 
         with patch(
@@ -46,8 +41,8 @@ class TestSyncDividendsEndpoint:
 
     async def test_explicit_stock_id_bypasses_transaction_lookup(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
-        other_stock = await _create_stock(client, symbol="CBA", name="Commonwealth Bank")
+        stock = await create_stock(client)
+        other_stock = await create_stock(client, symbol="CBA", name="Commonwealth Bank")
         # user has never transacted `other_stock`, but ?stock_id= should sync it anyway
         await _buy(client, stock["id"], headers)
 

@@ -4,16 +4,11 @@ from decimal import Decimal
 
 import pytest
 
-from .conftest import register_and_login
+from .conftest import create_stock, register_and_login
 
 USER_ID = "report-user"
 OTHER_USER_ID = "other-user"
 
-
-async def _create_stock(client, symbol="BHP", market="ASX", name="BHP Group"):
-    resp = await client.post("/api/stocks/", json={"symbol": symbol, "market": market, "name": name})
-    assert resp.status_code == 201
-    return resp.json()
 
 
 async def _buy(client, stock_id, headers, units, price, date="2024-08-01", fees=0):
@@ -59,7 +54,7 @@ class TestHoldings:
 
     async def test_buy_appears_in_holdings(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=25)
         resp = await client.get("/api/reports/holdings", headers=headers)
         assert resp.status_code == 200
@@ -71,7 +66,7 @@ class TestHoldings:
 
     async def test_partial_sell_reduces_units(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=25, date="2024-08-01")
         await _sell(client, stock["id"], headers, units=4, price=30, date="2024-09-01")
         resp = await client.get("/api/reports/holdings", headers=headers)
@@ -81,7 +76,7 @@ class TestHoldings:
 
     async def test_full_sell_excluded_from_holdings(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=25, date="2024-08-01")
         await _sell(client, stock["id"], headers, units=10, price=30, date="2024-09-01")
         resp = await client.get("/api/reports/holdings", headers=headers)
@@ -89,7 +84,7 @@ class TestHoldings:
 
     async def test_as_of_date_excludes_future_transactions(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=25, date="2024-08-01")
         await _buy(client, stock["id"], headers, units=5, price=30, date="2025-06-01")
         resp = await client.get("/api/reports/holdings",
@@ -99,7 +94,7 @@ class TestHoldings:
 
     async def test_avg_cost_basis_weighted(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         # 10 @ $20 + 10 @ $30 → avg = $25
         await _buy(client, stock["id"], headers, units=10, price=20, date="2024-08-01")
         await _buy(client, stock["id"], headers, units=10, price=30, date="2024-09-01")
@@ -110,7 +105,7 @@ class TestHoldings:
     async def test_only_requesting_users_holdings(self, client):
         headers = await register_and_login(client, USER_ID)
         other_headers = await register_and_login(client, OTHER_USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=25)
         # Other user buys same stock
         other_payload = {"stock_id": stock["id"], "type": "Buy", "units": 999, "price": 1}
@@ -123,7 +118,7 @@ class TestHoldings:
 
     async def test_zero_dividends_when_none_seeded(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=25, date="2024-08-01")
         resp = await client.get("/api/reports/holdings", headers=headers)
         holdings = resp.json()["holdings"]
@@ -131,7 +126,7 @@ class TestHoldings:
 
     async def test_total_dividends_received_reflects_prior_dividends(self, client, session):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=25, date="2024-08-01")
         await _seed_dividend(session, stock["id"], "2024-09-01", "1.50")
         resp = await client.get("/api/reports/holdings", headers=headers)
@@ -150,7 +145,7 @@ class TestCapitalGains:
 
     async def test_no_sells_returns_zero(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=25)
         resp = await client.get("/api/reports/capital-gains",
                                 params={"fy": 2024}, headers=headers)
@@ -161,7 +156,7 @@ class TestCapitalGains:
 
     async def test_simple_gain(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         # Buy 10 @ $20 (FY2024: Aug 2024)
         await _buy(client, stock["id"], headers, units=10, price=20, date="2024-08-01")
         # Sell 10 @ $30 (FY2024: Jan 2025)
@@ -181,7 +176,7 @@ class TestCapitalGains:
 
     async def test_sell_with_fees_reduces_proceeds(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=20, date="2024-08-01")
         await _sell(client, stock["id"], headers, units=10, price=30, date="2025-01-01", fees=9.95)
 
@@ -193,7 +188,7 @@ class TestCapitalGains:
 
     async def test_loss_is_negative(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=30, date="2024-08-01")
         await _sell(client, stock["id"], headers, units=10, price=20, date="2025-01-01")
 
@@ -203,7 +198,7 @@ class TestCapitalGains:
 
     async def test_sells_in_wrong_fy_excluded(self, client):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=20, date="2023-08-01")
         # This sell is in FY2023 (Jan 2024), not FY2024
         await _sell(client, stock["id"], headers, units=5, price=30, date="2024-01-01")
@@ -214,8 +209,8 @@ class TestCapitalGains:
 
     async def test_multiple_stocks_reported_separately(self, client):
         headers = await register_and_login(client, USER_ID)
-        bhp = await _create_stock(client, "BHP")
-        cba = await _create_stock(client, "CBA", name="Commonwealth Bank")
+        bhp = await create_stock(client, "BHP")
+        cba = await create_stock(client, "CBA", name="Commonwealth Bank")
         await _buy(client, bhp["id"], headers, units=10, price=20, date="2024-08-01")
         await _buy(client, cba["id"], headers, units=5, price=100, date="2024-08-01")
         await _sell(client, bhp["id"], headers, units=10, price=30, date="2025-01-01")
@@ -250,7 +245,7 @@ class TestDividendsReport:
 
     async def test_dividend_before_any_holding_excluded(self, client, session):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         await _seed_dividend(session, stock["id"], "2024-01-01", "1.00")
         await _buy(client, stock["id"], headers, units=10, price=25, date="2024-08-01")
 
@@ -261,7 +256,7 @@ class TestDividendsReport:
 
     async def test_dividend_mid_holding_weighted_correctly(self, client, session):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=25, date="2024-08-01")
         await _seed_dividend(session, stock["id"], "2024-09-01", "1.50")
 
@@ -276,7 +271,7 @@ class TestDividendsReport:
 
     async def test_dividend_after_full_sell_excluded(self, client, session):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=25, date="2024-08-01")
         await _sell(client, stock["id"], headers, units=10, price=30, date="2024-09-01")
         await _seed_dividend(session, stock["id"], "2024-10-01", "1.00")
@@ -288,7 +283,7 @@ class TestDividendsReport:
 
     async def test_partial_holding_weighted_after_partial_sell(self, client, session):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=25, date="2024-08-01")
         await _sell(client, stock["id"], headers, units=4, price=30, date="2024-08-15")
         await _seed_dividend(session, stock["id"], "2024-09-01", "1.00")
@@ -300,7 +295,7 @@ class TestDividendsReport:
 
     async def test_fy_filter(self, client, session):
         headers = await register_and_login(client, USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=25, date="2023-08-01")
         # FY2023 (Jan 2024) and FY2024 (Aug 2024) dividends
         await _seed_dividend(session, stock["id"], "2024-01-15", "1.00")
@@ -314,8 +309,8 @@ class TestDividendsReport:
 
     async def test_multiple_stocks_totaled(self, client, session):
         headers = await register_and_login(client, USER_ID)
-        bhp = await _create_stock(client, "BHP")
-        cba = await _create_stock(client, "CBA", name="Commonwealth Bank")
+        bhp = await create_stock(client, "BHP")
+        cba = await create_stock(client, "CBA", name="Commonwealth Bank")
         await _buy(client, bhp["id"], headers, units=10, price=25, date="2024-08-01")
         await _buy(client, cba["id"], headers, units=5, price=100, date="2024-08-01")
         await _seed_dividend(session, bhp["id"], "2024-09-01", "1.00")
@@ -330,7 +325,7 @@ class TestDividendsReport:
     async def test_only_requesting_users_dividends(self, client, session):
         headers = await register_and_login(client, USER_ID)
         other_headers = await register_and_login(client, OTHER_USER_ID)
-        stock = await _create_stock(client)
+        stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=25, date="2024-08-01")
         # Other user never transacted this stock
         await _seed_dividend(session, stock["id"], "2024-09-01", "1.00")

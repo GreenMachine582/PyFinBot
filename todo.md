@@ -37,14 +37,6 @@ pins.
   - **Now:** `scripts/` has `create_user.py` and `seed_demo.py` only.
   - **Plan:** one entry point over the same `core/reports.py` functions, so the CLI and the web never disagree.
 
-## Lean now — no gth release needed
-
-From a review of PyFinBot against the gth repos (2026-10-07): generic code PyFinBot
-can drop today, using what the pinned releases already offer. One PR each.
-
-- [ ] `test`: the local `_create_stock` helpers in 6 test files use conftest's
-  `create_stock`
-
 ## Web UI (greentechhub-fastapi / greentechhub-ui)
 
 Scope and architecture: see `web-implementation-brief.md`.
