@@ -20,6 +20,7 @@ import io
 from typing import Protocol
 
 import pandas as pd
+from greentechhub_core.types import ApplicationError
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..models.stock_models import Stock
@@ -48,14 +49,16 @@ COLUMN_ALIASES: dict[str, list[str]] = {
 }
 
 
-class ImportFileError(Exception):
+class ImportFileError(ApplicationError):
     """The file as a whole can't be imported (empty, unparseable, missing
-    columns, commit failure). status_code is the HTTP status the API maps it to."""
+    columns, commit failure). An ApplicationError with its HTTP status as the
+    status_code hint, so the API's error handlers answer it ({code:
+    "import_failed", message}) and the web route shows its message."""
 
-    def __init__(self, status_code: int, detail: str):
-        super().__init__(detail)
-        self.status_code = status_code
-        self.detail = detail
+    code = "import_failed"
+
+    def __init__(self, status_code: int, message: str):
+        super().__init__(message, status_code=status_code)
 
 
 class _Readable(Protocol):

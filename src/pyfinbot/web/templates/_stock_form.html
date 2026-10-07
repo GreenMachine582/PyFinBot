@@ -1,4 +1,5 @@
 {% from "form.html" import gth_form, gth_form_field %}
+{% from "chips.html" import gth_switch %}
 {% set action = "/stocks/" ~ stock.id if stock else "/stocks" %}
 {% call gth_form(action, form_attrs={"hx-post": action, "hx-target": "this", "hx-swap": "outerHTML"}) %}
   {% if stock %}
@@ -6,12 +7,8 @@
       Symbol and market can't be changed — create a new stock instead.
     </p>
     {{ gth_form_field("name", "Name", value=values.get("name"), errors=errors.get("name")) }}
-    <div class="form-check mb-3">
-      <input class="form-check-input" type="checkbox" id="gth-field-is_active" name="is_active"
-        {% if values.get("is_active") %}checked{% endif %}>
-      <label class="form-check-label" for="gth-field-is_active">Active</label>
-      <div class="form-text">Unticking archives the stock; it stays on existing transactions.</div>
-    </div>
+    {{ gth_switch("is_active", "Active", checked=values.get("is_active"),
+        help_text="Switching it off archives the stock; it stays on existing transactions.") }}
   {% else %}
     <div class="row g-2">
       <div class="col-5">
