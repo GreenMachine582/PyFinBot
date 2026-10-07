@@ -22,13 +22,13 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, Sequence, cast
 
-from greentechhub_core.security import hash_password
 from sqlalchemy import CursorResult, delete, func
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..core.settings import settings
 from ..core.permissions import ADMIN
+from ..core.users import new_user
 from ..models.dividend_models import Dividend
 from ..models.settings_models import ROLE_GRANTS_TABLE
 from ..models.stock_models import Stock
@@ -149,7 +149,7 @@ async def _ensure_users(session: AsyncSession, summary: SeedSummary) -> dict[str
     for user_id, password in DEMO_USERS.items():
         user = await session.get(User, user_id)
         if user is None:
-            user = User(id=user_id, active=True, password_hash=hash_password(password))
+            user = new_user(user_id, password)
             session.add(user)
             summary.users_created += 1
         users[user_id] = user

@@ -14,9 +14,9 @@ import getpass
 import sys
 from typing import Optional, Sequence
 
-from greentechhub_core.security import hash_password
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from ..core.users import new_user
 from ..models.user_models import User
 
 
@@ -32,7 +32,7 @@ async def create_user(session: AsyncSession, user_id: str, password: str) -> Use
         raise ValueError("a user id and a password are required")
     if await session.get(User, user_id):
         raise UserExists(f"user {user_id!r} already exists")
-    user = User(id=user_id, active=True, password_hash=hash_password(password))
+    user = new_user(user_id, password)
     session.add(user)
     await session.commit()
     await session.refresh(user)

@@ -34,7 +34,7 @@ async def emails_page(request: Request, identity: Identity = Depends(page_identi
         account = await load_email_account(get_settings_service(request), identity.subject)
         problem = None
     except EmailSyncError as exc:  # a saved password that no longer decrypts
-        account, problem = EmailAccount(), exc.detail
+        account, problem = EmailAccount(), exc.message
     return templates.TemplateResponse(request, "emails.html", {
         "configured": account.configured,
         "problem": problem,
@@ -56,12 +56,12 @@ async def sync(request: Request, session: AsyncSession = Depends(get_session),
         except EmailSyncError as exc:
             return templates.TemplateResponse(
                 request, "_sync_result.html", {
-                    "heading": "Email sync failed", "error": exc.detail,
+                    "heading": "Email sync failed", "error": exc.message,
                     # 503: the account isn't set up, or its password needs re-entering
                     "settings_url": SETTINGS_URL if exc.status_code == 503 else None,
                 },
                 status_code=422,  # swapped in like a gth-form error
-                headers={"HX-Trigger": greentechhub_ui.toast(exc.detail, "danger", title="Email sync failed")},
+                headers={"HX-Trigger": greentechhub_ui.toast(exc.message, "danger", title="Email sync failed")},
             )
 
     noun = "transaction" if summary.created == 1 else "transactions"

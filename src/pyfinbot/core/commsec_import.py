@@ -9,6 +9,7 @@ import asyncio
 from email.message import Message
 from typing import Callable, List, Optional, Tuple
 
+from greentechhub_core.types import ApplicationError
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..models.stock_models import Stock
@@ -26,14 +27,16 @@ from .email_sync import (
 )
 
 
-class EmailSyncError(Exception):
+class EmailSyncError(ApplicationError):
     """The sync as a whole failed (not configured, IMAP down, commit failed).
-    status_code is the HTTP status the API maps it to."""
+    An ApplicationError with its HTTP status as the status_code hint, so the
+    API's error handlers answer it ({code: "email_sync_failed", message}) and
+    the web routes show its message."""
 
-    def __init__(self, status_code: int, detail: str):
-        super().__init__(detail)
-        self.status_code = status_code
-        self.detail = detail
+    code = "email_sync_failed"
+
+    def __init__(self, status_code: int, message: str):
+        super().__init__(message, status_code=status_code)
 
 
 async def sync_commsec_emails(
