@@ -13,14 +13,13 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.security import OAuth2PasswordRequestForm
-from greentechhub_core.security import verify_password
 from greentechhub_core.types import UnauthorizedError
 from greentechhub_fastapi.auth import client_address, resolve_dependency, throttled_login
 
 from ..core.login_throttle import LOGIN_THROTTLE
 from ..core.security import create_access_token
+from ..core.users import check_password
 from ..db.session import get_session
-from ..models.user_models import User
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -34,10 +33,8 @@ async def login(
         # Its own session, closed before the throttle writes in its own
         # sessions (a Depends(get_session) one would stay open around them).
         async with resolve_dependency(request.app, get_session) as session:
-            user = await session.get(User, form_data.username)
-            if user and user.password_hash and verify_password(form_data.password, user.password_hash):
-                return user.id
-            return None
+            user = await check_password(session, form_data.username, form_data.password)
+            return user.id if user else None
 
     user_id = await throttled_login(LOGIN_THROTTLE, form_data.username, check,
                                     address=client_address(request))

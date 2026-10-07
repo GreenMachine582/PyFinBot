@@ -1,15 +1,25 @@
-from datetime import datetime, timezone
+from contextlib import asynccontextmanager
 
 from fastapi import APIRouter
 from greentechhub_core.identity import DevelopmentIdentityProvider, Identity
-from greentechhub_core.security import hash_password, verify_password
 from greentechhub_fastapi.auth import LoginViews, resolve_dependency
 
 from ...core.login_throttle import LOGIN_THROTTLE
 from ...core.settings import settings
+from ...core.users import check_password, set_password
 from ...db.session import get_session
-from ...models.user_models import User
 from ..templating import templates
+
+
+@asynccontextmanager
+async def _session():
+    """A session through the app's get_session (so tests' overrides apply).
+    Deferred import: pyfinbot.py imports this module at load time, so a
+    top-level `from ...pyfinbot import app` here would be circular."""
+    from ...pyfinbot import app
+
+    async with resolve_dependency(app, get_session) as session:
+        yield session
 
 
 class PyFinBotLoginViews(LoginViews):
@@ -26,15 +36,11 @@ class PyFinBotLoginViews(LoginViews):
     csrf = True
 
     async def authenticate(self, user_id: str, password: str) -> Identity | None:
-        # Deferred import: pyfinbot.py imports this module at load time, so a
-        # top-level `from ...pyfinbot import app` here would be circular.
-        from ...pyfinbot import app
-
-        async with resolve_dependency(app, get_session) as session:
-            user = await session.get(User, user_id)
-            if not user or not user.password_hash or not verify_password(password, user.password_hash):
-                return None
-            return Identity(subject=user.id, username=user.id, email=None, groups=[], claims={})
+        async with _session() as session:
+            user = await check_password(session, user_id, password)
+        if user is None or user.id is None:
+            return None
+        return Identity(subject=user.id, username=user.id, email=None, groups=[], claims={})
 
 
 async def change_password(user: Identity, current: str, new: str) -> bool:
@@ -43,14 +49,11 @@ async def change_password(user: Identity, current: str, new: str) -> bool:
     greentechhub-fastapi has already checked the new password's length,
     that it differs and that it's confirmed. Sessions already issued stay
     valid; they're stateless JWTs."""
-    from ...pyfinbot import app  # deferred for the same reason as authenticate's
-
-    async with resolve_dependency(app, get_session) as session:
-        row = await session.get(User, user.subject)
-        if not row or not row.password_hash or not verify_password(current, row.password_hash):
+    async with _session() as session:
+        row = await check_password(session, user.subject, current)
+        if row is None:
             return False
-        row.password_hash = hash_password(new)
-        row.write_datetime = datetime.now(timezone.utc)
+        set_password(row, new)
         session.add(row)
         await session.commit()
     return True

@@ -42,12 +42,6 @@ pins.
 From a review of PyFinBot against the gth repos (2026-10-07): generic code PyFinBot
 can drop today, using what the pinned releases already offer. One PR each.
 
-- [ ] `refactor(auth)`: one password-user module
-  - The User lookup + `verify_password` is written twice: `web/routes/auth.py` (with a deferred
-    `from ...pyfinbot import app`) and `api/auth_routes.py`.
-  - User creation is written three times: `admin/create_user.py`, `api/user_routes.py` and `dev/seed.py`.
-  - **Plan:** one `core/users.py` with `check_password(session, user_id, password)` and
-    `create_user(session, ...)`.
 - [ ] `test`: the local `_create_stock` helpers in 6 test files use conftest's
   `create_stock`
 
