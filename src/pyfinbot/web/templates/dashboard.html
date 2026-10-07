@@ -1,9 +1,10 @@
 {% extends "base.html" %}
+{% from "page_header.html" import gth_page_header %}
 {% from "stat_card.html" import gth_stat_card %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 
-<h2 class="mb-3">Dashboard</h2>
+{{ gth_page_header("Dashboard") }}
 
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3">

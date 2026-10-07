@@ -2,10 +2,9 @@
 {% from "table.html" import gth_table %}
 {% from "empty_state.html" import gth_empty_state %}
 {% from "select.html" import gth_select %}
-{% set fy_options = [] %}{% for y in fys %}{% set _ = fy_options.append((y, y|fy)) %}{% endfor %}
 <form class="d-flex flex-wrap align-items-end gap-2 mb-3"
   hx-get="/reports/dividends" hx-target="closest .tab-pane" hx-trigger="change">
-  {{ gth_select("fy", "Financial year", fy_options, value=report.fy, placeholder="All time",
+  {{ gth_select("fy", "Financial year", fys|fy_options, value=report.fy, placeholder="All time",
       id="dividends-fy", field_class="mb-0") }}
   <a class="btn btn-outline-secondary ms-auto" href="/reports/dividends.csv{% if report.fy is not none %}?fy={{ report.fy }}{% endif %}" download>
     <i class="bi bi-download" aria-hidden="true"></i> CSV

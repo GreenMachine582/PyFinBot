@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "page_header.html" import gth_page_header %}
 {% from "card.html" import gth_card %}
+{% from "table.html" import gth_table %}
 {% from "form.html" import gth_form %}
 {% from "file_drop.html" import gth_file_drop %}
 {% from "busy_button.html" import gth_busy_button %}
@@ -31,9 +32,7 @@
         <code>MARKET:SYMBOL</code> (e.g. <code>ASX:BHP</code>), or a plain symbol plus a <code>market</code> column.
         Dates are <code>yyyy-mm-dd</code> or <code>dd/mm/yyyy</code>; <code>type</code> is Buy or Sell.
       </p>
-      <table class="table table-sm">
-        <thead><tr><th scope="col">Column</th><th scope="col">Also accepts</th><th scope="col"></th></tr></thead>
-        <tbody>
+      {% call gth_table(["Column", "Also accepts", ""], table_class="table-sm") %}
           {% for name, aliases in columns.items() %}
           <tr>
             <td><code>{{ name }}</code></td>
@@ -41,8 +40,7 @@
             <td class="text-secondary">{{ "Required" if name in required else "Optional" }}</td>
           </tr>
           {% endfor %}
-        </tbody>
-      </table>
+      {% endcall %}
     </details>
   </div>
 
