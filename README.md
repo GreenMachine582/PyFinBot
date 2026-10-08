@@ -32,7 +32,7 @@ tracking.
 * 📊 Transaction Recording: Track Buy/Sell orders with support for fees, prices, values, and financial year grouping.
 * 📥 CSV/Excel Import: Bulk-import transactions from a spreadsheet — via the API or the web Import page — with per-row validation and error reporting.
 * 📆 Holdings Snapshot: Query real-time or historical stock units held as of any given date.
-* 💰 Capital Gain/Loss Calculation: Determine net gains/losses per stock by financial year using average cost basis.
+* 💰 Capital Gain/Loss Calculation: Determine net gains/losses per stock by financial year using average or FIFO cost basis.
 * 🔗 Relational Database Design: Clean, normalised schema to ensure data integrity and efficient queries.
 * 🔐 Multi-user Support: JWT-authenticated accounts — each user only sees their own transactions and reports.
 * 🛡️ Roles: an admin role (manage users and roles at `/admin/roles`, app-wide settings such as the site banner at
@@ -185,7 +185,7 @@ pytest
 3. ✅ Reporting Module – FY-based reports for holdings and capital gains.
 4. ✅ Commsec Email Ingestion – Parse bought/sold confirmation emails (each user's own mailbox, over IMAP) into transactions.
 5. ✅ Dividend Tracking – Pull per-stock dividend history (yfinance) and report income by FY.
-6. 🧮 FIFO Method Support – Accurate gain/loss computation based on FIFO accounting.
+6. ✅ FIFO Method Support – Holdings and capital gains costed first in, first out, as an alternative to average cost.
 7. 🌐 CLI Interface – Interact via command line with exportable summaries.
 8. 🖥️ Web Dashboard (optional) – View and interact with data through a simple front end.
 
