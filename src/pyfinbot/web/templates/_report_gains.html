@@ -5,7 +5,8 @@
 <form class="d-flex flex-wrap align-items-end gap-2 mb-3"
   hx-get="/reports/gains" hx-target="closest .tab-pane" hx-trigger="change">
   {{ gth_select("fy", "Financial year", fys|fy_options, value=report.fy, id="gains-fy", field_class="mb-0") }}
-  <a class="btn btn-outline-secondary ms-auto" href="/reports/gains.csv?fy={{ report.fy }}" download>
+  {{ gth_select("method", "Cost basis", methods, value=report.method.value, id="gains-method", field_class="mb-0") }}
+  <a class="btn btn-outline-secondary ms-auto" href="/reports/gains.csv?fy={{ report.fy }}{% if report.method.value != "average" %}&amp;method={{ report.method.value }}{% endif %}" download>
     <i class="bi bi-download" aria-hidden="true"></i> CSV
   </a>
 </form>
@@ -31,7 +32,7 @@
   </tr>
   {% endfor %}
 {% endcall %}
-<p class="form-text">Average cost basis. Proceeds are the sell value less fees. Not tax advice: CGT discounts and FIFO parcels aren't applied.</p>
+<p class="form-text">{{ "FIFO cost basis: each sell takes the oldest parcels first" if report.method.value == "fifo" else "Average cost basis" }}. Proceeds are the sell value less fees. Not tax advice: CGT discounts aren't applied.</p>
 {% else %}
 {{ gth_empty_state("No sells in FY " ~ report.fy|fy ~ ".") }}
 {% endif %}

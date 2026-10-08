@@ -3,14 +3,20 @@ Report computations — shared by the /api/reports endpoints and the web
 Reports page.
 
 holdings_report       — Units held per stock as of a given date.
-capital_gains_report  — Realised gain/loss for a fiscal year (avg cost basis).
+capital_gains_report  — Realised gain/loss for a fiscal year.
 dividends_report      — Dividend income, optionally for one fiscal year.
+
+Holdings and capital gains take a CostMethod: AVERAGE (the weighted average
+buy price, the default) or FIFO (each sell takes the oldest parcels first).
+Buy fees aren't part of the cost under either; sell fees reduce proceeds.
 """
 from __future__ import annotations
 
+from collections import deque
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
-from typing import Optional
+from typing import Iterable, Optional
 
 from greentechhub_core.dates import fiscal_year, fiscal_year_bounds
 from sqlmodel import col, select
@@ -22,6 +28,7 @@ from ..models.transaction_models import Transaction, TypeEnum
 from ..schemas.report_schemas import (
     CapitalGainsItem,
     CapitalGainsReport,
+    CostMethod,
     DividendItem,
     DividendsReport,
     HoldingItem,
@@ -29,14 +36,51 @@ from ..schemas.report_schemas import (
 )
 from .holdings import units_held_as_of
 
+ZERO = Decimal("0")
 
-async def holdings_report(session: AsyncSession, user_id: Optional[str], as_of: date) -> HoldingsReport:
+
+@dataclass
+class _Parcel:
+    units: Decimal
+    price: Decimal
+
+
+def _fifo(transactions: Iterable[Transaction]) -> tuple[list[_Parcel], list[tuple[Transaction, Decimal]]]:
+    """Match one stock's sells to its buys first in, first out.
+
+    Returns the parcels still held (oldest first) and each sell with the cost
+    of the units it took. On one date buys count before sells. Units sold
+    beyond those held match no parcel and cost nothing.
+    """
+    parcels: deque[_Parcel] = deque()
+    costed: list[tuple[Transaction, Decimal]] = []
+    for t in sorted(transactions, key=lambda t: (t.transaction_date, t.type != TypeEnum.BUY, t.id or 0)):
+        units = Decimal(str(t.units))
+        if t.type == TypeEnum.BUY:
+            parcels.append(_Parcel(units, Decimal(str(t.price))))
+            continue
+        cost = ZERO
+        while units > 0 and parcels:
+            oldest = parcels[0]
+            taken = min(units, oldest.units)
+            cost += taken * oldest.price
+            oldest.units -= taken
+            units -= taken
+            if oldest.units == 0:
+                parcels.popleft()
+        costed.append((t, cost))
+    return list(parcels), costed
+
+
+async def holdings_report(session: AsyncSession, user_id: Optional[str], as_of: date,
+                          method: CostMethod = CostMethod.AVERAGE) -> HoldingsReport:
     """
     All stocks with a positive unit balance as of `as_of`.
 
     Units held = sum(BUY units) - sum(SELL units) for transactions up to and
-    including `as_of`. Average cost basis is the weighted average buy price
-    across all qualifying buy transactions.
+    including `as_of`. The cost basis per unit is the weighted average buy
+    price across all qualifying buys, or under FIFO, that of the parcels
+    still held.
     """
     stmt = (
         select(Transaction)
@@ -55,7 +99,7 @@ async def holdings_report(session: AsyncSession, user_id: Optional[str], as_of: 
 
     stock_ids = set(buys) | set(sells)
     if not stock_ids:
-        return HoldingsReport(as_of=as_of, holdings=[])
+        return HoldingsReport(as_of=as_of, method=method, holdings=[])
 
     # Fetch stock metadata
     stock_rows = await session.exec(select(Stock).where(col(Stock.id).in_(list(stock_ids))))
@@ -85,9 +129,15 @@ async def holdings_report(session: AsyncSession, user_id: Optional[str], as_of: 
         if units_held <= 0:
             continue
 
-        # Weighted average buy price
-        total_buy_value = sum(Decimal(str(t.units)) * Decimal(str(t.price)) for t in buy_txns)
-        avg_cost = (total_buy_value / buy_units) if buy_units else Decimal("0")
+        if method == CostMethod.FIFO:
+            held, _ = _fifo(stock_txns)
+            held_units = sum((p.units for p in held), start=ZERO)
+            held_value = sum((p.units * p.price for p in held), start=ZERO)
+            avg_cost = (held_value / held_units) if held_units else ZERO
+        else:
+            # Weighted average buy price
+            total_buy_value = sum(Decimal(str(t.units)) * Decimal(str(t.price)) for t in buy_txns)
+            avg_cost = (total_buy_value / buy_units) if buy_units else Decimal("0")
 
         stock = stock_map.get(sid)
         if not stock:
@@ -110,17 +160,19 @@ async def holdings_report(session: AsyncSession, user_id: Optional[str], as_of: 
         ))
 
     holdings.sort(key=lambda h: (h.market, h.symbol))
-    return HoldingsReport(as_of=as_of, holdings=holdings)
+    return HoldingsReport(as_of=as_of, method=method, holdings=holdings)
 
 
-async def capital_gains_report(session: AsyncSession, user_id: Optional[str], fy: int) -> CapitalGainsReport:
+async def capital_gains_report(session: AsyncSession, user_id: Optional[str], fy: int,
+                               method: CostMethod = CostMethod.AVERAGE) -> CapitalGainsReport:
     """
-    Realised capital gain/loss for a fiscal year using average cost basis.
+    Realised capital gain/loss for a fiscal year.
 
     For each SELL in the given FY, the cost basis is the weighted average buy
-    price of all prior (or same-FY) buys for that stock.
+    price of all prior (or same-FY) buys for that stock, or under FIFO, the
+    cost of the oldest parcels still held when it sold.
 
-    gain_loss = proceeds - (avg_cost_per_unit × units_sold)
+    gain_loss = proceeds - cost of the units sold
     proceeds  = (units × price) - fees
 
     A positive gain_loss means profit; negative means a loss.
@@ -137,18 +189,17 @@ async def capital_gains_report(session: AsyncSession, user_id: Optional[str], fy
     result = await session.exec(stmt)
     all_txns = result.all()
 
-    # Separate sells that fall in the target FY
+    # Every stock's transactions, and the sells that fall in the target FY
+    txns_by_stock: dict[int, list[Transaction]] = {}
     fy_sells: dict[int, list[Transaction]] = {}
-    all_buys_by_stock: dict[int, list[Transaction]] = {}
 
     for t in all_txns:
-        if t.type == TypeEnum.BUY:
-            all_buys_by_stock.setdefault(t.stock_id, []).append(t)
-        elif t.type == TypeEnum.SELL and t.fy == fy:
+        txns_by_stock.setdefault(t.stock_id, []).append(t)
+        if t.type == TypeEnum.SELL and t.fy == fy:
             fy_sells.setdefault(t.stock_id, []).append(t)
 
     if not fy_sells:
-        return CapitalGainsReport(fy=fy, total_gain_loss=0.0, items=[])
+        return CapitalGainsReport(fy=fy, method=method, total_gain_loss=0.0, items=[])
 
     # Fetch stock metadata
     stock_ids = list(fy_sells.keys())
@@ -159,20 +210,23 @@ async def capital_gains_report(session: AsyncSession, user_id: Optional[str], fy
     total = Decimal("0")
 
     for sid, sells in fy_sells.items():
-        buys = all_buys_by_stock.get(sid, [])
-
-        # Weighted avg cost basis from ALL buys up to FY end
-        total_buy_units = sum(Decimal(str(b.units)) for b in buys)
-        total_buy_value = sum(Decimal(str(b.units)) * Decimal(str(b.price)) for b in buys)
-        avg_cost = (total_buy_value / total_buy_units) if total_buy_units else Decimal("0")
-
-        units_sold = sum((Decimal(str(s.units)) for s in sells), start=Decimal("0"))
+        units_sold = sum((Decimal(str(s.units)) for s in sells), start=ZERO)
         # proceeds = gross sell value minus fees
         proceeds = sum(
             (Decimal(str(s.units)) * Decimal(str(s.price)) - Decimal(str(s.fees)) for s in sells),
-            start=Decimal("0"),
+            start=ZERO,
         )
-        cost_basis_total = avg_cost * units_sold
+        if method == CostMethod.FIFO:
+            _, costed = _fifo(txns_by_stock[sid])
+            cost_basis_total = sum((cost for sell, cost in costed if sell.fy == fy), start=ZERO)
+            avg_cost = (cost_basis_total / units_sold) if units_sold else ZERO
+        else:
+            # Weighted avg cost basis from ALL buys up to FY end
+            buys = [t for t in txns_by_stock[sid] if t.type == TypeEnum.BUY]
+            total_buy_units = sum((Decimal(str(b.units)) for b in buys), start=ZERO)
+            total_buy_value = sum((Decimal(str(b.units)) * Decimal(str(b.price)) for b in buys), start=ZERO)
+            avg_cost = (total_buy_value / total_buy_units) if total_buy_units else ZERO
+            cost_basis_total = avg_cost * units_sold
         gain_loss = proceeds - cost_basis_total
 
         stock = stock_map.get(sid)
@@ -194,6 +248,7 @@ async def capital_gains_report(session: AsyncSession, user_id: Optional[str], fy
     items.sort(key=lambda i: (i.market, i.symbol))
     return CapitalGainsReport(
         fy=fy,
+        method=method,
         total_gain_loss=float(total.quantize(Decimal("0.000001"))),
         items=items,
     )

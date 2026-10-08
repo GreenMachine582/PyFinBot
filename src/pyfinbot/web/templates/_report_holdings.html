@@ -2,11 +2,13 @@
 {% from "table.html" import gth_table %}
 {% from "empty_state.html" import gth_empty_state %}
 {% from "form.html" import gth_form_field %}
+{% from "select.html" import gth_select %}
 {% set as_of = report.as_of.isoformat() %}
 <form class="d-flex flex-wrap align-items-end gap-2 mb-3"
   hx-get="/reports/holdings" hx-target="closest .tab-pane" hx-trigger="change">
   {{ gth_form_field("as_of", "As of", value=as_of, type="date", field_class="mb-0") }}
-  <a class="btn btn-outline-secondary ms-auto" href="/reports/holdings.csv?as_of={{ as_of }}" download>
+  {{ gth_select("method", "Cost basis", methods, value=report.method.value, id="holdings-method", field_class="mb-0") }}
+  <a class="btn btn-outline-secondary ms-auto" href="/reports/holdings.csv?as_of={{ as_of }}{% if report.method.value != "average" %}&amp;method={{ report.method.value }}{% endif %}" download>
     <i class="bi bi-download" aria-hidden="true"></i> CSV
   </a>
 </form>
@@ -30,7 +32,7 @@
   </tr>
   {% endfor %}
 {% endcall %}
-<p class="form-text">Average cost basis across all buys up to the date. Dividends are those with an ex-date on or before it.</p>
+<p class="form-text">{{ "FIFO cost basis: the parcels still held on the date" if report.method.value == "fifo" else "Average cost basis across all buys up to the date" }}. Dividends are those with an ex-date on or before it.</p>
 {% else %}
 {{ gth_empty_state("You held no stocks on " ~ report.as_of|date ~ ".") }}
 {% endif %}

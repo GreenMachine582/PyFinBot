@@ -16,14 +16,6 @@ pins.
 
 ## Open items
 
-- [ ] FIFO method support
-  - **Now:** `core/reports.py` uses average cost basis. `holdings_report` takes the weighted average buy price,
-    and `capital_gains_report` costs each SELL in the FY at that average.
-  - **Plan:**
-    - per-parcel lots matched first-in-first-out;
-    - the method as a setting (a user preference, or a choice on the reports page) that both reports and their
-      API routes honour, defaulting to average so existing numbers don't change.
-  - **Done when:** a sell spanning two parcels reports the right gain under FIFO, and average is unchanged.
 - [ ] CLI interface
   - Command-line access with exportable summaries (holdings, the FY capital-gains report and dividends, as CSV or
     JSON).
