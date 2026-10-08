@@ -56,14 +56,14 @@ async def _query_stocks(session: AsyncSession, state: TableState) -> tuple[list[
     stmt = select(Stock)
     if q := state.filters.get("q"):
         like = f"%{q}%"
-        stmt = stmt.where(or_(Stock.symbol.ilike(like), Stock.name.ilike(like)))
+        stmt = stmt.where(or_(col(Stock.symbol).ilike(like), col(Stock.name).ilike(like)))
     if market := state.filters.get("market"):
         stmt = stmt.where(Stock.market == market)
     status_ = state.filters.get("status", "active")
     if status_ == "active":
-        stmt = stmt.where(Stock.is_active.is_(True))
+        stmt = stmt.where(col(Stock.is_active).is_(True))
     elif status_ == "archived":
-        stmt = stmt.where(Stock.is_active.is_(False))
+        stmt = stmt.where(col(Stock.is_active).is_(False))
     # The table's sort, then tie-breakers in the same direction so paging is stable.
     sorts = [Sort(field=f, direction=state.direction) for f in (state.sort, "market", "symbol", "id") if f]
     stmt = stmt.order_by(*order_by(sorts, ALLOWED_FIELDS))
@@ -94,10 +94,10 @@ async def stocks_page(
 @router.get("/options")
 async def stock_options(request: Request, session: AsyncSession = Depends(get_session), q: str = ""):
     """Result rows for the transaction form's stock-picker combobox."""
-    stmt = select(Stock).where(Stock.is_active.is_(True))
+    stmt = select(Stock).where(col(Stock.is_active).is_(True))
     if q.strip():
         like = f"%{q.strip()}%"
-        stmt = stmt.where(or_(Stock.symbol.ilike(like), Stock.name.ilike(like)))
+        stmt = stmt.where(or_(col(Stock.symbol).ilike(like), col(Stock.name).ilike(like)))
     stmt = stmt.order_by(Stock.symbol, Stock.market).limit(OPTIONS_LIMIT)
     stocks = (await session.exec(stmt)).all()
     return templates.TemplateResponse(request, "_stock_options.html", {"stocks": stocks})
@@ -146,12 +146,14 @@ async def create_stock(request: Request, session: AsyncSession = Depends(get_ses
 async def update_stock(request: Request, stock_id: int, session: AsyncSession = Depends(get_session)):
     stock = await _get_stock_or_404(session, stock_id)
     form = await request.form()
-    values = {"name": str(form.get("name", "")), "is_active": form.get("is_active") == "on"}
-    if not values["name"].strip():
+    name = str(form.get("name", ""))
+    is_active = form.get("is_active") == "on"
+    values = {"name": name, "is_active": is_active}
+    if not name.strip():
         return _form_error(request, stock, values, {"name": ["This field is required."]})
 
-    stock.name = values["name"].strip()
-    stock.set_active(bool(values["is_active"]))
+    stock.name = name.strip()
+    stock.set_active(is_active)
     label = f"{stock.market}:{stock.symbol}"
     session.add(stock)
     await session.commit()

@@ -53,6 +53,5 @@ jobs:
     - name: Ruff
       run: ruff check src tests
 
-    - name: Mypy (advisory — SQLModel's typing has known false positives; not yet a blocking gate)
+    - name: Mypy
       run: mypy src/pyfinbot
-      continue-on-error: true
