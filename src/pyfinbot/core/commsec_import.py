@@ -84,6 +84,7 @@ async def sync_commsec_emails(
             skipped += 1
             continue
 
+        assert stock.id is not None  # loaded from the database
         txn = Transaction(
             user_id=user_id,
             stock_id=stock.id,

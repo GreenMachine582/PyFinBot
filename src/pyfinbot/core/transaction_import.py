@@ -17,6 +17,7 @@ for accepted alternative names):
 from __future__ import annotations
 
 import io
+from decimal import Decimal
 from typing import Protocol
 
 import pandas as pd
@@ -166,13 +167,14 @@ async def import_transactions(session: AsyncSession, user_id: str, content: byte
         # is just a skipped row rather than a rollback (which would also
         # discard the rows already flushed from this file).
         try:
-            units = float(getattr(row, "units"))
-            price = float(getattr(row, "price"))
-            fees = float(getattr(row, "fees", 0) or 0)
+            units = Decimal(str(float(getattr(row, "units"))))
+            price = Decimal(str(float(getattr(row, "price"))))
+            fees = Decimal(str(float(getattr(row, "fees", 0) or 0)))
         except (TypeError, ValueError):
             skip("'units', 'price' and 'fees' must be numbers")
             continue
 
+        assert stock.id is not None  # loaded from the database
         txn = Transaction(
             user_id=user_id,
             stock_id=stock.id,

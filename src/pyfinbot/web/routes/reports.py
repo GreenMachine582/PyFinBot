@@ -9,6 +9,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from ...core import report_rows, reports
 from ...db.session import get_session
 from ...models.transaction_models import Transaction
+from ...schemas.report_schemas import CostMethod
 from ..csv_response import csv_download
 from ..deps import page_identity
 from ..templating import templates
@@ -20,6 +21,15 @@ TABS = [
     {"key": "gains", "label": "Capital gains", "icon": "graph-up-arrow", "url": "/reports/gains"},
     {"key": "dividends", "label": "Dividend income", "icon": "cash-coin", "url": "/reports/dividends"},
 ]
+
+METHODS = [(CostMethod.AVERAGE.value, "Average"), (CostMethod.FIFO.value, "FIFO")]
+
+
+def _parse_method(value: str | None) -> CostMethod:
+    try:
+        return CostMethod(value) if value else CostMethod.AVERAGE
+    except ValueError:
+        return CostMethod.AVERAGE
 
 
 def _parse_date(value: str | None) -> date:
@@ -56,23 +66,23 @@ async def reports_page(request: Request, tab: str = "holdings"):
 
 
 @router.get("/holdings")
-async def holdings(request: Request, as_of: str | None = None,
+async def holdings(request: Request, as_of: str | None = None, method: str | None = None,
                    identity: Identity = Depends(page_identity), session: AsyncSession = Depends(get_session)):
-    report = await reports.holdings_report(session, identity.subject, _parse_date(as_of))
+    report = await reports.holdings_report(session, identity.subject, _parse_date(as_of), _parse_method(method))
     return templates.TemplateResponse(request, "_report_holdings.html", {
-        "report": report,
+        "report": report, "methods": METHODS,
         "cost_base": sum(h.units_held * h.avg_cost_basis for h in report.holdings),
         "dividends": sum(h.total_dividends_received for h in report.holdings),
     })
 
 
 @router.get("/gains")
-async def gains(request: Request, fy: str | None = None,
+async def gains(request: Request, fy: str | None = None, method: str | None = None,
                 identity: Identity = Depends(page_identity), session: AsyncSession = Depends(get_session)):
     year, fys = await _gains_fy(session, identity, fy)
-    report = await reports.capital_gains_report(session, identity.subject, year)
+    report = await reports.capital_gains_report(session, identity.subject, year, _parse_method(method))
     return templates.TemplateResponse(request, "_report_gains.html", {
-        "report": report, "fys": sorted(set(fys) | {year}, reverse=True),
+        "report": report, "fys": sorted(set(fys) | {year}, reverse=True), "methods": METHODS,
     })
 
 
@@ -86,17 +96,21 @@ async def dividends(request: Request, fy: str | None = None,
 
 
 @router.get("/{kind}.csv")
-async def export_csv(kind: str, as_of: str | None = None, fy: str | None = None,
+async def export_csv(kind: str, as_of: str | None = None, fy: str | None = None, method: str | None = None,
                      identity: Identity = Depends(page_identity), session: AsyncSession = Depends(get_session)):
     """The same report a pane shows, for the same filter, as a CSV download."""
+    cost_method = _parse_method(method)
+    # The method only goes in the filename when it isn't the default, so
+    # average exports keep their old names.
+    method_suffix = "" if cost_method == CostMethod.AVERAGE else f"-{cost_method.value}"
     if kind == "holdings":
         snapshot = _parse_date(as_of)
-        rows = report_rows.holdings_rows(await reports.holdings_report(session, identity.subject, snapshot))
-        suffix = snapshot.isoformat()
+        rows = report_rows.holdings_rows(await reports.holdings_report(session, identity.subject, snapshot, cost_method))
+        suffix = snapshot.isoformat() + method_suffix
     elif kind == "gains":
         year, _ = await _gains_fy(session, identity, fy)
-        rows = report_rows.gains_rows(await reports.capital_gains_report(session, identity.subject, year))
-        suffix = f"fy{year}"
+        rows = report_rows.gains_rows(await reports.capital_gains_report(session, identity.subject, year, cost_method))
+        suffix = f"fy{year}{method_suffix}"
     elif kind == "dividends":
         year_or_all = _parse_int(fy)
         rows = report_rows.dividends_rows(await reports.dividends_report(session, identity.subject, year_or_all))
