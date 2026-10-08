@@ -81,13 +81,13 @@ def _transactions_stmt(identity: Identity, state: TableState) -> Any:
     the table, whole for the CSV export."""
     stmt = (
         select(Transaction)
-        .options(selectinload(Transaction.stock))
+        .options(selectinload(Transaction.stock))  # type: ignore[arg-type]  # SQLModel types a Relationship as its model
         .where(Transaction.user_id == identity.subject)
     )
     filters = state.filters
     if stock := filters.get("stock"):
         like = f"%{stock}%"
-        stmt = stmt.join(Stock).where(Stock.symbol.ilike(like) | Stock.name.ilike(like))
+        stmt = stmt.join(Stock).where(col(Stock.symbol).ilike(like) | col(Stock.name).ilike(like))
     if (type_ := filters.get("type")) in {t.value for t in TypeEnum}:
         stmt = stmt.where(Transaction.type == TypeEnum(type_))
     if start := _parse_date(filters.get("date_from", "")):
@@ -154,7 +154,7 @@ async def transactions_page(
     if wants_fragment(request.headers):
         return templates.TemplateResponse(request, "_transaction_table.html", context)
     fys = (await session.exec(
-        select(Transaction.fy).where(Transaction.user_id == identity.subject).distinct().order_by(Transaction.fy.desc())
+        select(Transaction.fy).where(Transaction.user_id == identity.subject).distinct().order_by(col(Transaction.fy).desc())
     )).all()
     return templates.TemplateResponse(request, "transactions.html", {
         **context, "fys": fys, "types": [t.value for t in TypeEnum],
@@ -235,8 +235,9 @@ async def _validate(session: AsyncSession, values: dict) -> tuple[TransactionCre
     stock = await session.get(Stock, int(transaction_in.stock_id)) if str(transaction_in.stock_id).isdigit() else None
     if not stock:
         errors["stock_id"] = ["Choose a stock."]
-    if errors:
+    if errors or stock is None:
         return None, None, errors
+    assert stock.id is not None  # loaded from the database
     transaction_in.stock_id = stock.id
     return transaction_in, stock, {}
 
@@ -254,7 +255,7 @@ async def create_transaction(request: Request, identity: Identity = Depends(page
     form = await request.form()
     values = {field: form.get(field, "") for field in FORM_FIELDS}
     transaction_in, stock, errors = await _validate(session, values)
-    if errors:
+    if transaction_in is None or stock is None:
         return await _render_form(request, session, None, values, errors, template="_transaction_form.html",
                                   status_code=422)
 
@@ -273,7 +274,7 @@ async def update_transaction(request: Request, transaction_id: int,
     form = await request.form()
     values = {field: form.get(field, "") for field in FORM_FIELDS}
     transaction_in, stock, errors = await _validate(session, values)
-    if errors:
+    if transaction_in is None or stock is None:
         return await _render_form(request, session, transaction, values, errors, template="_transaction_form.html",
                                   status_code=422)
 

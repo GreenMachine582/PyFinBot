@@ -10,7 +10,7 @@ from decimal import Decimal
 from typing import Callable, Dict, List, Optional, Tuple
 
 import yfinance as yf
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..models.dividend_models import Dividend
@@ -57,7 +57,7 @@ async def syncDividends(
     """
     stmt = select(Stock)
     if stock_ids is not None:
-        stmt = stmt.where(Stock.id.in_(stock_ids))
+        stmt = stmt.where(col(Stock.id).in_(stock_ids))
     result = await session.exec(stmt)
     stocks = result.all()
 
@@ -85,6 +85,7 @@ async def syncDividends(
                     session.add(row)
                     updated.append(f"{stock.market}:{stock.symbol}@{ex_date}")
             else:
+                assert stock.id is not None  # loaded from the database
                 session.add(Dividend(
                     stock_id=stock.id,
                     ex_date=ex_date,

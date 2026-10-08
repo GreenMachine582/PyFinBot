@@ -13,7 +13,7 @@ from decimal import Decimal
 from typing import Optional
 
 from greentechhub_core.dates import fiscal_year, fiscal_year_bounds
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..models.dividend_models import Dividend
@@ -58,14 +58,14 @@ async def holdings_report(session: AsyncSession, user_id: Optional[str], as_of: 
         return HoldingsReport(as_of=as_of, holdings=[])
 
     # Fetch stock metadata
-    stock_rows = await session.exec(select(Stock).where(Stock.id.in_(list(stock_ids))))
+    stock_rows = await session.exec(select(Stock).where(col(Stock.id).in_(list(stock_ids))))
     stock_map = {s.id: s for s in stock_rows.all()}
 
     # Batch-load dividends (ex_date <= as_of) for all involved stocks, to
     # compute total_dividends_received per holding without a query per stock.
     div_rows = await session.exec(
         select(Dividend)
-        .where(Dividend.stock_id.in_(list(stock_ids)))
+        .where(col(Dividend.stock_id).in_(list(stock_ids)))
         .where(Dividend.ex_date <= as_of)
     )
     dividends_by_stock: dict[int, list[Dividend]] = {}
@@ -132,7 +132,7 @@ async def capital_gains_report(session: AsyncSession, user_id: Optional[str], fy
         select(Transaction)
         .where(Transaction.user_id == user_id)
         .where(Transaction.transaction_date <= fy_end)
-        .order_by(Transaction.transaction_date, Transaction.id)
+        .order_by(col(Transaction.transaction_date), col(Transaction.id))
     )
     result = await session.exec(stmt)
     all_txns = result.all()
@@ -152,7 +152,7 @@ async def capital_gains_report(session: AsyncSession, user_id: Optional[str], fy
 
     # Fetch stock metadata
     stock_ids = list(fy_sells.keys())
-    stock_rows = await session.exec(select(Stock).where(Stock.id.in_(stock_ids)))
+    stock_rows = await session.exec(select(Stock).where(col(Stock.id).in_(stock_ids)))
     stock_map = {s.id: s for s in stock_rows.all()}
 
     items: list[CapitalGainsItem] = []
@@ -166,11 +166,11 @@ async def capital_gains_report(session: AsyncSession, user_id: Optional[str], fy
         total_buy_value = sum(Decimal(str(b.units)) * Decimal(str(b.price)) for b in buys)
         avg_cost = (total_buy_value / total_buy_units) if total_buy_units else Decimal("0")
 
-        units_sold = sum(Decimal(str(s.units)) for s in sells)
+        units_sold = sum((Decimal(str(s.units)) for s in sells), start=Decimal("0"))
         # proceeds = gross sell value minus fees
         proceeds = sum(
-            Decimal(str(s.units)) * Decimal(str(s.price)) - Decimal(str(s.fees))
-            for s in sells
+            (Decimal(str(s.units)) * Decimal(str(s.price)) - Decimal(str(s.fees)) for s in sells),
+            start=Decimal("0"),
         )
         cost_basis_total = avg_cost * units_sold
         gain_loss = proceeds - cost_basis_total
@@ -208,7 +208,7 @@ async def dividends_report(session: AsyncSession, user_id: Optional[str],
     txn_stmt = (
         select(Transaction)
         .where(Transaction.user_id == user_id)
-        .order_by(Transaction.transaction_date, Transaction.id)
+        .order_by(col(Transaction.transaction_date), col(Transaction.id))
     )
     txns = (await session.exec(txn_stmt)).all()
 
@@ -219,10 +219,10 @@ async def dividends_report(session: AsyncSession, user_id: Optional[str],
     if not txns_by_stock:
         return DividendsReport(fy=fy, total_dividends_received=0.0, items=[])
 
-    div_stmt = select(Dividend).where(Dividend.stock_id.in_(list(txns_by_stock.keys())))
+    div_stmt = select(Dividend).where(col(Dividend.stock_id).in_(list(txns_by_stock.keys())))
     dividends = (await session.exec(div_stmt)).all()
 
-    stock_rows = await session.exec(select(Stock).where(Stock.id.in_(list(txns_by_stock.keys()))))
+    stock_rows = await session.exec(select(Stock).where(col(Stock.id).in_(list(txns_by_stock.keys()))))
     stock_map = {s.id: s for s in stock_rows.all()}
 
     items: list[DividendItem] = []
