@@ -14,14 +14,6 @@ bumps its pins in `requirements.txt`. Develop across the repos with local GTH
 mode (`scripts/use-local-gth.sh`, see CONTRIBUTING.md); CI always tests the
 pins.
 
-## Open items
-
-- [ ] CLI interface
-  - Command-line access with exportable summaries (holdings, the FY capital-gains report and dividends, as CSV or
-    JSON).
-  - **Now:** `scripts/` has `create_user.py` and `seed_demo.py` only.
-  - **Plan:** one entry point over the same `core/reports.py` functions, so the CLI and the web never disagree.
-
 ## Web UI (greentechhub-fastapi / greentechhub-ui)
 
 Scope and architecture: see `web-implementation-brief.md`.

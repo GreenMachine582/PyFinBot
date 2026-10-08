@@ -6,10 +6,10 @@ from greentechhub_core.identity import Identity
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ...core import reports
+from ...core import report_rows, reports
 from ...db.session import get_session
 from ...models.transaction_models import Transaction
-from ...schemas.report_schemas import CapitalGainsReport, CostMethod, DividendsReport, HoldingsReport
+from ...schemas.report_schemas import CostMethod
 from ..csv_response import csv_download
 from ..deps import page_identity
 from ..templating import templates
@@ -95,26 +95,6 @@ async def dividends(request: Request, fy: str | None = None,
     })
 
 
-def _holdings_rows(report: HoldingsReport):
-    yield ["Market", "Symbol", "Name", "Units held", "Avg cost", "Cost base", "Dividends received"]
-    for h in report.holdings:
-        yield [h.market, h.symbol, h.name, h.units_held, h.avg_cost_basis,
-               round(h.units_held * h.avg_cost_basis, 6), h.total_dividends_received]
-
-
-def _gains_rows(report: CapitalGainsReport):
-    yield ["Market", "Symbol", "Name", "Units sold", "Avg cost", "Proceeds", "Gain/loss"]
-    for g in report.items:
-        yield [g.market, g.symbol, g.name, g.units_sold, g.avg_cost_basis, g.proceeds, g.gain_loss]
-
-
-def _dividends_rows(report: DividendsReport):
-    yield ["Ex date", "Pay date", "Market", "Symbol", "Name", "Per share", "Units held", "Received"]
-    for d in report.items:
-        yield [d.ex_date, d.pay_date or "", d.market, d.symbol, d.name,
-               d.amount_per_share, d.units_held_at_ex_date, d.amount_received]
-
-
 @router.get("/{kind}.csv")
 async def export_csv(kind: str, as_of: str | None = None, fy: str | None = None, method: str | None = None,
                      identity: Identity = Depends(page_identity), session: AsyncSession = Depends(get_session)):
@@ -125,15 +105,15 @@ async def export_csv(kind: str, as_of: str | None = None, fy: str | None = None,
     method_suffix = "" if cost_method == CostMethod.AVERAGE else f"-{cost_method.value}"
     if kind == "holdings":
         snapshot = _parse_date(as_of)
-        rows = _holdings_rows(await reports.holdings_report(session, identity.subject, snapshot, cost_method))
+        rows = report_rows.holdings_rows(await reports.holdings_report(session, identity.subject, snapshot, cost_method))
         suffix = snapshot.isoformat() + method_suffix
     elif kind == "gains":
         year, _ = await _gains_fy(session, identity, fy)
-        rows = _gains_rows(await reports.capital_gains_report(session, identity.subject, year, cost_method))
+        rows = report_rows.gains_rows(await reports.capital_gains_report(session, identity.subject, year, cost_method))
         suffix = f"fy{year}{method_suffix}"
     elif kind == "dividends":
         year_or_all = _parse_int(fy)
-        rows = _dividends_rows(await reports.dividends_report(session, identity.subject, year_or_all))
+        rows = report_rows.dividends_rows(await reports.dividends_report(session, identity.subject, year_or_all))
         suffix = f"fy{year_or_all}" if year_or_all is not None else "all"
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown report")
