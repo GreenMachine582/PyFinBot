@@ -53,7 +53,7 @@ async def fetchTransaction(session: AsyncSession, transaction_id: int,
     stmt = (
         select(Transaction)
         .where(Transaction.id == transaction_id)
-        .options(selectinload(Transaction.stock))
+        .options(selectinload(Transaction.stock))  # type: ignore[arg-type]  # SQLModel types a Relationship as its model
     )
     if user_id is not None:
         stmt = stmt.where(Transaction.user_id == user_id)
@@ -72,10 +72,13 @@ async def create_transaction(
     stock = await _searchForStock(session, transaction_in.stock_id)
     if not stock:
         raise NotFoundError("Stock not found")
+    assert stock.id is not None  # loaded from the database
     transaction_in.stock_id = stock.id
 
     # Create new transaction object
-    new_transaction = Transaction(**transaction_in.model_dump(), user_id=current_user.id)
+    user_id = current_user.id
+    assert user_id is not None  # a stored user always has its primary key
+    new_transaction = Transaction(**transaction_in.model_dump(), user_id=user_id)
 
     session.add(new_transaction)
 
@@ -100,7 +103,7 @@ async def list_transactions(
     in ALLOWED_FIELDS (api/query.py)."""
     stmt = (
         select(Transaction)
-        .options(selectinload(Transaction.stock))  # eager-load nested stock
+        .options(selectinload(Transaction.stock))  # type: ignore[arg-type]  # eager-load nested stock; SQLModel types a Relationship as its model
         .where(Transaction.user_id == current_user.id)  # hard user scope
     )
     result = await page(session, stmt, page_request(params), ALLOWED_FIELDS, default_sort=DEFAULT_SORT)

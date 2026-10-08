@@ -58,7 +58,10 @@ def fetch_commsec_emails(account: EmailAccount, *, only_unseen: bool = True) -> 
         messages: List[Tuple[bytes, Message]] = []
         for uid in data[0].split():
             _, msg_data = imap.fetch(uid, "(RFC822)")
-            messages.append((uid, email.message_from_bytes(msg_data[0][1])))
+            # (envelope, raw message) — anything else (e.g. None for a message
+            # deleted since the search) has no message to parse.
+            if msg_data and isinstance(msg_data[0], tuple):
+                messages.append((uid, email.message_from_bytes(msg_data[0][1])))
         return messages
     finally:
         imap.logout()
@@ -72,17 +75,12 @@ def extract_body(msg: Message) -> str:
         for part in msg.walk():
             ctype = part.get_content_type()
             if ctype == "text/plain" and plain is None:
-                payload = part.get_payload(decode=True)
-                if payload:
-                    plain = payload.decode(errors="replace")
+                plain = _decoded_payload(part)
             elif ctype == "text/html" and html is None:
-                payload = part.get_payload(decode=True)
-                if payload:
-                    html = payload.decode(errors="replace")
+                html = _decoded_payload(part)
     else:
-        payload = msg.get_payload(decode=True)
-        if payload:
-            text = payload.decode(errors="replace")
+        text = _decoded_payload(msg)
+        if text:
             if msg.get_content_type() == "text/html":
                 html = text
             else:
@@ -92,6 +90,14 @@ def extract_body(msg: Message) -> str:
     if html:
         return BeautifulSoup(html, "html.parser").get_text(separator=" ")
     return ""
+
+
+def _decoded_payload(part: Message) -> str | None:
+    """The part's transfer-decoded body as text, or None when it has none."""
+    payload = part.get_payload(decode=True)
+    if isinstance(payload, bytes) and payload:
+        return payload.decode(errors="replace")
+    return None
 
 
 def received_at(msg: Message) -> datetime:
@@ -114,6 +120,6 @@ def mark_seen(account: EmailAccount, uids: List[bytes]) -> None:
         imap.login(account.address, account.app_password)
         imap.select(account.mailbox)
         for uid in uids:
-            imap.store(uid, "+FLAGS", "\\Seen")
+            imap.store(uid.decode(), "+FLAGS", "\\Seen")
     finally:
         imap.logout()

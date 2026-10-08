@@ -40,4 +40,6 @@ async def import_transactions(
     # An ImportFileError (413 over 5 MB, 400 empty, …) is answered by the API's
     # error handlers as an import_failed envelope.
     content = await read_upload(file)
-    return await _import_transactions(session, current_user.id, content, file.filename or "")
+    user_id = current_user.id
+    assert user_id is not None  # a stored user always has its primary key
+    return await _import_transactions(session, user_id, content, file.filename or "")

@@ -3,11 +3,11 @@ import asyncio
 from contextlib import contextmanager
 from functools import lru_cache
 from datetime import datetime, timezone
-from typing import Callable, Dict, Iterator, Tuple, List
+from typing import Callable, Dict, Iterator, List, Optional, Tuple
 
 import pandas as pd
-from sqlalchemy import select
 from greentechhub_core.background.locks import FileLock
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..models.stock_models import Stock
@@ -69,7 +69,7 @@ def market_sync_guard(market: str):
     return sync_guard(f"market-sync-{market.upper()}")
 
 
-async def syncMarket(session: AsyncSession, market: str, fetch_data: Callable = None) -> Tuple[List[str], List[str], List[str]]:
+async def syncMarket(session: AsyncSession, market: str, fetch_data: Optional[Callable] = None) -> Tuple[List[str], List[str], List[str]]:
     """
     Upsert all Market tickers:
       - create new
@@ -86,8 +86,8 @@ async def syncMarket(session: AsyncSession, market: str, fetch_data: Callable = 
     symbols = list(name_map.keys())
 
     # Load existing ASX stocks
-    result = await session.exec(select(Stock).where(Stock.market == market.upper()))
-    stocks = result.scalars().all()
+    result = await session.exec(select(Stock).where(col(Stock.market) == market.upper()))
+    stocks = result.all()
     existing: Dict[str, Stock] = {s.symbol: s for s in stocks}
 
     created, updated, archived = [], [], []

@@ -151,8 +151,8 @@ app.include_router(web_reports.router)
 # Register all routers
 
 # Loop through all modules in the routes package
-for _, module_name, _ in pkgutil.iter_modules(api.__path__):
-    module = importlib.import_module(f"{api.__name__}.{module_name}")
+for module_info in pkgutil.iter_modules(api.__path__):
+    module = importlib.import_module(f"{api.__name__}.{module_info.name}")
     if hasattr(module, "router"):
         app.include_router(module.router, prefix="/api")
 
