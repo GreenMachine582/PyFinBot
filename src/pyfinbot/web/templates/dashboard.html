@@ -1,29 +1,44 @@
 {% extends "base.html" %}
 {% from "page_header.html" import gth_page_header %}
-{% from "stat_card.html" import gth_stat_card %}
+{% from "stat_card.html" import gth_stat_grid %}
+{% from "table.html" import gth_table %}
+{% from "empty_state.html" import gth_empty_state %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 
-{{ gth_page_header("Dashboard") }}
+{{ gth_page_header("Dashboard", subtitle="Signed in as " ~ identity.username) }}
 
-<div class="row g-3 mb-4">
-  <div class="col-6 col-md-3">
-    {{ gth_stat_card("Holdings value", "Coming soon") }}
-  </div>
-  <div class="col-6 col-md-3">
-    {{ gth_stat_card("YTD gain/loss", "Coming soon") }}
-  </div>
-  <div class="col-6 col-md-3">
-    {{ gth_stat_card("Dividends received", "Coming soon") }}
-  </div>
+{% set gain = gains.total_gain_loss %}
+{{ gth_stat_grid([
+    {"label": "Positions", "value": holdings.holdings|length, "icon": "briefcase"},
+    {"label": "Cost base", "value": cost_base|money, "icon": "wallet2"},
+    {"label": "Realised gain/loss, FY " ~ fy|fy, "value": gain|money, "icon": "graph-up-arrow",
+     "value_tone": "good" if gain > 0 else ("bad" if gain < 0 else "neutral")},
+    {"label": "Dividends, FY " ~ fy|fy, "value": dividends.total_dividends_received|money, "icon": "cash-coin"},
+], grid_class="mb-4") }}
+
+{% if top_holdings %}
+<div class="d-flex align-items-baseline justify-content-between">
+  <h2 class="h5">Largest holdings</h2>
+  <a href="/reports?tab=holdings">All holdings</a>
 </div>
-
-<p class="text-secondary">
-  Logged in as <strong>{{ identity.username }}</strong>. Manage your
-  <a href="/stocks">stocks</a> and <a href="/transactions">transactions</a>, or
-  <a href="/import">import</a> them from a spreadsheet or your
-  <a href="/emails">Commsec emails</a>, <a href="/dividends">sync dividends</a>,
-  and see your holdings, capital gains and dividend income in <a href="/reports">Reports</a>.
-</p>
+{% call gth_table(["Stock", "Units", "Avg cost", "Cost base"], table_class="table-sm") %}
+  {% for h in top_holdings %}
+  <tr>
+    <td class="fw-semibold text-nowrap" title="{{ h.name }}">{{ h.symbol }} <span class="text-secondary fw-normal">{{ h.market }}</span></td>
+    <td class="text-end">{{ h.units_held|number }}</td>
+    <td class="text-end">{{ h.avg_cost_basis|money }}</td>
+    <td class="text-end">{{ (h.units_held * h.avg_cost_basis)|money }}</td>
+  </tr>
+  {% endfor %}
+{% endcall %}
+<p class="form-text">Cost base at average cost, as of today. Gains and dividends are for FY {{ fy|fy }} so far;
+  see <a href="/reports">Reports</a> for other years and FIFO.</p>
+{% else %}
+{% call gth_empty_state("You don't hold any stocks yet.") %}
+  <a class="btn btn-primary" href="/transactions">Add a transaction</a>
+  <a class="btn btn-outline-secondary" href="/import">Import a spreadsheet</a>
+{% endcall %}
+{% endif %}
 
 {% endblock %}
