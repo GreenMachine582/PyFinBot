@@ -31,11 +31,6 @@ pins.
     - the method as a setting (a user preference, or a choice on the reports page) that both reports and their
       API routes honour, defaulting to average so existing numbers don't change.
   - **Done when:** a sell spanning two parcels reports the right gain under FIFO, and average is unchanged.
-- [ ] CLI interface
-  - Command-line access with exportable summaries (holdings, the FY capital-gains report and dividends, as CSV or
-    JSON).
-  - **Now:** `scripts/` has `create_user.py` and `seed_demo.py` only.
-  - **Plan:** one entry point over the same `core/reports.py` functions, so the CLI and the web never disagree.
 
 ## Web UI (greentechhub-fastapi / greentechhub-ui)
 

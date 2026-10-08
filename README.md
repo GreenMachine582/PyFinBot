@@ -33,6 +33,8 @@ tracking.
 * 📥 CSV/Excel Import: Bulk-import transactions from a spreadsheet — via the API or the web Import page — with per-row validation and error reporting.
 * 📆 Holdings Snapshot: Query real-time or historical stock units held as of any given date.
 * 💰 Capital Gain/Loss Calculation: Determine net gains/losses per stock by financial year using average cost basis.
+* 🖨️ CLI Export: the holdings, capital-gains and dividends reports from the shell, as CSV or JSON
+  ([Reports from the command line](#reports-from-the-command-line)).
 * 🔗 Relational Database Design: Clean, normalised schema to ensure data integrity and efficient queries.
 * 🔐 Multi-user Support: JWT-authenticated accounts — each user only sees their own transactions and reports.
 * 🛡️ Roles: an admin role (manage users and roles at `/admin/roles`, app-wide settings such as the site banner at
@@ -132,6 +134,16 @@ and semi-annual dividends (`source="demo"`). The rows come from a fixed random s
 `--reset` only removes what the seed owns: a stock another user also trades is kept. The script refuses to run unless
 `ENVIRONMENT=development` (the default).
 
+### Reports from the command line
+`scripts/cli.py` writes a user's report as CSV (the web's download columns) or JSON (the API's shape), from the same
+code as the Reports page. It only reads the database, which must already be migrated:
+```bash
+python scripts/cli.py holdings  --user alice --as-of 2025-06-30   # default: today
+python scripts/cli.py gains     --user alice --fy 2024            # FY2024–25; default: the current FY
+python scripts/cli.py dividends --user alice --format json        # all time; --fy for one FY
+python scripts/cli.py gains     --user alice -o gains.csv         # to a file (CSV files get a UTF-8 BOM, for Excel)
+```
+
 ## API Overview
 All routes are mounted under `/api`. See `/docs` for full request/response schemas. Every route except `POST /api/auth/login` requires a `Bearer` token: log in to get one, then pass `Authorization: Bearer <token>` on subsequent requests. Creating and listing users (`POST`/`GET /api/users/`) also needs the `users.manage` permission (the admin role); a user can still read, update and delete their own account. See [First admin](#first-admin) for the first user.
 
@@ -186,7 +198,7 @@ pytest
 4. ✅ Commsec Email Ingestion – Parse bought/sold confirmation emails (each user's own mailbox, over IMAP) into transactions.
 5. ✅ Dividend Tracking – Pull per-stock dividend history (yfinance) and report income by FY.
 6. 🧮 FIFO Method Support – Accurate gain/loss computation based on FIFO accounting.
-7. 🌐 CLI Interface – Interact via command line with exportable summaries.
+7. ✅ CLI Interface – Export holdings, capital gains and dividends as CSV or JSON from the command line.
 8. 🖥️ Web Dashboard (optional) – View and interact with data through a simple front end.
 
 Day-to-day and in-progress work is tracked in [`todo.md`](todo.md), which serves as the project's living backlog across sessions. Shipped versions and their notes: [CHANGELOG.md](CHANGELOG.md) and the [Releases page](https://github.com/GreenMachine582/PyFinBot/releases), both written by release-please. Branches, PRs and how a release is cut: [CONTRIBUTING.md](CONTRIBUTING.md).
