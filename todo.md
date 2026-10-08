@@ -18,10 +18,10 @@ pins.
 
 Scope and architecture: see `web-implementation-brief.md`.
 
-- [ ] Dashboard
-  - **Now:** a placeholder (`web/templates/dashboard.html`).
-  - **Plan:** `gth-stat-card`s (portfolio value, FY realised gain, dividends this FY), then sparklines and an
-    embedded Grafana panel.
+- [ ] Dashboard charts
+  - **Now:** stat tiles (positions, cost base, this FY's realised gain and dividends) and the largest holdings
+    (`web/routes/dashboard.py`).
+  - **Plan:** sparklines in the tiles (cost base over time, dividends by month), then an embedded Grafana panel.
   - **Waits on:** greentechhub-ui's planned server-rendered charts (`gth_sparkline`, `gth_stat_card` slot) and
     `gth_embed_card` (ui TODO › Display & charts).
 - [ ] Switch to `AUTH_ADAPTER=forward_auth` once Authentik is live. The code side is ready:
