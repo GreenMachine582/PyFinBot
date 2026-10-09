@@ -1,18 +1,31 @@
 """IMAP fetch for Commsec trade confirmation emails, from one user's own
-mailbox (their EmailAccount, from their Settings — see core/email_accounts.py)."""
+mailbox (their EmailAccount, from their Settings — see core/email_accounts.py).
+The generic IMAP half is greentechhub-core's (IMAPConfig, ImapReader,
+message_text, received_at); the Commsec sender criteria live here."""
 from __future__ import annotations
 
 import email
 import imaplib
-from dataclasses import dataclass, field
-from datetime import datetime
+from dataclasses import dataclass
 from email.message import Message
-from email.utils import parsedate_to_datetime
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
-from bs4 import BeautifulSoup
+from greentechhub_core.email import IMAPConfig, ImapReader, message_text, received_at
+
+__all__ = [
+    "COMMSEC_SENDER",
+    "NOT_CONFIGURED",
+    "EmailAccount",
+    "GmailNotConfiguredError",
+    "commsec_criteria",
+    "fetch_commsec_emails",
+    "mark_seen",
+    "message_text",
+    "received_at",
+]
 
 NOT_CONFIGURED = "Set your email address and app password in Settings to sync Commsec emails."
+COMMSEC_SENDER = "bounceback@commsec.com.au"
 
 
 class GmailNotConfiguredError(RuntimeError):
@@ -21,40 +34,45 @@ class GmailNotConfiguredError(RuntimeError):
 
 @dataclass(frozen=True)
 class EmailAccount:
-    """One user's mailbox. app_password is the plaintext from
-    Settings.get_secret: kept out of repr, and never put in a template."""
+    """One user's mailbox: core's IMAPConfig (None until the address and app
+    password are both set; its password is kept out of repr, and never put in
+    a template) and the sender Commsec confirmations come from."""
 
-    address: str = ""
-    app_password: str = field(default="", repr=False)
-    imap_host: str = "imap.gmail.com"
-    imap_port: int = 993
-    mailbox: str = "INBOX"
-    commsec_sender: str = "bounceback@commsec.com.au"
+    imap: Optional[IMAPConfig] = None
+    commsec_sender: str = COMMSEC_SENDER
 
     @property
     def configured(self) -> bool:
-        return bool(self.address and self.app_password)
+        return self.imap is not None
+
+
+def commsec_criteria(account: EmailAccount, *, only_unseen: bool = True) -> str:
+    """The IMAP search for `account`'s Commsec confirmations."""
+    unseen = "UNSEEN " if only_unseen else ""
+    return f'({unseen}FROM "{account.commsec_sender}")'
+
+
+def _config(account: EmailAccount) -> IMAPConfig:
+    if account.imap is None:
+        raise GmailNotConfiguredError(NOT_CONFIGURED)
+    return account.imap
 
 
 def fetch_commsec_emails(account: EmailAccount, *, only_unseen: bool = True) -> List[Tuple[bytes, Message]]:
     """
-    Connect to `account`'s mailbox over IMAP (App Password auth), search its
-    `mailbox` for messages from its `commsec_sender` (UNSEEN only by default),
-    return (uid, email.message.Message) pairs. Synchronous — run via
-    asyncio.to_thread. Does NOT mark messages \\Seen; call mark_seen() after
-    successful processing so a partially-failed sync can be safely retried.
+    `account`'s Commsec confirmations (UNSEEN only by default) as (uid,
+    email.message.Message) pairs. Synchronous — run via asyncio.to_thread.
+    Does NOT mark messages \\Seen; call mark_seen() after successful
+    processing so a partially-failed sync can be safely retried.
     """
-    if not account.configured:
-        raise GmailNotConfiguredError(NOT_CONFIGURED)
-
-    imap = imaplib.IMAP4_SSL(account.imap_host, account.imap_port)
+    # Not ImapReader.fetch yet: it fails on a message deleted since the
+    # search, which this skips (todo › Leaner › IMAP fetch).
+    config = _config(account)
+    imap = imaplib.IMAP4_SSL(config.host, config.port)
     try:
-        imap.login(account.address, account.app_password)
-        imap.select(account.mailbox)
-        criteria = f'(FROM "{account.commsec_sender}")'
-        if only_unseen:
-            criteria = f'(UNSEEN FROM "{account.commsec_sender}")'
-        _, data = imap.search(None, criteria)
+        imap.login(config.username, config.password)
+        imap.select(config.mailbox)
+        _, data = imap.search(None, commsec_criteria(account, only_unseen=only_unseen))
         messages: List[Tuple[bytes, Message]] = []
         for uid in data[0].split():
             _, msg_data = imap.fetch(uid, "(RFC822)")
@@ -67,59 +85,7 @@ def fetch_commsec_emails(account: EmailAccount, *, only_unseen: bool = True) -> 
         imap.logout()
 
 
-def extract_body(msg: Message) -> str:
-    """Prefer text/plain; fall back to BeautifulSoup-stripped text/html —
-    Commsec confirmation emails may be multipart with an HTML-only body."""
-    plain, html = None, None
-    if msg.is_multipart():
-        for part in msg.walk():
-            ctype = part.get_content_type()
-            if ctype == "text/plain" and plain is None:
-                plain = _decoded_payload(part)
-            elif ctype == "text/html" and html is None:
-                html = _decoded_payload(part)
-    else:
-        text = _decoded_payload(msg)
-        if text:
-            if msg.get_content_type() == "text/html":
-                html = text
-            else:
-                plain = text
-    if plain and plain.strip():
-        return plain
-    if html:
-        return BeautifulSoup(html, "html.parser").get_text(separator=" ")
-    return ""
-
-
-def _decoded_payload(part: Message) -> str | None:
-    """The part's transfer-decoded body as text, or None when it has none."""
-    payload = part.get_payload(decode=True)
-    if isinstance(payload, bytes) and payload:
-        return payload.decode(errors="replace")
-    return None
-
-
-def received_at(msg: Message) -> datetime:
-    """Parse the message's Date header — stands in for trade date, since
-    Commsec confirmation emails don't state one explicitly and are sent
-    promptly after the trade."""
-    date_header = msg.get("Date")
-    if not date_header:
-        raise ValueError("Message has no Date header")
-    return parsedate_to_datetime(date_header)
-
-
 def mark_seen(account: EmailAccount, uids: List[bytes]) -> None:
     """Mark the given message UIDs \\Seen in `account`'s mailbox after a
     successful sync."""
-    if not uids:
-        return
-    imap = imaplib.IMAP4_SSL(account.imap_host, account.imap_port)
-    try:
-        imap.login(account.address, account.app_password)
-        imap.select(account.mailbox)
-        for uid in uids:
-            imap.store(uid.decode(), "+FLAGS", "\\Seen")
-    finally:
-        imap.logout()
+    ImapReader(_config(account)).mark_seen(uids)

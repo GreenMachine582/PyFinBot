@@ -1,12 +1,14 @@
 """The IMAP half of core/email_sync.py against a fake IMAP4_SSL: fetch skips a
-message gone since the search, mark_seen sends string UIDs, and extract_body
-reads multipart and single-part bodies (typed for mypy, behaviour unchanged)."""
-from email.message import EmailMessage
+message gone since the search, and mark_seen goes through core's ImapReader.
+Reading a message's body is core's message_text (tested there)."""
 from unittest.mock import MagicMock, patch
 
-from pyfinbot.core.email_sync import EmailAccount, extract_body, fetch_commsec_emails, mark_seen
+from greentechhub_core.email import IMAPConfig
 
-ACCOUNT = EmailAccount(address="me@example.com", app_password="secret")
+from pyfinbot.core.email_sync import EmailAccount, fetch_commsec_emails, mark_seen
+
+CONFIG = IMAPConfig(host="imap.example.com", username="me@example.com", password="secret")
+ACCOUNT = EmailAccount(imap=CONFIG)
 RAW = b"From: bounceback@commsec.com.au\r\nSubject: Confirmation\r\n\r\nBOUGHT 10 CBA\r\n"
 
 
@@ -32,25 +34,8 @@ def test_fetch_skips_a_message_deleted_since_the_search():
     assert [uid for uid, _ in messages] == [b"2"]
 
 
-def test_mark_seen_sends_string_uids():
-    imap = MagicMock()
-    with patch("pyfinbot.core.email_sync.imaplib.IMAP4_SSL", return_value=imap):
+def test_mark_seen_uses_cores_reader():
+    with patch("pyfinbot.core.email_sync.ImapReader") as reader:
         mark_seen(ACCOUNT, [b"7", b"9"])
-    assert [c.args for c in imap.store.call_args_list] == [("7", "+FLAGS", "\\Seen"), ("9", "+FLAGS", "\\Seen")]
-
-
-def test_extract_body_prefers_plain_text_in_a_multipart_message():
-    msg = EmailMessage()
-    msg.set_content("plain body")
-    msg.add_alternative("<p>html body</p>", subtype="html")
-    assert extract_body(msg).strip() == "plain body"
-
-
-def test_extract_body_strips_an_html_only_message():
-    msg = EmailMessage()
-    msg.set_content("<p>html <b>only</b></p>", subtype="html")
-    assert " ".join(extract_body(msg).split()) == "html only"
-
-
-def test_extract_body_of_an_empty_message_is_empty():
-    assert extract_body(EmailMessage()) == ""
+    reader.assert_called_once_with(CONFIG)
+    reader.return_value.mark_seen.assert_called_once_with([b"7", b"9"])

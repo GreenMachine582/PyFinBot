@@ -62,8 +62,9 @@ greentechhub-ui's (U1–U3). Each is one PR here after its release: bump the pin
 - [ ] Bearer API auth (fastapi F1): delete `core/security.py`, most of `core/dependencies.py` and
   `ACCESS_TOKEN_EXPIRE_MINUTES`. API routes take an `Identity` (`identity.subject`) instead of a `User`. This
   also ends the session cookie being accepted as an API token (same secret and HS256 today).
-- [ ] IMAP (core C6): core's `imap_settings` and `ImapReader` replace the generic half of `core/email_sync.py`
-  and `core/email_accounts.py`; the Commsec sender criteria and parser stay.
+- [ ] IMAP fetch (core): `fetch_commsec_emails` becomes `ImapReader(account.imap).fetch(commsec_criteria(…))`
+  once core's `fetch` skips a message deleted since the search (greentechhub-core#69); drop its test in
+  `test_email_sync_imap.py` then.
 - [ ] Tests (core C7, greentechhub-testing): `tests/conftest.py` keeps only PyFinBot's own fixtures (about 110
   lines go).
 - [ ] Templates (ui U3): `gth_result_panel` for `_import_result.html`/`_sync_result.html`; `gth_filter_bar` and
