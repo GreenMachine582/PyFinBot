@@ -56,6 +56,10 @@ def test_lock_directory_is_pyfinbots_own_unless_set(monkeypatch, tmp_path):
 
 def test_sync_locks_live_in_the_lock_directory(monkeypatch, tmp_path):
     monkeypatch.setattr(market_sync.settings, "lock_dir", str(tmp_path))
-    with market_sync.market_sync_guard("ASX") as acquired:
-        assert acquired
-        assert any(tmp_path.iterdir())
+    market_sync._sync_locks.cache_clear()  # built once per process, from the setting at the time
+    try:
+        with market_sync.market_sync_guard("ASX") as acquired:
+            assert acquired
+            assert any(tmp_path.iterdir())
+    finally:
+        market_sync._sync_locks.cache_clear()
