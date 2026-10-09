@@ -3,18 +3,17 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 import importlib
-import logging
 import pkgutil
 
 import greentechhub_ui
 from fastapi import FastAPI
 from greentechhub_core.settings.crypto import settings_cipher
 from greentechhub_core.sqlalchemy import SQLAlchemyGrantStore, SQLAlchemySettingsStore
-from greentechhub_core.logging import configure_logging
 from greentechhub_fastapi import (
     register_auth,
     register_core,
     register_health,
+    register_logging,
     register_permissions,
     register_settings,
 )
@@ -54,22 +53,17 @@ async def lifespan(app: FastAPI):
     yield
 
 
-# Structured logs: one JSON object per line on stdout (greentechhub-core),
-# tagged with the service and version, at LOG_LEVEL. configure_logging
-# directly rather than register_logging, which doesn't pass service/version.
-configure_logging(settings.log_level, service="pyfinbot", version=version.VERSION)
-# Uvicorn sets up its own plain-text loggers before importing the app; send
-# them through the root's JSON handler too, so every line is JSON.
-for _name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
-    logging.getLogger(_name).handlers.clear()
-    logging.getLogger(_name).propagate = True
-
 app = FastAPI(
     lifespan=lifespan,
     title=version.PROJECT_NAME_TEXT,
     description=version.DESCRIPTION,
     version=version.VERSION
 )
+
+# Structured logs: one JSON object per line on stdout (greentechhub-core),
+# tagged with the service and version, at LOG_LEVEL; uvicorn's own loggers go
+# through the same JSON handler, so every line is JSON.
+register_logging(app, settings, service="pyfinbot", version=version.VERSION, uvicorn=True)
 
 # /api errors as greentechhub's {code, message, details} envelope: core's
 # ApplicationError hierarchy (at its status_code hint when it has one, e.g. a
