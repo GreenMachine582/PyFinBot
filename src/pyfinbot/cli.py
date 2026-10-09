@@ -22,12 +22,12 @@ from datetime import date
 from typing import Optional, Sequence, TextIO
 
 from greentechhub_core.dates import fiscal_year
+from greentechhub_fastapi.downloads import BOM
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from .core import report_rows, reports
 from .models.user_models import User
 from .schemas.report_schemas import CapitalGainsReport, DividendsReport, HoldingsReport
-from .web.csv_response import BOM
 
 
 Report = HoldingsReport | CapitalGainsReport | DividendsReport

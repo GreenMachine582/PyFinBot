@@ -21,7 +21,6 @@ from ..models.transaction_models import Transaction
 from ..models.user_models import User
 from ..schemas.transaction_schemas import TransactionCreate, TransactionRead, TransactionUpdate
 from ..db.session import get_session
-from .query import page_request
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
@@ -100,13 +99,13 @@ async def list_transactions(
 ):
     """List the signed-in user's transactions: `page`/`size`, `sort`
     (default "-transaction_date,id"), and `filters` / `filter` on the fields
-    in ALLOWED_FIELDS (api/query.py)."""
+    in ALLOWED_FIELDS."""
     stmt = (
         select(Transaction)
         .options(selectinload(Transaction.stock))  # type: ignore[arg-type]  # eager-load nested stock; SQLModel types a Relationship as its model
         .where(Transaction.user_id == current_user.id)  # hard user scope
     )
-    result = await page(session, stmt, page_request(params), ALLOWED_FIELDS, default_sort=DEFAULT_SORT)
+    result = await page(session, stmt, params.to_page_request(), ALLOWED_FIELDS, default_sort=DEFAULT_SORT)
     return to_envelope(result)
 
 

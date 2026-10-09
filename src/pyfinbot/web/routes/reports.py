@@ -3,6 +3,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from greentechhub_core.dates import fiscal_year
 from greentechhub_core.identity import Identity
+from greentechhub_fastapi.downloads import csv_download
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -10,7 +11,6 @@ from ...core import report_rows, reports
 from ...db.session import get_session
 from ...models.transaction_models import Transaction
 from ...schemas.report_schemas import CostMethod
-from ..csv_response import csv_download
 from ..deps import page_identity
 from ..templating import templates
 

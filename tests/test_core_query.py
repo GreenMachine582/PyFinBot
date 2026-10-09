@@ -2,7 +2,7 @@
 PageParams and core's page() (where / order_by / paginate), and the web
 tables core's order_by + paginate — replacing PyFinBot's web/paging.py,
 core/sorting.py and core/sa_filters_compat.py. Bad sort or filters stay a
-400 (api/query.py)."""
+400 (fastapi's PageParams.to_page_request)."""
 import importlib.util
 import json
 
