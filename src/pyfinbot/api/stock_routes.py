@@ -17,7 +17,6 @@ from ..core.market_sync import syncMarket, MARKET_FETCHERS, market_sync_guard
 from ..models.stock_models import Stock
 from ..schemas.stock_schemas import StockCreate, StockRead, StockUpdate, SyncResult
 from ..db.session import get_session
-from .query import page_request
 
 router = APIRouter(prefix="/stocks", tags=["Stocks"])
 
@@ -73,8 +72,8 @@ async def list_stocks(
     params: PageParams = Depends(),
 ):
     """List stocks: `page`/`size`, `sort` (default "market,symbol"), and
-    `filters` / `filter` on the fields in ALLOWED_FIELDS (api/query.py)."""
-    result = await page(session, select(Stock), page_request(params), ALLOWED_FIELDS,
+    `filters` / `filter` on the fields in ALLOWED_FIELDS."""
+    result = await page(session, select(Stock), params.to_page_request(), ALLOWED_FIELDS,
                         default_sort=DEFAULT_SORT)
     return to_envelope(result)
 

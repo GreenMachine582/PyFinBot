@@ -62,9 +62,6 @@ greentechhub-ui's (U1–U3). Each is one PR here after its release: bump the pin
 - [ ] Bearer API auth (fastapi F1): delete `core/security.py`, most of `core/dependencies.py` and
   `ACCESS_TOKEN_EXPIRE_MINUTES`. API routes take an `Identity` (`identity.subject`) instead of a `User`. This
   also ends the session cookie being accepted as an API token (same secret and HS256 today).
-- [ ] Query errors (fastapi F2): delete `api/query.py`; use `PageParams.to_page_request` directly.
-- [ ] Logging (fastapi F3): `register_logging(app, settings, service="pyfinbot", version=...)` replaces
-  `pyfinbot.py`'s direct `configure_logging` call and the uvicorn re-routing.
 - [ ] htmx helpers (fastapi F5): drop the 5 hand-set `HX-Trigger`s (`dividends.py`, `emails.py`, `imports.py`), and
   `_field_errors` in `transactions.py`.
 - [ ] Settings basics (core C3): drop `ENVIRONMENT`, `LOCK_DIR` and the ephemeral `secret_key` from
