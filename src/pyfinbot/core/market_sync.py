@@ -1,12 +1,12 @@
 
 import asyncio
-from contextlib import contextmanager
+from contextlib import AbstractContextManager
 from functools import lru_cache
 from datetime import datetime, timezone
-from typing import Callable, Dict, Iterator, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import pandas as pd
-from greentechhub_core.background.locks import FileLock
+from greentechhub_core.background.locks import FileLock, held
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -44,27 +44,21 @@ def _sync_locks() -> FileLock:
     return FileLock(directory=settings.lock_directory())
 
 
-@contextmanager
-def sync_guard(name: str) -> Iterator[bool]:
-    """Try to take the named sync lock without waiting: yields True (and
-    releases on exit) if this caller may run the sync, False if one is already
-    running — in this process, another worker, or another replica on the
-    host (greentechhub_core's FileLock is an OS advisory lock).
+def sync_guard(name: str) -> AbstractContextManager[bool]:
+    """core's `held` on the named sync lock: yields True (and releases on
+    exit) if this caller may run the sync, False if one is already running —
+    in this process, another worker, or another replica on the host
+    (greentechhub_core's FileLock is an OS advisory lock).
 
         with market_sync_guard("ASX") as acquired:
             if not acquired:
                 ...  # refuse: already running
             await syncMarket(session, "ASX")
     """
-    acquired = _sync_locks().acquire(name, ttl=SYNC_LOCK_TTL_SECONDS)
-    try:
-        yield acquired
-    finally:
-        if acquired:
-            _sync_locks().release(name)
+    return held(_sync_locks(), name, ttl=SYNC_LOCK_TTL_SECONDS)
 
 
-def market_sync_guard(market: str):
+def market_sync_guard(market: str) -> AbstractContextManager[bool]:
     """sync_guard for one market's listing sync."""
     return sync_guard(f"market-sync-{market.upper()}")
 
