@@ -20,9 +20,9 @@ from .dedupe import is_duplicate_transaction
 from .email_sync import (
     EmailAccount,
     GmailNotConfiguredError,
-    extract_body,
     fetch_commsec_emails,
     mark_seen,
+    message_text,
     received_at,
 )
 
@@ -71,7 +71,7 @@ async def sync_commsec_emails(
     for uid, msg in messages:
         uid_label = uid.decode(errors="replace")
         try:
-            body = extract_body(msg)
+            body = message_text(msg)
             parsed = parse_commsec_email(msg.get("Subject", ""), body, received_at(msg))
         except (CommsecParseError, ValueError) as exc:
             errors.append(f"UID {uid_label}: parse error — {exc}")

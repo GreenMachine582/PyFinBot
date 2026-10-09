@@ -15,7 +15,9 @@ settings_context shows above the navbar on every page.
 
 from dataclasses import replace
 
+from greentechhub_core.email import imap_settings
 from greentechhub_core.settings import Setting, SettingScope, SettingsRegistry, SettingType
+from .email_sync import COMMSEC_SENDER
 from .permissions import SETTINGS_MANAGE
 from greentechhub_core.settings.builtins import (
     DATE_FORMAT,
@@ -32,25 +34,20 @@ DEFAULTS = {PAGE_SIZE.key: DEFAULT_ROWS_PER_PAGE, DATE_FORMAT.key: "long"}
 
 EMAIL_GROUP = "Email sync"
 
-# Each user's own mailbox for Commsec email sync (core/email_accounts.py).
+# Each user's own mailbox for Commsec email sync (core/email_accounts.py):
+# core's imap_settings, with PyFinBot's wording, plus the Commsec sender.
 # The app password is a secret: encrypted in gth_settings (the cipher is
 # register_settings' FernetCipher), write-only on /settings, and only ever
 # read back for the IMAP login.
+_HELP_TEXT = {
+    "email.address": "The mailbox Commsec sends your trade confirmations to.",
+    "email.app_password": "A Google App Password (not your account password). Stored encrypted; "
+                          "it's never shown again.",
+}
+
 EMAIL_SETTINGS = (
-    Setting(key="email.address", type=SettingType.STR, default="", scope=SettingScope.USER,
-            label="Email address", group=EMAIL_GROUP,
-            help_text="The mailbox Commsec sends your trade confirmations to."),
-    Setting(key="email.app_password", type=SettingType.STR, default="", scope=SettingScope.USER,
-            label="App password", group=EMAIL_GROUP, secret=True,
-            help_text="A Google App Password (not your account password). Stored encrypted; "
-                      "it's never shown again."),
-    Setting(key="email.imap_host", type=SettingType.STR, default="imap.gmail.com",
-            scope=SettingScope.USER, label="IMAP server", group=EMAIL_GROUP),
-    Setting(key="email.imap_port", type=SettingType.INT, default=993, scope=SettingScope.USER,
-            label="IMAP port", group=EMAIL_GROUP, min=1, max=65535),
-    Setting(key="email.mailbox", type=SettingType.STR, default="INBOX", scope=SettingScope.USER,
-            label="Mailbox", group=EMAIL_GROUP, help_text="The folder or label to read."),
-    Setting(key="email.commsec_sender", type=SettingType.STR, default="bounceback@commsec.com.au",
+    *(replace(s, help_text=_HELP_TEXT.get(s.key, s.help_text)) for s in imap_settings(group=EMAIL_GROUP)),
+    Setting(key="email.commsec_sender", type=SettingType.STR, default=COMMSEC_SENDER,
             scope=SettingScope.USER, label="Commsec sender", group=EMAIL_GROUP,
             help_text="Only emails from this address are imported."),
 )

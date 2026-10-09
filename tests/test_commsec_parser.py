@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from pyfinbot.core.commsec_parser import CommsecParseError, parse_commsec_email
-from pyfinbot.core.email_sync import extract_body, received_at
+from pyfinbot.core.email_sync import message_text, received_at
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "commsec_emails"
 
@@ -21,7 +21,7 @@ def _load_fixture(name: str) -> email.message.Message:
 class TestParseBought:
     def _parse(self):
         msg = _load_fixture("bought_rmd.txt")
-        return parse_commsec_email(msg["Subject"], extract_body(msg), received_at(msg))
+        return parse_commsec_email(msg["Subject"], message_text(msg), received_at(msg))
 
     def test_action_and_symbol(self):
         parsed = self._parse()
@@ -51,7 +51,7 @@ class TestParseBought:
 class TestParseSold:
     def _parse(self):
         msg = _load_fixture("sold_wow.txt")
-        return parse_commsec_email(msg["Subject"], extract_body(msg), received_at(msg))
+        return parse_commsec_email(msg["Subject"], message_text(msg), received_at(msg))
 
     def test_action_and_symbol(self):
         parsed = self._parse()
@@ -90,18 +90,18 @@ class TestParseErrors:
     def test_garbage_subject_raises(self):
         msg = _load_fixture("bought_rmd.txt")
         with pytest.raises(CommsecParseError):
-            parse_commsec_email("Your monthly statement is ready", extract_body(msg), received_at(msg))
+            parse_commsec_email("Your monthly statement is ready", message_text(msg), received_at(msg))
 
     def test_subject_body_mismatch_raises(self):
         msg = _load_fixture("bought_rmd.txt")
         # Claim it was a Sold in the subject while the body says Bought
         with pytest.raises(CommsecParseError):
-            parse_commsec_email("CommSec - Sold 50 units of RMD", extract_body(msg), received_at(msg))
+            parse_commsec_email("CommSec - Sold 50 units of RMD", message_text(msg), received_at(msg))
 
     def test_subject_symbol_mismatch_raises(self):
         msg = _load_fixture("bought_rmd.txt")
         with pytest.raises(CommsecParseError):
-            parse_commsec_email("CommSec - Bought 50 units of CBA", extract_body(msg), received_at(msg))
+            parse_commsec_email("CommSec - Bought 50 units of CBA", message_text(msg), received_at(msg))
 
     def test_missing_settlement_clause_raises(self):
         with pytest.raises(CommsecParseError):

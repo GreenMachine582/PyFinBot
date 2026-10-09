@@ -65,13 +65,13 @@ async def test_blank_keeps_and_clear_removes_the_password(client):
     await _save_account(client, "keep@example.com")
     await _save_account(client, "keep@example.com", password="")  # the form re-posted, field blank
     account = await load_email_account(_service(), "acct-keep")
-    assert account.app_password == PASSWORD and account.configured
+    assert account.imap is not None and account.imap.password == PASSWORD
 
     await client.post("/settings/preferences", headers=HX, data={
         "email.address": "keep@example.com", "email.app_password": "",
         "email.app_password.__clear": "true"})
     account = await load_email_account(_service(), "acct-keep")
-    assert account.app_password == "" and not account.configured
+    assert account.imap is None and not account.configured
     assert "isn't set up yet" in (await client.get("/emails")).text
 
 
@@ -80,23 +80,23 @@ async def test_each_user_syncs_only_their_own_mailbox(client):
 
     def fake_fetch(account, *, only_unseen=True):
         used.append(account)
-        return _fake_messages("bought_rmd.txt") if account.address == "alice@example.com" else []
+        return _fake_messages("bought_rmd.txt") if account.imap.username == "alice@example.com" else []
 
     await web_login(client, "acct-alice")
     await create_stock(client, "RMD", name="ResMed Inc")
     await _save_account(client, "alice@example.com", "alice-app-pw", **{"email.imap_port": "993"})
     with patch(FETCH, side_effect=fake_fetch), patch(MARK) as mark:
         assert "1 imported" in (await client.post("/emails/sync", headers=HX)).text
-    assert used[-1].address == "alice@example.com" and used[-1].app_password == "alice-app-pw"
-    assert mark.call_args.args[0].address == "alice@example.com"
+    assert (used[-1].imap.username, used[-1].imap.password) == ("alice@example.com", "alice-app-pw")
+    assert mark.call_args.args[0].imap.username == "alice@example.com"
 
     await web_login(client, "acct-bob")
     await _save_account(client, "bob@example.com", "bob-app-pw", **{"email.mailbox": "Commsec"})
     with patch(FETCH, side_effect=fake_fetch), patch(MARK):
         resp = await client.post("/emails/sync", headers=HX)
     assert hx_triggers(resp)["showToast"]["message"] == "No new Commsec emails."
-    bob = used[-1]
-    assert (bob.address, bob.app_password, bob.mailbox) == ("bob@example.com", "bob-app-pw", "Commsec")
+    bob = used[-1].imap
+    assert (bob.username, bob.password, bob.mailbox) == ("bob@example.com", "bob-app-pw", "Commsec")
     assert "RMD" not in (await client.get("/transactions")).text  # alice's import isn't bob's
 
 
