@@ -40,8 +40,8 @@ SYNC_LOCK_TTL_SECONDS = 15 * 60
 
 @lru_cache(maxsize=1)
 def _sync_locks() -> FileLock:
-    # Lazy so importing this module doesn't create LOCK_DIR.
-    return FileLock(directory=settings.LOCK_DIR)
+    # Lazy so importing this module doesn't create the lock directory.
+    return FileLock(directory=settings.lock_directory())
 
 
 @contextmanager

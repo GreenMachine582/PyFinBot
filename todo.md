@@ -62,8 +62,6 @@ greentechhub-ui's (U1–U3). Each is one PR here after its release: bump the pin
 - [ ] Bearer API auth (fastapi F1): delete `core/security.py`, most of `core/dependencies.py` and
   `ACCESS_TOKEN_EXPIRE_MINUTES`. API routes take an `Identity` (`identity.subject`) instead of a `User`. This
   also ends the session cookie being accepted as an API token (same secret and HS256 today).
-- [ ] Settings basics (core C3): drop `ENVIRONMENT`, `LOCK_DIR` and the ephemeral `secret_key` from
-  `core/settings.py`, and the dev CORS block in `pyfinbot.py`.
 - [ ] Database (core C4): `db/session.py` becomes a few lines over core's `Database`.
 - [ ] Sync locks (core C5): `held(lock, name, ttl)` replaces `market_sync.py`'s `sync_guard`.
 - [ ] IMAP (core C6): core's `imap_settings` and `ImapReader` replace the generic half of `core/email_sync.py`

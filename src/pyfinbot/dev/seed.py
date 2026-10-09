@@ -97,7 +97,7 @@ async def seed_demo(session: AsyncSession, *, reset: bool = False,
                     environment: Optional[str] = None) -> SeedSummary:
     """Create the demo rows that don't exist yet (see the module docstring)
     and commit. With reset=True, delete the seed's own rows first."""
-    environment = settings.ENVIRONMENT if environment is None else environment
+    environment = settings.environment if environment is None else environment
     if environment != "development":
         raise DemoSeedRefused(
             f"demo data is for development only (ENVIRONMENT is {environment!r})")
@@ -265,8 +265,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Seed PyFinBot with demo data (development only).")
     parser.add_argument("--reset", action="store_true", help="delete the demo rows first, then seed")
     args = parser.parse_args(argv)
-    if settings.ENVIRONMENT != "development":
-        print(f"Refusing: demo data is for development only (ENVIRONMENT is {settings.ENVIRONMENT!r}).",
+    if settings.environment != "development":
+        print(f"Refusing: demo data is for development only (ENVIRONMENT is {settings.environment!r}).",
               file=sys.stderr)
         return 2
     summary = asyncio.run(_run(args.reset))

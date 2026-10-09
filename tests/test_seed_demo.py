@@ -107,7 +107,7 @@ async def test_refuses_outside_development(session, environment):
 
 
 def test_cli_refuses_in_production(monkeypatch, capsys):
-    monkeypatch.setattr(seed_module.settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(seed_module.settings, "environment", "production")
     assert seed_module.main(["--reset"]) == 2
     assert "development only" in capsys.readouterr().err
 

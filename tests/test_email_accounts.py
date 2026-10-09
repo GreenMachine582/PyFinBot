@@ -140,4 +140,4 @@ def test_retired_settings_warn_and_still_load(monkeypatch):
         warnings.simplefilter("error")
         assert settings_module._warn_retired({}) == []
     monkeypatch.setenv("GMAIL_APP_PASSWORD", "x")
-    assert settings_module.Settings(secret_key="k").ENVIRONMENT  # extra env keys are ignored
+    assert settings_module.Settings(secret_key="k").environment  # extra env keys are ignored
