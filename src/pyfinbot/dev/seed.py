@@ -253,10 +253,10 @@ async def _ensure_dividends(session: AsyncSession, stocks: dict[str, Stock], sum
 
 
 async def _run(reset: bool) -> SeedSummary:
-    from ..db.session import _get_engine, init_db
+    from ..db.session import get_session_factory, init_db
 
     await init_db()
-    _, session_maker = _get_engine()
+    session_maker = get_session_factory()
     async with session_maker() as session:
         return await seed_demo(session, reset=reset)
 

@@ -90,10 +90,10 @@ async def test_health_and_readiness(client):
 
 
 async def test_readiness_fails_when_the_database_check_does(client, monkeypatch):
-    async def down(engine):
+    async def down():
         return HealthResult.unhealthy("database", "connection refused")
 
-    monkeypatch.setattr(session_module, "check_database", down)
+    monkeypatch.setattr(session_module.db, "ready", down)
     ready = await client.get("/health/ready")
     assert ready.status_code == 503 and ready.json()["status"] != "healthy"
 
@@ -116,7 +116,7 @@ def test_logs_are_json_tagged_with_the_service():
 
 
 def test_startup_migrations_keep_the_json_logging(tmp_path):
-    # The app migrates on startup (db.session._run_migrations); alembic's env.py
+    # The app migrates on startup (db.session.init_db); alembic's env.py
     # must not swap the root handlers for alembic.ini's plain ones. A subprocess:
     # the alembic env imports the models as src.pyfinbot.
     import os

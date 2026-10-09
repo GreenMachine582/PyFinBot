@@ -40,10 +40,10 @@ async def create_user(session: AsyncSession, user_id: str, password: str) -> Use
 
 
 async def _run(user_id: str, password: str) -> None:
-    from ..db.session import _get_engine, init_db
+    from ..db.session import get_session_factory, init_db
 
     await init_db()
-    _, session_maker = _get_engine()
+    session_maker = get_session_factory()
     async with session_maker() as session:
         await create_user(session, user_id, password)
 
