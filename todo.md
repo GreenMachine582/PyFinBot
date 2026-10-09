@@ -65,7 +65,6 @@ greentechhub-ui's (U1–U3). Each is one PR here after its release: bump the pin
 - [ ] Query errors (fastapi F2): delete `api/query.py`; use `PageParams.to_page_request` directly.
 - [ ] Logging (fastapi F3): `register_logging(app, settings, service="pyfinbot", version=...)` replaces
   `pyfinbot.py`'s direct `configure_logging` call and the uvicorn re-routing.
-- [ ] CSV export (fastapi F4): delete `web/csv_response.py` and `_plain` in `web/routes/transactions.py`.
 - [ ] htmx helpers (fastapi F5): drop the 5 hand-set `HX-Trigger`s (`dividends.py`, `emails.py`, `imports.py`), and
   `_field_errors` in `transactions.py`.
 - [ ] Settings basics (core C3): drop `ENVIRONMENT`, `LOCK_DIR` and the ephemeral `secret_key` from
