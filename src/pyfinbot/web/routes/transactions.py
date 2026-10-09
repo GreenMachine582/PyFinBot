@@ -1,11 +1,11 @@
 from datetime import date, datetime, timezone
-from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from greentechhub_core.identity import Identity
 from greentechhub_core.query.types import Sort
 from greentechhub_core.sqlalchemy.query import order_by, paginate
+from greentechhub_fastapi.downloads import csv_download, csv_value
 from greentechhub_fastapi.settings import get_effective_settings
 from greentechhub_ui import TableState
 from greentechhub_ui.htmx import wants_fragment
@@ -21,7 +21,6 @@ from ...db.session import get_session
 from ...models.stock_models import Stock
 from ...models.transaction_models import Transaction, TypeEnum
 from ...schemas.transaction_schemas import TransactionCreate
-from ..csv_response import csv_download
 from ..deps import page_identity
 from ..htmx import CLOSE_MODAL, hx_response
 from ..templating import templates
@@ -125,20 +124,11 @@ async def export_csv(
     fy_label = templates.env.filters["fy"]
     rows = [CSV_HEADER, *(
         [t.transaction_date.isoformat(), t.stock.market, t.stock.symbol, t.type.value,
-         _plain(t.units), _plain(t.price), _plain(t.fees), _plain(t.total_value), _plain(t.cost),
+         csv_value(t.units), csv_value(t.price), csv_value(t.fees), csv_value(t.total_value), csv_value(t.cost),
          fy_label(t.fy), t.notes or ""]
         for t in transactions
     )]
     return csv_download(rows, "pyfinbot-transactions.csv")
-
-
-def _plain(value: Any) -> str:
-    """A Decimal at full precision, trailing zeros trimmed, never in E-notation."""
-    if value is None:
-        return ""
-    if isinstance(value, Decimal):
-        return f"{value.normalize():f}"
-    return str(value)
 
 
 @router.get("")
