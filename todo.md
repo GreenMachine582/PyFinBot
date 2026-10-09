@@ -62,8 +62,6 @@ greentechhub-ui's (U1–U3). Each is one PR here after its release: bump the pin
 - [ ] Bearer API auth (fastapi F1): delete `core/security.py`, most of `core/dependencies.py` and
   `ACCESS_TOKEN_EXPIRE_MINUTES`. API routes take an `Identity` (`identity.subject`) instead of a `User`. This
   also ends the session cookie being accepted as an API token (same secret and HS256 today).
-- [ ] htmx helpers (fastapi F5): drop the 5 hand-set `HX-Trigger`s (`dividends.py`, `emails.py`, `imports.py`), and
-  `_field_errors` in `transactions.py`.
 - [ ] Settings basics (core C3): drop `ENVIRONMENT`, `LOCK_DIR` and the ephemeral `secret_key` from
   `core/settings.py`, and the dev CORS block in `pyfinbot.py`.
 - [ ] Database (core C4): `db/session.py` becomes a few lines over core's `Database`.
