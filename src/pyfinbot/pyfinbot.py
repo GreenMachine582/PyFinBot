@@ -81,14 +81,6 @@ register_api_error_handlers(app, prefix="/api")
 # /health (liveness) and /health/ready (SELECT 1 against the database).
 register_health(app, checks=[database_ready])
 
-# CORS: development allows all origins when CORS_ALLOWED_ORIGINS is unset
-# (frictionless local/Swagger testing); production allows none until
-# CORS_ALLOWED_ORIGINS is set. register_core's own CORS wiring has no such
-# dev-friendly default (empty means empty), so it's applied here, before
-# calling it, the same way this dev-default logic always has.
-if settings.ENVIRONMENT == "development" and not settings.cors_allowed_origins:
-    settings.cors_allowed_origins = "*"
-
 # request-id/timing/security-header/CORS/trusted-proxy middleware, and
 # session-cookie auth (AUTH_ADAPTER=local for now — see
 # web-implementation-brief.md for the later forward_auth/Authentik swap).

@@ -68,8 +68,6 @@ greentechhub-ui's (U1–U3). Each is one PR here after its release: bump the pin
 - [ ] CSV export (fastapi F4): delete `web/csv_response.py` and `_plain` in `web/routes/transactions.py`.
 - [ ] htmx helpers (fastapi F5): drop the 5 hand-set `HX-Trigger`s (`dividends.py`, `emails.py`, `imports.py`), and
   `_field_errors` in `transactions.py`.
-- [ ] Settings basics (core C3): drop `ENVIRONMENT`, `LOCK_DIR` and the ephemeral `secret_key` from
-  `core/settings.py`, and the dev CORS block in `pyfinbot.py`.
 - [ ] Database (core C4): `db/session.py` becomes a few lines over core's `Database`.
 - [ ] Sync locks (core C5): `held(lock, name, ttl)` replaces `market_sync.py`'s `sync_guard`.
 - [ ] IMAP (core C6): core's `imap_settings` and `ImapReader` replace the generic half of `core/email_sync.py`

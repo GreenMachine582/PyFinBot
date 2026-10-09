@@ -1,9 +1,9 @@
 
 import os
-import secrets
 import tempfile
 import warnings
 from os import path as os_path
+from typing import ClassVar
 
 
 from dotenv import load_dotenv
@@ -23,14 +23,11 @@ class Settings(GTHBaseSettings):
     DATABASE_URL: str = ""
     DB_ECHO: bool = False
 
-    # JWT signing secret. Defaults to a fresh random value each process start
-    # (so tokens issued before a restart become invalid) unless overridden via
-    # the environment/.env — set this explicitly in any persistent deployment.
-    # Overrides GTHBaseSettings' own secret_key (which has no default and
-    # would otherwise be a hard validation error at import time when unset)
-    # to keep that ephemeral-fallback behavior. Env var stays SECRET_KEY —
-    # GTHBaseSettings matches env vars case-insensitively.
-    secret_key: str = ""
+    # SECRET_KEY (core's secret_key) signs the session cookie and API tokens.
+    # Unset, core fills a fresh random key for this process and warns, so
+    # tokens issued before a restart stop working: set it in any persistent
+    # deployment.
+    ephemeral_secret_key: ClassVar[bool] = True
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
 
     # The adapter settings greentechhub-fastapi reads are greentechhub-core's
@@ -42,7 +39,7 @@ class Settings(GTHBaseSettings):
     #   role_groups (ROLE_GROUPS): directory groups → roles (forward_auth),
     #     e.g. "admins=admin". Roles assigned at /admin/roles are stored in
     #     gth_role_grants instead.
-    #   cors_allowed_origins (CORS_ALLOWED_ORIGINS): see ENVIRONMENT below.
+    #   cors_allowed_origins (CORS_ALLOWED_ORIGINS): see environment below.
     #   trusted_proxies (TRUSTED_PROXIES): the reverse proxy's address(es)
     #     (e.g. Caddy), so register_core takes the client IP from
     #     X-Forwarded-For; unset, every request has the proxy's address and
@@ -53,31 +50,21 @@ class Settings(GTHBaseSettings):
     # GTHBaseSettings.settings_cipher_key; pyfinbot.py builds the cipher with
     # core's settings_cipher, which derives one from secret_key when it's unset.
 
-    # "development" or "production". Controls the CORS default in pyfinbot.py:
-    # development allows all origins when CORS_ALLOWED_ORIGINS is unset
-    # (frictionless local/Swagger testing); production allows none until
-    # CORS_ALLOWED_ORIGINS is set. Read by greentechhub_fastapi.register_core
-    # (via its own tolerant read_list_setting, which has no such dev-mode
-    # default — the "*" fallback is applied in pyfinbot.py, not here).
-    ENVIRONMENT: str = "development"
+    # environment (ENVIRONMENT), core's: "development" (the default) or
+    # "production". With cors_allow_all_in_development, development allows all
+    # origins when CORS_ALLOWED_ORIGINS is unset (frictionless local/Swagger
+    # testing), and production allows none until it's set, with a warning.
+    cors_allow_all_in_development: ClassVar[bool] = True
 
-    # Directory for greentechhub_core FileLock files (e.g. the market-sync
-    # "already running" guard). Must be shared by every worker/replica on the
-    # host for the lock to span them; the default is fine for one container.
-    LOCK_DIR: str = os_path.join(tempfile.gettempdir(), "pyfinbot-locks")
+    # Where greentechhub_core FileLocks live (core's lock_dir, LOCK_DIR; read
+    # through lock_directory()), e.g. the market-sync "already running" guard.
+    # Every worker/replica on the host must share it for a lock to span them.
+    # PyFinBot's own directory rather than core's shared gth-locks default, so
+    # its lock names ("dividend-sync") can't meet another gth service's.
+    lock_dir: str = os_path.join(tempfile.gettempdir(), "pyfinbot-locks")
+
 
 settings = Settings()
-
-if not settings.secret_key:
-    settings.secret_key = secrets.token_hex(32)
-    if not os.environ.get("SECRET_KEY"):
-        warnings.warn(
-            "SECRET_KEY is not set in the environment/.env — using a random "
-            "ephemeral key for this process. All issued tokens will become "
-            "invalid on restart. Set SECRET_KEY explicitly for any deployment "
-            "that needs to survive a restart.",
-            stacklevel=2,
-        )
 
 RETIRED_SETTINGS = ("GMAIL_ADDRESS", "GMAIL_APP_PASSWORD", "GMAIL_IMAP_HOST", "GMAIL_IMAP_PORT",
                     "GMAIL_MAILBOX", "COMMSEC_SENDER")
@@ -98,12 +85,3 @@ def _warn_retired(environ=os.environ) -> list[str]:
 
 
 _warn_retired()
-
-
-if settings.ENVIRONMENT == "production" and not settings.cors_allowed_origins:
-    warnings.warn(
-        "ENVIRONMENT is 'production' but CORS_ALLOWED_ORIGINS is not set — no "
-        "cross-origin requests will be allowed until CORS_ALLOWED_ORIGINS is "
-        "set to an explicit comma-separated allow-list.",
-        stacklevel=2,
-    )
