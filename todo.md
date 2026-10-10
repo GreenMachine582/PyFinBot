@@ -86,8 +86,6 @@ Each is one PR here once it ships: bump the pin, adopt, remove the item. Each is
   - **Waits on:** greentechhub-fastapi M6 `register_error_pages` (ui v0.17's 403/404/500 templates).
 - [ ] `refactor(web): leaner routes` — one step per gth helper as it ships:
   - greentechhub-fastapi `get_owned_or_404` replaces `_get_stock_or_404`/`_get_transaction_or_404`;
-  - greentechhub-fastapi's `hx_response` with a body replaces the hand-built 422 panel + toast in
-    `web/routes/emails.py`;
   - greentechhub-core's `held_lock` and per-user lock name replace `sync_guard` (`core/market_sync.py`) and
     `email_sync_lock`;
   - greentechhub-core's `GTHBaseSettings` `retired=` replaces `_warn_retired` (`core/settings.py`);
