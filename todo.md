@@ -18,15 +18,12 @@ Web UI scope and architecture: see `web-implementation-brief.md`.
 
 ## Ready now — released in the gth repos
 
-One PR each, in this order. Each bumps the pins it needs in `requirements.txt`.
+One PR each, in this order. `requirements.txt` already pins core v0.14, fastapi v0.16 and ui v0.17.
 
 - [ ] `refactor(email): core IMAP fetch` (core v0.14)
   - `fetch_commsec_emails` becomes `ImapReader(account.imap).fetch(commsec_criteria(…))`: core's `fetch` now
     leaves out a message deleted since the search (greentechhub-core#69).
   - Its fetch tests in `test_email_sync_imap.py` go; `mark_seen`'s stay.
-- [ ] `build(deps): fastapi v0.16.0 and ui v0.17.0`
-  - Pin bumps only, so the items below are pure adoption. ui's `gth_loading_bar` switches itself on through
-    `install()`.
 - [ ] `refactor(tests): core database fixtures` (core v0.14)
   - `greentechhub_core.testing.sqlalchemy` replaces `tests/conftest.py`'s `engine`/`connection`/`session`
     fixtures: override `gth_metadata` (`SQLModel.metadata`) and `gth_session_class` (SQLModel's `AsyncSession`),
