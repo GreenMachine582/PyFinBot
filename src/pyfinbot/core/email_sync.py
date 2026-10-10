@@ -4,8 +4,6 @@ The generic IMAP half is greentechhub-core's (IMAPConfig, ImapReader,
 message_text, received_at); the Commsec sender criteria live here."""
 from __future__ import annotations
 
-import email
-import imaplib
 from dataclasses import dataclass
 from email.message import Message
 from typing import List, Optional, Tuple
@@ -65,24 +63,7 @@ def fetch_commsec_emails(account: EmailAccount, *, only_unseen: bool = True) -> 
     Does NOT mark messages \\Seen; call mark_seen() after successful
     processing so a partially-failed sync can be safely retried.
     """
-    # Not ImapReader.fetch yet: it fails on a message deleted since the
-    # search, which this skips (todo › Leaner › IMAP fetch).
-    config = _config(account)
-    imap = imaplib.IMAP4_SSL(config.host, config.port)
-    try:
-        imap.login(config.username, config.password)
-        imap.select(config.mailbox)
-        _, data = imap.search(None, commsec_criteria(account, only_unseen=only_unseen))
-        messages: List[Tuple[bytes, Message]] = []
-        for uid in data[0].split():
-            _, msg_data = imap.fetch(uid, "(RFC822)")
-            # (envelope, raw message) — anything else (e.g. None for a message
-            # deleted since the search) has no message to parse.
-            if msg_data and isinstance(msg_data[0], tuple):
-                messages.append((uid, email.message_from_bytes(msg_data[0][1])))
-        return messages
-    finally:
-        imap.logout()
+    return ImapReader(_config(account)).fetch(commsec_criteria(account, only_unseen=only_unseen))
 
 
 def mark_seen(account: EmailAccount, uids: List[bytes]) -> None:
