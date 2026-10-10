@@ -124,11 +124,11 @@ class TestHoldings:
         holdings = resp.json()["holdings"]
         assert holdings[0]["total_dividends_received"] == 0.0
 
-    async def test_total_dividends_received_reflects_prior_dividends(self, client, session):
+    async def test_total_dividends_received_reflects_prior_dividends(self, client, gth_session):
         headers = await register_and_login(client, USER_ID)
         stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=25, date="2024-08-01")
-        await _seed_dividend(session, stock["id"], "2024-09-01", "1.50")
+        await _seed_dividend(gth_session, stock["id"], "2024-09-01", "1.50")
         resp = await client.get("/api/reports/holdings", headers=headers)
         holdings = resp.json()["holdings"]
         assert holdings[0]["total_dividends_received"] == pytest.approx(15.0)  # 10 units * 1.50
@@ -243,10 +243,10 @@ class TestDividendsReport:
         assert data["total_dividends_received"] == 0.0
         assert data["items"] == []
 
-    async def test_dividend_before_any_holding_excluded(self, client, session):
+    async def test_dividend_before_any_holding_excluded(self, client, gth_session):
         headers = await register_and_login(client, USER_ID)
         stock = await create_stock(client)
-        await _seed_dividend(session, stock["id"], "2024-01-01", "1.00")
+        await _seed_dividend(gth_session, stock["id"], "2024-01-01", "1.00")
         await _buy(client, stock["id"], headers, units=10, price=25, date="2024-08-01")
 
         resp = await client.get("/api/reports/dividends", headers=headers)
@@ -254,11 +254,11 @@ class TestDividendsReport:
         assert data["items"] == []
         assert data["total_dividends_received"] == 0.0
 
-    async def test_dividend_mid_holding_weighted_correctly(self, client, session):
+    async def test_dividend_mid_holding_weighted_correctly(self, client, gth_session):
         headers = await register_and_login(client, USER_ID)
         stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=25, date="2024-08-01")
-        await _seed_dividend(session, stock["id"], "2024-09-01", "1.50")
+        await _seed_dividend(gth_session, stock["id"], "2024-09-01", "1.50")
 
         resp = await client.get("/api/reports/dividends", headers=headers)
         data = resp.json()
@@ -269,37 +269,37 @@ class TestDividendsReport:
         assert item["amount_received"] == pytest.approx(15.0)
         assert data["total_dividends_received"] == pytest.approx(15.0)
 
-    async def test_dividend_after_full_sell_excluded(self, client, session):
+    async def test_dividend_after_full_sell_excluded(self, client, gth_session):
         headers = await register_and_login(client, USER_ID)
         stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=25, date="2024-08-01")
         await _sell(client, stock["id"], headers, units=10, price=30, date="2024-09-01")
-        await _seed_dividend(session, stock["id"], "2024-10-01", "1.00")
+        await _seed_dividend(gth_session, stock["id"], "2024-10-01", "1.00")
 
         resp = await client.get("/api/reports/dividends", headers=headers)
         data = resp.json()
         assert data["items"] == []
         assert data["total_dividends_received"] == 0.0
 
-    async def test_partial_holding_weighted_after_partial_sell(self, client, session):
+    async def test_partial_holding_weighted_after_partial_sell(self, client, gth_session):
         headers = await register_and_login(client, USER_ID)
         stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=25, date="2024-08-01")
         await _sell(client, stock["id"], headers, units=4, price=30, date="2024-08-15")
-        await _seed_dividend(session, stock["id"], "2024-09-01", "1.00")
+        await _seed_dividend(gth_session, stock["id"], "2024-09-01", "1.00")
 
         resp = await client.get("/api/reports/dividends", headers=headers)
         item = resp.json()["items"][0]
         assert item["units_held_at_ex_date"] == pytest.approx(6)
         assert item["amount_received"] == pytest.approx(6.0)
 
-    async def test_fy_filter(self, client, session):
+    async def test_fy_filter(self, client, gth_session):
         headers = await register_and_login(client, USER_ID)
         stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=25, date="2023-08-01")
         # FY2023 (Jan 2024) and FY2024 (Aug 2024) dividends
-        await _seed_dividend(session, stock["id"], "2024-01-15", "1.00")
-        await _seed_dividend(session, stock["id"], "2024-08-15", "2.00")
+        await _seed_dividend(gth_session, stock["id"], "2024-01-15", "1.00")
+        await _seed_dividend(gth_session, stock["id"], "2024-08-15", "2.00")
 
         resp = await client.get("/api/reports/dividends", params={"fy": 2024}, headers=headers)
         data = resp.json()
@@ -307,14 +307,14 @@ class TestDividendsReport:
         assert data["items"][0]["ex_date"] == "2024-08-15"
         assert data["total_dividends_received"] == pytest.approx(20.0)
 
-    async def test_multiple_stocks_totaled(self, client, session):
+    async def test_multiple_stocks_totaled(self, client, gth_session):
         headers = await register_and_login(client, USER_ID)
         bhp = await create_stock(client, "BHP")
         cba = await create_stock(client, "CBA", name="Commonwealth Bank")
         await _buy(client, bhp["id"], headers, units=10, price=25, date="2024-08-01")
         await _buy(client, cba["id"], headers, units=5, price=100, date="2024-08-01")
-        await _seed_dividend(session, bhp["id"], "2024-09-01", "1.00")
-        await _seed_dividend(session, cba["id"], "2024-09-01", "2.00")
+        await _seed_dividend(gth_session, bhp["id"], "2024-09-01", "1.00")
+        await _seed_dividend(gth_session, cba["id"], "2024-09-01", "2.00")
 
         resp = await client.get("/api/reports/dividends", headers=headers)
         data = resp.json()
@@ -322,13 +322,13 @@ class TestDividendsReport:
         # BHP: 10*1.00=10, CBA: 5*2.00=10
         assert data["total_dividends_received"] == pytest.approx(20.0)
 
-    async def test_only_requesting_users_dividends(self, client, session):
+    async def test_only_requesting_users_dividends(self, client, gth_session):
         headers = await register_and_login(client, USER_ID)
         other_headers = await register_and_login(client, OTHER_USER_ID)
         stock = await create_stock(client)
         await _buy(client, stock["id"], headers, units=10, price=25, date="2024-08-01")
         # Other user never transacted this stock
-        await _seed_dividend(session, stock["id"], "2024-09-01", "1.00")
+        await _seed_dividend(gth_session, stock["id"], "2024-09-01", "1.00")
 
         resp = await client.get("/api/reports/dividends", headers=other_headers)
         data = resp.json()

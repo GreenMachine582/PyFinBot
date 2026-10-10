@@ -34,37 +34,37 @@ async def _demo_transactions(session, user_id):
     return list((await session.exec(stmt)).all())
 
 
-async def test_first_run_creates_the_demo_data(session):
-    summary = await seed_demo(session, environment="development")
+async def test_first_run_creates_the_demo_data(gth_session):
+    summary = await seed_demo(gth_session, environment="development")
     assert summary.users_created == 2 and summary.stocks_created == len(DEMO_STOCKS) == 8
 
     for user_id, password in DEMO_USERS.items():
-        user = await session.get(User, user_id)
+        user = await gth_session.get(User, user_id)
         assert user is not None and user.active and verify_password(password, user.password_hash)
 
-    stocks = await _all(session, Stock, Stock.market == "ASX")
+    stocks = await _all(gth_session, Stock, Stock.market == "ASX")
     assert len(stocks) == 8
     archived = {s.symbol for s in stocks if not s.is_active}
     assert archived == {"TLS", "FMG"} and all(s.archived_at for s in stocks if not s.is_active)
 
     for user_id, count in TRANSACTION_COUNTS.items():
-        rows = await _demo_transactions(session, user_id)
+        rows = await _demo_transactions(gth_session, user_id)
         assert count <= len(rows) <= count + 2  # plus a sell-out per archived stock held
         assert {r.type for r in rows} == {TypeEnum.BUY, TypeEnum.SELL}
         assert len({r.fy for r in rows}) == 3  # FY2023-24 .. FY2025-26
         assert sum(1 for r in rows if r.notes) >= 2
     assert summary.transactions_created >= sum(TRANSACTION_COUNTS.values())
 
-    dividends = await _all(session, Dividend, Dividend.source == "demo")
+    dividends = await _all(gth_session, Dividend, Dividend.source == "demo")
     assert len(dividends) == summary.dividends_created == 6 * 6  # 6 active stocks, 6 ex-dates
 
 
-async def test_holdings_never_go_negative_and_archived_stocks_end_flat(session):
-    await seed_demo(session, environment="development")
-    stocks = {s.id: s for s in await _all(session, Stock)}
+async def test_holdings_never_go_negative_and_archived_stocks_end_flat(gth_session):
+    await seed_demo(gth_session, environment="development")
+    stocks = {s.id: s for s in await _all(gth_session, Stock)}
     for user_id in DEMO_USERS:
         held: dict[int, Decimal] = defaultdict(Decimal)
-        for row in await _demo_transactions(session, user_id):
+        for row in await _demo_transactions(gth_session, user_id):
             held[row.stock_id] += row.units if row.type is TypeEnum.BUY else -row.units
             assert held[row.stock_id] >= 0, (user_id, row)
             stock = stocks[row.stock_id]
@@ -75,35 +75,35 @@ async def test_holdings_never_go_negative_and_archived_stocks_end_flat(session):
                 assert units == 0
 
 
-async def test_second_run_adds_nothing(session):
-    await seed_demo(session, environment="development")
-    before = (len(await _all(session, Transaction)), len(await _all(session, Dividend)))
-    again = await seed_demo(session, environment="development")
+async def test_second_run_adds_nothing(gth_session):
+    await seed_demo(gth_session, environment="development")
+    before = (len(await _all(gth_session, Transaction)), len(await _all(gth_session, Dividend)))
+    again = await seed_demo(gth_session, environment="development")
     assert not again.created_anything
-    assert (len(await _all(session, Transaction)), len(await _all(session, Dividend))) == before
+    assert (len(await _all(gth_session, Transaction)), len(await _all(gth_session, Dividend))) == before
 
 
-async def test_reset_removes_only_the_seeds_rows(session):
-    await seed_demo(session, environment="development")
-    bhp = await Stock.search(session, market="ASX", symbol="BHP")
-    session.add(User(id="real-user", active=True))
-    session.add(Transaction(user_id="real-user", stock_id=bhp.id, type=TypeEnum.BUY,
+async def test_reset_removes_only_the_seeds_rows(gth_session):
+    await seed_demo(gth_session, environment="development")
+    bhp = await Stock.search(gth_session, market="ASX", symbol="BHP")
+    gth_session.add(User(id="real-user", active=True))
+    gth_session.add(Transaction(user_id="real-user", stock_id=bhp.id, type=TypeEnum.BUY,
                             units=Decimal(5), price=Decimal(40)))
-    await session.commit()
+    await gth_session.commit()
 
-    summary = await seed_demo(session, reset=True, environment="development")
+    summary = await seed_demo(gth_session, reset=True, environment="development")
     assert summary.reset["users"] == 2 and summary.reset["dividends"] == 36
     assert summary.reset["stocks"] == 7  # BHP stays: real-user still trades it
     assert summary.users_created == 2 and summary.stocks_created == 7
-    assert len(await _all(session, Transaction, Transaction.user_id == "real-user")) == 1
-    assert (await Stock.search(session, market="ASX", symbol="BHP")).id == bhp.id
+    assert len(await _all(gth_session, Transaction, Transaction.user_id == "real-user")) == 1
+    assert (await Stock.search(gth_session, market="ASX", symbol="BHP")).id == bhp.id
 
 
 @pytest.mark.parametrize("environment", ["production", "staging", ""])
-async def test_refuses_outside_development(session, environment):
+async def test_refuses_outside_development(gth_session, environment):
     with pytest.raises(DemoSeedRefused):
-        await seed_demo(session, environment=environment)
-    assert await session.get(User, "demo-admin") is None
+        await seed_demo(gth_session, environment=environment)
+    assert await gth_session.get(User, "demo-admin") is None
 
 
 def test_cli_refuses_in_production(monkeypatch, capsys):
@@ -112,8 +112,8 @@ def test_cli_refuses_in_production(monkeypatch, capsys):
     assert "development only" in capsys.readouterr().err
 
 
-async def test_seeded_transactions_page_for_demo_user(client, session):
-    await seed_demo(session, environment="development")
+async def test_seeded_transactions_page_for_demo_user(client, gth_session):
+    await seed_demo(gth_session, environment="development")
     login = await post_login(client, "demo-user", "demo-user-pass",
                               follow_redirects=False)
     assert login.status_code == 303
@@ -121,7 +121,7 @@ async def test_seeded_transactions_page_for_demo_user(client, session):
     client.cookies.set("gth_session", login.cookies["gth_session"])
     resp = await client.get("/transactions", headers=HX)
     assert resp.status_code == 200
-    total = len(await _demo_transactions(session, "demo-user"))
+    total = len(await _demo_transactions(gth_session, "demo-user"))
     # More than one page: the table's "Load more" shows, with the total.
     assert f"({total} total)" in resp.text and 'data-gth-table-mode="load_more"' in resp.text
     assert "Load more" in resp.text

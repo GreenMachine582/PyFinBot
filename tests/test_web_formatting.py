@@ -44,11 +44,11 @@ class TestReports:
         assert "$45.00" in resp.text  # average cost basis
         assert "$6,750.00" in resp.text  # cost base
 
-    async def test_dividend_dates(self, client, session):
+    async def test_dividend_dates(self, client, gth_session):
         await web_login(client, "web-formatting")
         bhp = await create_stock(client)
         await _txn(client, bhp["id"], "Buy", "200", "40", "2024-07-10")
-        await _seed_dividend(session, bhp["id"], "2024-09-01", "1.50")
+        await _seed_dividend(gth_session, bhp["id"], "2024-09-01", "1.50")
         resp = await client.get("/reports/dividends", headers=HX)
         assert "1 Sep 2024" in resp.text
         assert ">—<" in resp.text  # no pay date: |date gives "", so the "or" fallback shows

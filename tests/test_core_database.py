@@ -13,8 +13,8 @@ from pyfinbot.db import session as db_session
 
 
 @pytest.fixture
-def override(connection):
-    maker = async_sessionmaker(bind=connection, class_=AsyncSession, expire_on_commit=False)
+def override(gth_connection):
+    maker = async_sessionmaker(bind=gth_connection, class_=AsyncSession, expire_on_commit=False)
     db_session.set_session_factory_override(maker)
     yield maker
     db_session.set_session_factory_override(None)
@@ -24,12 +24,12 @@ def test_db_is_cores_database():
     assert isinstance(db_session.db, Database)
 
 
-async def test_override_applies_to_every_session(override, connection):
+async def test_override_applies_to_every_session(override, gth_connection):
     assert db_session.get_session_factory() is override
     async for s in db_session.get_session():
-        assert isinstance(s, AsyncSession) and s.bind is connection
+        assert isinstance(s, AsyncSession) and s.bind is gth_connection
     plain = db_session.session_factory()
-    assert type(plain) is SAAsyncSession and plain.bind is connection
+    assert type(plain) is SAAsyncSession and plain.bind is gth_connection
     await plain.close()
 
 

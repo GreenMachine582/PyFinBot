@@ -20,12 +20,6 @@ Web UI scope and architecture: see `web-implementation-brief.md`.
 
 One PR each, in this order. `requirements.txt` already pins core v0.14, fastapi v0.16 and ui v0.17.
 
-- [ ] `refactor(tests): core database fixtures` (core v0.14)
-  - `greentechhub_core.testing.sqlalchemy` replaces `tests/conftest.py`'s `engine`/`connection`/`session`
-    fixtures: override `gth_metadata` (`SQLModel.metadata`) and `gth_session_class` (SQLModel's `AsyncSession`),
-    and point `db.session.db` at the test connection with `gth_database(db)`.
-  - Add core's `[testing]` extra to the dev requirements.
-  - The HTTP fixtures (client, `post_login`, `web_login`, `hx_triggers`) stay for the next item.
 - [ ] `refactor(tests): fastapi HTTP fixtures` (fastapi v0.16)
   - fastapi's HTTP fixtures (`gth_client`, …; fastapi docs/testing.md) replace PyFinBot's, so `tests/conftest.py`
     keeps only its own (`create_user`, `make_admin`, `create_stock`, …).

@@ -69,9 +69,9 @@ class TestPage:
 
 
 class TestHoldings:
-    async def test_holdings(self, client, session):
+    async def test_holdings(self, client, gth_session):
         await web_login(client, "web-reports")
-        await _seed(client, session)
+        await _seed(client, gth_session)
         resp = await client.get("/reports/holdings", headers=HX, params={"as_of": "2025-06-30"})
         assert resp.status_code == 200
         assert "<html" not in resp.text
@@ -82,9 +82,9 @@ class TestHoldings:
         assert "300.00" in resp.text           # dividend: 200 units × 1.50
         assert 'href="/reports/holdings.csv?as_of=2025-06-30"' in resp.text
 
-    async def test_as_of_before_first_buy_is_empty(self, client, session):
+    async def test_as_of_before_first_buy_is_empty(self, client, gth_session):
         await web_login(client, "web-reports")
-        await _seed(client, session)
+        await _seed(client, gth_session)
         resp = await client.get("/reports/holdings", params={"as_of": "2024-01-01"})
         assert "You held no stocks on 1 Jan 2024." in resp.text
 
@@ -93,16 +93,16 @@ class TestHoldings:
         resp = await client.get("/reports/holdings", params={"as_of": "not-a-date"})
         assert resp.status_code == 200
 
-    async def test_only_own_transactions(self, client, session):
+    async def test_only_own_transactions(self, client, gth_session):
         await web_login(client, "web-reports-a")
-        await _seed(client, session)
+        await _seed(client, gth_session)
         await web_login(client, "web-reports-b")
         resp = await client.get("/reports/holdings", params={"as_of": "2025-06-30"})
         assert "BHP Group" not in resp.text
 
-    async def test_csv(self, client, session):
+    async def test_csv(self, client, gth_session):
         await web_login(client, "web-reports")
-        await _seed(client, session)
+        await _seed(client, gth_session)
         resp = await client.get("/reports/holdings.csv", params={"as_of": "2025-06-30"})
         assert resp.status_code == 200
         assert resp.headers["content-type"] == "text/csv; charset=utf-8"
@@ -115,17 +115,17 @@ class TestHoldings:
 
 
 class TestGains:
-    async def test_defaults_to_latest_fy(self, client, session):
+    async def test_defaults_to_latest_fy(self, client, gth_session):
         await web_login(client, "web-reports")
-        await _seed(client, session)
+        await _seed(client, gth_session)
         resp = await client.get("/reports/gains")
         assert '<option value="2024" selected>2024–25</option>' in resp.text
         assert "740.00" in resp.text  # 50 × 60 − 10 − 50 × 45
         assert "text-success" in resp.text
 
-    async def test_fy_without_sells(self, client, session):
+    async def test_fy_without_sells(self, client, gth_session):
         await web_login(client, "web-reports")
-        await _seed(client, session)
+        await _seed(client, gth_session)
         resp = await client.get("/reports/gains", params={"fy": "2023"})
         assert "No sells in FY 2023–24." in resp.text
 
@@ -135,9 +135,9 @@ class TestGains:
         assert resp.status_code == 200
         assert "No sells in FY" in resp.text
 
-    async def test_csv(self, client, session):
+    async def test_csv(self, client, gth_session):
         await web_login(client, "web-reports")
-        await _seed(client, session)
+        await _seed(client, gth_session)
         resp = await client.get("/reports/gains.csv", params={"fy": "2024"})
         assert 'filename="pyfinbot-gains-fy2024.csv"' in resp.headers["content-disposition"]
         rows = _csv(resp)
@@ -146,9 +146,9 @@ class TestGains:
 
 
 class TestDividends:
-    async def test_all_time_and_fy(self, client, session):
+    async def test_all_time_and_fy(self, client, gth_session):
         await web_login(client, "web-reports")
-        await _seed(client, session)
+        await _seed(client, gth_session)
         resp = await client.get("/reports/dividends")
         assert "Received, all time" in resp.text
         assert "1 Sep 2024" in resp.text and "$300.00" in resp.text
@@ -161,9 +161,9 @@ class TestDividends:
         resp = await client.get("/reports/dividends", params={"fy": "2023"})
         assert "No dividends received in FY 2023–24." in resp.text
 
-    async def test_csv(self, client, session):
+    async def test_csv(self, client, gth_session):
         await web_login(client, "web-reports")
-        await _seed(client, session)
+        await _seed(client, gth_session)
         resp = await client.get("/reports/dividends.csv")
         assert 'filename="pyfinbot-dividends-all.csv"' in resp.headers["content-disposition"]
         rows = _csv(resp)

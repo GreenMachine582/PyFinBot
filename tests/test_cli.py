@@ -26,26 +26,26 @@ def _rows(text: str) -> list[list[str]]:
 
 
 class TestReports:
-    async def test_holdings_csv_matches_the_web_download(self, client, session):
+    async def test_holdings_csv_matches_the_web_download(self, client, gth_session):
         await web_login(client, USER_ID)
-        await _seed(client, session)
+        await _seed(client, gth_session)
         code, out, _ = await _cli("holdings", "--user", USER_ID, "--as-of", "2025-06-30")
         assert code == 0
         web = await client.get("/reports/holdings.csv", params={"as_of": "2025-06-30"})
         assert _rows(out) == _csv(web)
         assert _rows(out)[1][:4] == ["ASX", "BHP", "BHP Group", "150.0"]
 
-    async def test_gains_csv_matches_the_web_download(self, client, session):
+    async def test_gains_csv_matches_the_web_download(self, client, gth_session):
         await web_login(client, USER_ID)
-        await _seed(client, session)
+        await _seed(client, gth_session)
         code, out, _ = await _cli("gains", "--user", USER_ID, "--fy", "2024")
         assert code == 0
         assert _rows(out) == _csv(await client.get("/reports/gains.csv", params={"fy": "2024"}))
         assert float(_rows(out)[1][6]) == pytest.approx(740)
 
-    async def test_dividends_json_matches_the_api(self, client, session):
+    async def test_dividends_json_matches_the_api(self, client, gth_session):
         await web_login(client, USER_ID)
-        await _seed(client, session)
+        await _seed(client, gth_session)
         code, out, _ = await _cli("dividends", "--user", USER_ID, "--format", "json")
         assert code == 0
         body = json.loads(out)
@@ -53,10 +53,10 @@ class TestReports:
         assert body["total_dividends_received"] == pytest.approx(300)
         assert body["items"][0]["units_held_at_ex_date"] == pytest.approx(200)
 
-    async def test_dividends_fy_filter(self, client, session):
+    async def test_dividends_fy_filter(self, client, gth_session):
         await web_login(client, USER_ID)
-        bhp = await _seed(client, session)
-        await _seed_dividend(session, bhp["id"], "2025-09-01", "2.00")
+        bhp = await _seed(client, gth_session)
+        await _seed_dividend(gth_session, bhp["id"], "2025-09-01", "2.00")
         _, out, _ = await _cli("dividends", "--user", USER_ID, "--fy", "2025", "--format", "json")
         body = json.loads(out)
         assert body["fy"] == 2025
@@ -80,9 +80,9 @@ class TestReports:
 
 
 class TestOutput:
-    async def test_output_file_gets_a_bom_like_the_web_download(self, client, session, tmp_path):
+    async def test_output_file_gets_a_bom_like_the_web_download(self, client, gth_session, tmp_path):
         await web_login(client, USER_ID)
-        await _seed(client, session)
+        await _seed(client, gth_session)
         path = tmp_path / "gains.csv"
         code, out, _ = await _cli("gains", "--user", USER_ID, "--fy", "2024", "-o", str(path))
         assert code == 0 and out == ""
