@@ -2,6 +2,7 @@
 {% from "table.html" import gth_filter_bar, gth_table %}
 {% from "empty_state.html" import gth_empty_state %}
 {% from "select.html" import gth_select %}
+{% from "charts.html" import gth_line_chart %}
 {% set export_url = "/reports/dividends.csv" ~ ("?fy=" ~ report.fy if report.fy is not none else "") %}
 {% call gth_filter_bar("/reports/dividends", "closest .tab-pane", export_url=export_url) %}
   {{ gth_select("fy", "Financial year", fys|fy_options, value=report.fy, placeholder="All time",
@@ -13,6 +14,13 @@
      "value": report.total_dividends_received|money},
     {"label": "Payments", "value": report.items|length},
 ], cols=3) }}
+
+{% if dividends_by_month %}
+<div class="mb-3">
+  {{ gth_line_chart(dividends_by_month, "Dividends received by month", prefix="$", places=2,
+      columns=("Month", "Received")) }}
+</div>
+{% endif %}
 
 {% if report.items %}
 {% call gth_table(["Ex date", "Pay date", "Stock", "Per share", "Units held", "Received"], table_class="table-sm") %}

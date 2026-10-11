@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "page_header.html" import gth_page_header %}
 {% from "stat_card.html" import gth_stat_grid %}
+{% from "charts.html" import gth_sparkline %}
 {% from "table.html" import gth_table %}
 {% from "empty_state.html" import gth_empty_state %}
 {% block title %}Dashboard{% endblock %}
@@ -11,10 +12,14 @@
 {% set gain = gains.total_gain_loss %}
 {{ gth_stat_grid([
     {"label": "Positions", "value": holdings.holdings|length, "icon": "briefcase"},
-    {"label": "Cost base", "value": cost_base|money, "icon": "wallet2"},
+    {"label": "Cost base", "value": cost_base|money, "icon": "wallet2",
+     "chart": gth_sparkline(cost_series|map(attribute=1)|list, label="Cost base, last 12 months",
+                            prefix="$") if cost_series else None},
     {"label": "Realised gain/loss, FY " ~ fy|fy, "value": gain|money, "icon": "graph-up-arrow",
      "value_tone": "good" if gain > 0 else ("bad" if gain < 0 else "neutral")},
-    {"label": "Dividends, FY " ~ fy|fy, "value": dividends.total_dividends_received|money, "icon": "cash-coin"},
+    {"label": "Dividends, FY " ~ fy|fy, "value": dividends.total_dividends_received|money, "icon": "cash-coin",
+     "chart": gth_sparkline(dividend_series|map(attribute=1)|list, label="Dividends by month, last 12 months",
+                            prefix="$", places=2) if dividend_series else None},
 ], grid_class="mb-4") }}
 
 {% if top_holdings %}
