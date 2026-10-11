@@ -5,8 +5,10 @@ from greentechhub_core.types import BadRequestError, ForbiddenError, NotFoundErr
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
+from greentechhub_core.identity import Identity
+from greentechhub_fastapi.dependencies import get_current_identity
+from greentechhub_fastapi.permissions import require_permission
 
-from ..core.dependencies import get_current_user, require_api_permission
 from ..core.permissions import USERS_MANAGE
 from ..core.users import new_user, set_password
 from ..models.user_models import User
@@ -20,7 +22,7 @@ router = APIRouter(prefix="/users", tags=["Users"])
 async def create_user(
     user_in: UserCreate,
     session: AsyncSession = Depends(get_session),
-    admin: User = Depends(require_api_permission(USERS_MANAGE)),
+    admin: Identity = Depends(require_permission(USERS_MANAGE)),
 ):
     """Create a user (users.manage only: there's no open registration — the
     first user comes from scripts/create_user.py plus ROLE_BOOTSTRAP)."""
@@ -42,7 +44,7 @@ async def create_user(
 @router.get("/", response_model=list[UserBase])
 async def list_users(
     session: AsyncSession = Depends(get_session),
-    admin: User = Depends(require_api_permission(USERS_MANAGE)),
+    admin: Identity = Depends(require_permission(USERS_MANAGE)),
 ):
     """Every user (users.manage only)."""
     result = await session.exec(select(User))
@@ -53,9 +55,9 @@ async def list_users(
 async def get_user(
     user_id: str,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    identity: Identity = Depends(get_current_identity),
 ):
-    if current_user.id != user_id:
+    if identity.subject != user_id:
         raise ForbiddenError("Not allowed to access this user")
 
     user = await session.get(User, user_id)
@@ -69,9 +71,9 @@ async def update_user(
     user_id: str,
     user_update: UserUpdate,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    identity: Identity = Depends(get_current_identity),
 ):
-    if current_user.id != user_id:
+    if identity.subject != user_id:
         raise ForbiddenError("Not allowed to modify this user")
 
     user = await session.get(User, user_id)
@@ -100,9 +102,9 @@ async def update_user(
 async def delete_user(
     user_id: str,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    identity: Identity = Depends(get_current_identity),
 ):
-    if current_user.id != user_id:
+    if identity.subject != user_id:
         raise ForbiddenError("Not allowed to delete this user")
 
     user = await session.get(User, user_id)

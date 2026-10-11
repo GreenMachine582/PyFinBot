@@ -28,7 +28,6 @@ class Settings(GTHBaseSettings):
     # tokens issued before a restart stop working: set it in any persistent
     # deployment.
     ephemeral_secret_key: ClassVar[bool] = True
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
 
     # The adapter settings greentechhub-fastapi reads are greentechhub-core's
     # GTHBaseSettings fields (env vars in brackets), not declared here:
@@ -66,19 +65,30 @@ class Settings(GTHBaseSettings):
 
 settings = Settings()
 
-RETIRED_SETTINGS = ("GMAIL_ADDRESS", "GMAIL_APP_PASSWORD", "GMAIL_IMAP_HOST", "GMAIL_IMAP_PORT",
-                    "GMAIL_MAILBOX", "COMMSEC_SENDER")
+_EMAIL_MOVED = "each user sets their own email account at /settings › Email sync"
+_TOKEN_LIFETIME_FIXED = "API tokens last 24 hours (api/auth_routes.py API_TOKEN_LIFETIME)"
+
+# Settings that still load when set but are no longer read, and why.
+RETIRED_SETTINGS = {
+    "GMAIL_ADDRESS": _EMAIL_MOVED,
+    "GMAIL_APP_PASSWORD": _EMAIL_MOVED,
+    "GMAIL_IMAP_HOST": _EMAIL_MOVED,
+    "GMAIL_IMAP_PORT": _EMAIL_MOVED,
+    "GMAIL_MAILBOX": _EMAIL_MOVED,
+    "COMMSEC_SENDER": _EMAIL_MOVED,
+    "ACCESS_TOKEN_EXPIRE_MINUTES": _TOKEN_LIFETIME_FIXED,
+}
 
 
 def _warn_retired(environ=os.environ) -> list[str]:
-    """Warn about server-wide email settings that are set but no longer read
-    (each user's email account now lives in their Settings). Returns them."""
+    """Warn about settings that are set but no longer read (RETIRED_SETTINGS),
+    one warning per reason. Returns them."""
     found = [name for name in RETIRED_SETTINGS if environ.get(name)]
-    if found:
+    for reason in dict.fromkeys(RETIRED_SETTINGS[name] for name in found):
+        names = [name for name in found if RETIRED_SETTINGS[name] == reason]
         warnings.warn(
-            f"{', '.join(found)} {'is' if len(found) == 1 else 'are'} no longer used: each user "
-            "sets their own email account at /settings › Email sync. Remove them from the "
-            "environment/.env.",
+            f"{', '.join(names)} {'is' if len(names) == 1 else 'are'} no longer used: {reason}. "
+            "Remove them from the environment/.env.",
             stacklevel=2,
         )
     return found

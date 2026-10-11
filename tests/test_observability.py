@@ -39,7 +39,7 @@ async def test_api_auth_errors_keep_the_bearer_challenge(gth_client):
     assert no_token.headers["WWW-Authenticate"] == "Bearer"
 
     bad_token = await gth_client.get("/api/users/", headers={"Authorization": "Bearer nope"})
-    assert _envelope(bad_token, 401, "unauthorized")["message"] == "Could not validate credentials"
+    assert _envelope(bad_token, 401, "unauthorized")["message"] == "authentication required"
     assert bad_token.headers["WWW-Authenticate"] == "Bearer"
 
     wrong_password = await gth_client.post("/api/auth/login", data={"username": "nobody", "password": "x"})
