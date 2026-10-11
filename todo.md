@@ -18,13 +18,8 @@ Web UI scope and architecture: see `web-implementation-brief.md`.
 
 ## Ready now — released in the gth repos
 
-One PR each, in this order. `requirements.txt` already pins core v0.14, fastapi v0.16 and ui v0.17.
-
-- [ ] `feat(web): dashboard and report charts` (ui v0.17)
-  - **Dashboard:** sparklines in the stat tiles (cost base over time, dividends by month) with `gth_sparkline` in
-    `gth_stat_card` (`web/routes/dashboard.py`).
-  - **Reports:** gains by FY (`gth_bar_chart`), dividends over time (`gth_line_chart`).
-  - The Grafana panel is under infrastructure.
+Nothing ready: every released gth feature is adopted. The items below wait on a gth release or
+infrastructure.
 
 ## Waiting on a gth release
 

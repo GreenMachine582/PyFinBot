@@ -1,6 +1,7 @@
 {% from "stat_card.html" import gth_stat_grid %}
 {% from "table.html" import gth_filter_bar, gth_table %}
 {% from "amount.html" import gth_amount %}
+{% from "charts.html" import gth_bar_chart %}
 {% from "empty_state.html" import gth_empty_state %}
 {% from "select.html" import gth_select %}
 {% set export_url = "/reports/gains.csv?fy=" ~ report.fy ~ ("&method=" ~ report.method.value if report.method.value != "average" else "") %}
@@ -15,6 +16,13 @@
      "value_tone": "good" if total > 0 else ("bad" if total < 0 else "neutral")},
     {"label": "Stocks sold", "value": report.items|length},
 ], cols=3) }}
+
+{% if gains_by_fy %}
+<div class="mb-3">
+  {{ gth_bar_chart(gains_by_fy, "Net gain/loss by financial year", tone="signed", prefix="$",
+      columns=("Financial year", "Net gain/loss")) }}
+</div>
+{% endif %}
 
 {% if report.items %}
 {% call gth_table(["Stock", "Units sold", "Avg cost", "Proceeds", "Gain/loss"], table_class="table-sm") %}

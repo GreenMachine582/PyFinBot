@@ -1,13 +1,13 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from greentechhub_core.dates import fiscal_year
+from greentechhub_core.dates import fiscal_year, fiscal_year_bounds
 from greentechhub_core.identity import Identity
 from greentechhub_fastapi.downloads import csv_download
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ...core import report_rows, reports
+from ...core import report_rows, report_series, reports
 from ...db.session import get_session
 from ...models.transaction_models import Transaction
 from ...schemas.report_schemas import CostMethod
@@ -80,9 +80,13 @@ async def holdings(request: Request, as_of: str | None = None, method: str | Non
 async def gains(request: Request, fy: str | None = None, method: str | None = None,
                 identity: Identity = Depends(page_identity), session: AsyncSession = Depends(get_session)):
     year, fys = await _gains_fy(session, identity, fy)
-    report = await reports.capital_gains_report(session, identity.subject, year, _parse_method(method))
+    cost_method = _parse_method(method)
+    report = await reports.capital_gains_report(session, identity.subject, year, cost_method)
+    # Net gain/loss by FY for the bar chart: only worth drawing over 2+ years.
+    by_fy = await report_series.gains_by_fy(session, identity.subject, fys, cost_method) if len(fys) > 1 else []
     return templates.TemplateResponse(request, "_report_gains.html", {
         "report": report, "fys": sorted(set(fys) | {year}, reverse=True), "methods": METHODS,
+        "gains_by_fy": by_fy,
     })
 
 
@@ -90,8 +94,18 @@ async def gains(request: Request, fy: str | None = None, method: str | None = No
 async def dividends(request: Request, fy: str | None = None,
                     identity: Identity = Depends(page_identity), session: AsyncSession = Depends(get_session)):
     report = await reports.dividends_report(session, identity.subject, _parse_int(fy))
+    # Received by month for the line chart: the FY's 12 months, or all time
+    # from the first ex-date to the last.
+    by_month: report_series.Series = []
+    if report.items:
+        if report.fy is not None:
+            start, end = fiscal_year_bounds(report.fy)
+        else:
+            dates = [item.ex_date for item in report.items]
+            start, end = min(dates), max(dates)
+        by_month = report_series.dividends_by_month(report.items, start, end)
     return templates.TemplateResponse(request, "_report_dividends.html", {
-        "report": report, "fys": await _user_fys(session, identity),
+        "report": report, "fys": await _user_fys(session, identity), "dividends_by_month": by_month,
     })
 
 
