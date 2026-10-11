@@ -11,7 +11,7 @@ from pathlib import Path
 from pyfinbot.core.user_settings import DEFAULT_ROWS_PER_PAGE, USER_SETTINGS
 from pyfinbot.dev.seed import seed_demo
 
-from .conftest import create_stock, post_login, web_login
+from .conftest import create_stock, post_login, send_csrf, web_login
 from .test_web_reports import HX, _txn
 
 HTML = {"Accept": "text/html"}
@@ -52,6 +52,7 @@ def test_registry_is_the_shared_preferences_with_pyfinbots_defaults():
 async def test_settings_needs_login(gth_client):
     resp = await gth_client.get("/settings", headers=HTML, follow_redirects=False)
     assert resp.status_code == 303 and resp.headers["location"].startswith("/login")
+    send_csrf(gth_client)  # a valid token, so it's the sign-in that's missing
     resp = await gth_client.post("/settings/preferences", data={"ui.page_size": "10"}, headers=HX)
     assert resp.status_code == 401
 
@@ -95,6 +96,7 @@ async def test_rows_per_page_follow_the_user(gth_client, gth_session):
     login = await post_login(gth_client, "demo-user", "demo-user-pass",
                               follow_redirects=False)
     gth_client.cookies.set("gth_session", login.cookies["gth_session"])
+    send_csrf(gth_client)
 
     def rows(html):
         return len(re.findall(r'hx-get="/(?:transactions|stocks)/\d+/edit"', html))  # one per row

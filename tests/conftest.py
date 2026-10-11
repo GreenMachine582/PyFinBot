@@ -93,9 +93,26 @@ async def register_and_login(client: AsyncClient, user_id: str, password: str = 
 async def web_login(client: AsyncClient, user_id: str, password: str = PASSWORD) -> None:
     """Create a user and sign in through the web form (greentechhub-fastapi's
     web_login), leaving the gth_session cookie on `client`. Calling it again
-    for another user switches the client to that user."""
+    for another user switches the client to that user.
+
+    It then sends the gth_csrf cookie's token as X-CSRF-Token on every
+    request, as the app shell's hx-headers does in a browser."""
     await create_user(client, user_id, password)
     await gth_testing.web_login(client, user_id, password)
+    send_csrf(client)
+
+
+def send_csrf(client: AsyncClient) -> None:
+    """Send the client's gth_csrf token as X-CSRF-Token on every request
+    from now on, as the app shell's hx-headers does. The token comes from
+    the cookie re-set without Secure (domain ""), else a response's, which
+    is re-set without Secure here so it goes back over the tests' http://."""
+    jar = client.cookies
+    token = jar.get("gth_csrf", domain="")
+    if token is None:
+        token = next(cookie.value for cookie in jar.jar if cookie.name == "gth_csrf")
+        jar.set("gth_csrf", token)
+    client.headers["X-CSRF-Token"] = token
 
 
 async def create_stock(client: AsyncClient, symbol: str = "BHP", market: str = "ASX",

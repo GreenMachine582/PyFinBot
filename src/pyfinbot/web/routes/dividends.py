@@ -7,11 +7,11 @@ from ...core.dividend_sync import syncDividends, user_stock_ids
 from ...core.market_sync import sync_guard
 from ...db.session import get_session
 from ...models.stock_models import Stock
-from ..deps import page_identity
+from ..deps import page_identity, page_router_deps
 from ..htmx import hx_response
 from ..templating import templates
 
-router = APIRouter(prefix="/dividends")
+router = APIRouter(prefix="/dividends", dependencies=page_router_deps)
 
 # Dividend rows are shared across users (one per stock + ex-date), so
 # concurrent syncs could race on the same upserts — one lock for all.

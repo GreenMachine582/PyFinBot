@@ -18,13 +18,13 @@ from ...core.user_settings import DEFAULT_ROWS_PER_PAGE, PAGE_SIZES
 from ...db.session import get_session
 from ...models.stock_models import CODE_MAX, Stock
 from ...models.transaction_models import Transaction
-from ..deps import page_identity
+from ..deps import page_router_deps
 from ..htmx import CLOSE_MODAL, hx_response
 from ..templating import templates
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/stocks", dependencies=[Depends(page_identity)])
+router = APIRouter(prefix="/stocks", dependencies=page_router_deps)
 
 CHANGED = "stocksChanged"
 STATUSES = {"active": "Active", "archived": "Archived", "all": "All"}

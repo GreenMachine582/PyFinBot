@@ -4,7 +4,7 @@ from httpx import AsyncClient
 
 from pyfinbot.core.settings import settings
 
-from .conftest import create_user, post_login
+from .conftest import create_user, post_login, send_csrf
 
 
 async def _register(client: AsyncClient, user_id: str, password: str = "hunter2!") -> None:
@@ -53,6 +53,7 @@ async def test_logout_clears_session(gth_client: AsyncClient):
     await _register(gth_client, "webc")
     login_resp = await post_login(gth_client, "webc", "hunter2!", follow_redirects=False)
     cookie = login_resp.cookies["gth_session"]
+    send_csrf(gth_client)  # POST /logout checks it (logout_csrf)
 
     logout_resp = await gth_client.post(
         "/logout", cookies={"gth_session": cookie}, follow_redirects=False

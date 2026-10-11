@@ -13,11 +13,11 @@ from ...core.transaction_import import (
     read_upload,
 )
 from ...db.session import get_session
-from ..deps import page_identity
+from ..deps import page_identity, page_router_deps
 from ..routes.transactions import CHANGED as TRANSACTIONS_CHANGED
 from ..templating import templates
 
-router = APIRouter(prefix="/import")
+router = APIRouter(prefix="/import", dependencies=page_router_deps)
 
 TITLE = "Import finished"
 
