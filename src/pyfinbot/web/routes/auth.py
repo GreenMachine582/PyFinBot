@@ -30,10 +30,12 @@ class PyFinBotLoginViews(LoginViews):
 
     The form carries a CSRF token (fastapi's double-submit `gth_csrf`
     cookie, rendered by ui's login page): a POST without it is refused 403
-    before anything else. Like the session cookie it needs HTTPS, or
-    localhost, which browsers treat as secure."""
+    before anything else. So does POST /logout (the navbar's logout form
+    sends it). Like the session cookie it needs HTTPS, or localhost, which
+    browsers treat as secure."""
 
     csrf = True
+    logout_csrf = True
 
     async def authenticate(self, user_id: str, password: str) -> Identity | None:
         async with _session() as session:

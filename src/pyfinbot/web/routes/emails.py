@@ -11,12 +11,12 @@ from ...core.email_accounts import load_email_account
 from ...core.email_sync import EmailAccount
 from ...core.market_sync import sync_guard
 from ...db.session import get_session
-from ..deps import page_identity
+from ..deps import page_identity, page_router_deps
 from ..htmx import hx_response
 from ..routes.transactions import CHANGED as TRANSACTIONS_CHANGED
 from ..templating import templates
 
-router = APIRouter(prefix="/emails")
+router = APIRouter(prefix="/emails", dependencies=page_router_deps)
 
 TITLE = "Email sync finished"
 SETTINGS_URL = "/settings#gth-settings-preferences"

@@ -20,11 +20,6 @@ Web UI scope and architecture: see `web-implementation-brief.md`.
 
 One PR each, in this order. `requirements.txt` already pins core v0.14, fastapi v0.16 and ui v0.17.
 
-- [ ] `feat(web): CSRF on in-app forms` (fastapi v0.16, ui v0.17)
-  - **Why:** the sign-in form has CSRF, but `POST /logout`, `/settings`, `/admin/roles` and PyFinBot's own htmx
-    forms (stocks, transactions, imports, syncs) don't.
-  - `register_csrf(app)` (fastapi docs/auth.md); ui v0.17's shell sends the token in `hx-headers`.
-  - Opt `register_settings`/`RoleAdminViews`/logout in and guard PyFinBot's POST/PUT/DELETE page routes.
 - [ ] `feat(web): audit log` (fastapi v0.16, ui v0.17)
   - Record sign-ins, failed sign-ins, lockouts, role and settings changes (fastapi records these itself) plus
     PyFinBot's sync runs (market, dividends, email) and imports.
@@ -42,6 +37,13 @@ One PR each, in this order. `requirements.txt` already pins core v0.14, fastapi 
 
 Each is one PR here once it ships: bump the pin, adopt, remove the item. Each is registered in that repo's TODO.
 
+- [ ] `feat(api): CSRF for cookie-authenticated API calls`
+  - **Why:** since the bearer auth switch the API also accepts the session cookie when there's no
+    `Authorization` header, and `require_csrf` isn't on the API (bearer scripts would then need a token).
+    The cookie's `SameSite=Lax` keeps other sites' POSTs from carrying it, so this is defence in depth.
+  - **Waits on:** greentechhub-fastapi checking CSRF only when a request is authenticated by the cookie, not a
+    bearer token (not yet registered in its TODO).
+  - **Then:** turn it on for the `/api` routers in `pyfinbot.py`.
 - [ ] `feat(web): strict CSP`
   - **Waits on:** greentechhub-fastapi M6 `register_csp` (ui v0.17's shell is already CSP-ready).
   - **Then:** turn it on with a `frame-src` for the Grafana origin.

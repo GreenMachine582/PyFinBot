@@ -68,7 +68,7 @@ async def test_changing_it_signs_in_with_the_new_password_only(gth_client, gth_s
 async def test_anonymous_visitors_change_nothing(gth_client, gth_session):
     await web_login(gth_client, "pw-anon")
     before = await _hash(gth_session, "pw-anon")
-    gth_client.cookies.clear()
+    gth_client.cookies.delete("gth_session")  # signed out; the CSRF token is still valid
     resp = await gth_client.post("/settings/password", headers=HX, data=GOOD, follow_redirects=False)
     assert resp.status_code == 401 and resp.headers["HX-Redirect"] == "/login"
     assert await _hash(gth_session, "pw-anon") == before

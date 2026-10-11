@@ -12,6 +12,7 @@ from greentechhub_core.sqlalchemy import SQLAlchemyGrantStore, SQLAlchemySetting
 from greentechhub_fastapi import (
     register_auth,
     register_core,
+    register_csrf,
     register_health,
     register_logging,
     register_permissions,
@@ -87,6 +88,10 @@ register_core(app, settings)
 # bearer=True: the API also takes `Authorization: Bearer` tokens (issue_token
 # in api/auth_routes.py), through the same get_current_user as pages.
 register_auth(app, settings, bearer=True)
+# A CSRF token for every request (the gth_csrf cookie; templates get it as
+# csrf_token). The page routers (web/deps.py page_router_deps), settings,
+# roles and logout check it.
+register_csrf(app)
 
 # Roles: the admin role (core/permissions.py) comes from ROLE_BOOTSTRAP /
 # ROLE_GROUPS or a grant made at /admin/roles (gth_role_grants). Before
@@ -112,7 +117,7 @@ register_settings(
     settings,
     registry=USER_SETTINGS,
     store=SQLAlchemySettingsStore(SETTINGS_TABLE, async_session_factory=session_factory),
-    views=SettingsViews(templates=templates, change_password=web_auth.change_password),
+    views=SettingsViews(templates=templates, change_password=web_auth.change_password, csrf=True),
     manage_permission=SETTINGS_MANAGE,
     logout_url="/logout",
     # Encrypts secret settings (each user's email app password) at rest.
@@ -129,7 +134,7 @@ if web_auth_router is not None:
     app.include_router(web_auth_router)
 app.include_router(web_dashboard.router)
 # /admin/roles: assign roles to users (USERS_MANAGE).
-app.include_router(RoleAdminViews(templates=templates, permission=USERS_MANAGE).router())
+app.include_router(RoleAdminViews(templates=templates, permission=USERS_MANAGE, csrf=True).router())
 app.include_router(web_stocks.router)
 app.include_router(web_transactions.router)
 app.include_router(web_imports.router)

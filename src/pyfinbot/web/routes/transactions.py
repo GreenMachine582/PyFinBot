@@ -22,11 +22,11 @@ from ...db.session import get_session
 from ...models.stock_models import Stock
 from ...models.transaction_models import Transaction, TypeEnum
 from ...schemas.transaction_schemas import TransactionCreate
-from ..deps import page_identity
+from ..deps import page_identity, page_router_deps
 from ..htmx import CLOSE_MODAL, hx_response
 from ..templating import templates
 
-router = APIRouter(prefix="/transactions")
+router = APIRouter(prefix="/transactions", dependencies=page_router_deps)
 
 CHANGED = "transactionsChanged"
 # stock_id_search is the stock gth_combobox's visible text — only echoed back
