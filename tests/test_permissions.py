@@ -109,13 +109,13 @@ async def test_users_api_needs_users_manage(client):
 # the first user
 
 
-async def test_create_user_hashes_and_refuses_duplicates(session):
-    user = await create_user(session, " first-admin ", "s3cret!")
+async def test_create_user_hashes_and_refuses_duplicates(gth_session):
+    user = await create_user(gth_session, " first-admin ", "s3cret!")
     assert user.id == "first-admin" and user.active and verify_password("s3cret!", user.password_hash)
     with pytest.raises(UserExists):
-        await create_user(session, "first-admin", "other")
+        await create_user(gth_session, "first-admin", "other")
     with pytest.raises(ValueError):
-        await create_user(session, "  ", "pw")
+        await create_user(gth_session, "  ", "pw")
 
 
 def test_create_user_cli_refuses_mismatched_passwords(monkeypatch, capsys):
@@ -138,15 +138,15 @@ def test_create_user_cli_prints_the_bootstrap_hint(monkeypatch, capsys):
     assert "ROLE_BOOTSTRAP=alice=admin" in capsys.readouterr().out
 
 
-async def test_seed_grants_demo_admin_and_reset_removes_it(session):
+async def test_seed_grants_demo_admin_and_reset_removes_it(gth_session):
     async def grants():
-        rows = await session.exec(select(ROLE_GRANTS_TABLE.c.subject, ROLE_GRANTS_TABLE.c.role))
+        rows = await gth_session.exec(select(ROLE_GRANTS_TABLE.c.subject, ROLE_GRANTS_TABLE.c.role))
         return set(rows.all())
 
-    summary = await seed_demo(session, environment="development")
+    summary = await seed_demo(gth_session, environment="development")
     assert summary.grants_created == 1 and (DEMO_ADMIN, "admin") in await grants()
-    again = await seed_demo(session, environment="development")
+    again = await seed_demo(gth_session, environment="development")
     assert again.grants_created == 0
-    reset = await seed_demo(session, reset=True, environment="development")
+    reset = await seed_demo(gth_session, reset=True, environment="development")
     assert reset.reset["grants"] == 1 and reset.grants_created == 1
-    assert await session.get(User, DEMO_ADMIN) is not None
+    assert await gth_session.get(User, DEMO_ADMIN) is not None

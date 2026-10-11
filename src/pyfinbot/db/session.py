@@ -1,3 +1,4 @@
+from contextlib import aclosing
 from pathlib import Path
 from typing import Any, AsyncGenerator, Optional
 
@@ -33,8 +34,11 @@ async def init_db():
 
 
 async def get_session() -> AsyncGenerator[Any, Any]:
-    async for session in db.session():
-        yield session
+    # aclosing: closing this generator closes db.session()'s at once, so the
+    # session ends with the request rather than whenever it's collected.
+    async with aclosing(db.session()) as sessions:
+        async for session in sessions:
+            yield session
 
 
 def get_session_factory() -> Any:

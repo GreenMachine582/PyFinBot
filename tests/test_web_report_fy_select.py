@@ -6,9 +6,9 @@ from .conftest import web_login
 from .test_web_reports import _seed
 
 
-async def test_gains_fy_is_a_gth_select_with_its_own_id(client, session):
+async def test_gains_fy_is_a_gth_select_with_its_own_id(client, gth_session):
     await web_login(client, "web-fy-select")
-    await _seed(client, session)
+    await _seed(client, gth_session)
     resp = await client.get("/reports/gains")
     html = resp.text
     assert '<div class="mb-0 gth-form-field gth-select">' in html
@@ -18,9 +18,9 @@ async def test_gains_fy_is_a_gth_select_with_its_own_id(client, session):
     assert 'value=""' not in html.split('id="gains-fy"')[1].split("</select>")[0]  # no "All time"
 
 
-async def test_dividends_fy_offers_all_time(client, session):
+async def test_dividends_fy_offers_all_time(client, gth_session):
     await web_login(client, "web-fy-select")
-    await _seed(client, session)
+    await _seed(client, gth_session)
     all_time = (await client.get("/reports/dividends")).text
     assert '<select id="dividends-fy" name="fy" class="form-select">' in all_time
     assert '<option value="" selected>All time</option>' in all_time
@@ -29,9 +29,9 @@ async def test_dividends_fy_offers_all_time(client, session):
     assert '<option value="">All time</option>' in one_year
 
 
-async def test_both_panes_on_one_page_keep_unique_ids(client, session):
+async def test_both_panes_on_one_page_keep_unique_ids(client, gth_session):
     await web_login(client, "web-fy-select")
-    await _seed(client, session)
+    await _seed(client, gth_session)
     page = (await client.get("/reports")).text
     for pane in ("/reports/gains", "/reports/dividends"):
         page += (await client.get(pane)).text  # what the tabs load into the same DOM

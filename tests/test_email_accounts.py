@@ -49,10 +49,10 @@ async def test_settings_page_has_a_write_only_password(client):
     assert PASSWORD not in page
 
 
-async def test_password_is_encrypted_at_rest_and_never_rendered(client, connection):
+async def test_password_is_encrypted_at_rest_and_never_rendered(client, gth_connection):
     await web_login(client, "acct-crypt")
     await _save_account(client, "crypt@example.com")
-    rows = (await connection.execute(select(SETTINGS_TABLE.c.key, SETTINGS_TABLE.c.value).where(
+    rows = (await gth_connection.execute(select(SETTINGS_TABLE.c.key, SETTINGS_TABLE.c.value).where(
         SETTINGS_TABLE.c.subject == "acct-crypt"))).all()
     stored = dict(rows)["email.app_password"]
     assert PASSWORD not in stored and stored.startswith("gAAAA")  # a Fernet token

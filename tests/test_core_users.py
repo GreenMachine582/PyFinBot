@@ -32,12 +32,12 @@ def test_password_matches_needs_a_user_with_a_password():
     assert password_matches(new_user("users-c", "right-pass"), "right-pass")
 
 
-async def test_check_password(session: AsyncSession):
-    session.add(new_user("users-d", "right-pass"))
-    session.add(User(id="users-e", active=True, password_hash=None))
-    await session.commit()
+async def test_check_password(gth_session: AsyncSession):
+    gth_session.add(new_user("users-d", "right-pass"))
+    gth_session.add(User(id="users-e", active=True, password_hash=None))
+    await gth_session.commit()
 
-    assert (await check_password(session, "users-d", "right-pass")).id == "users-d"
-    assert await check_password(session, "users-d", "wrong-pass") is None
-    assert await check_password(session, "users-e", "anything") is None  # no password set
-    assert await check_password(session, "nobody", "right-pass") is None
+    assert (await check_password(gth_session, "users-d", "right-pass")).id == "users-d"
+    assert await check_password(gth_session, "users-d", "wrong-pass") is None
+    assert await check_password(gth_session, "users-e", "anything") is None  # no password set
+    assert await check_password(gth_session, "nobody", "right-pass") is None

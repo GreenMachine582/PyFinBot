@@ -28,34 +28,34 @@ async def test_the_settings_page_has_a_password_section(client):
         assert f'name="{name}"' in resp.text
 
 
-async def test_a_wrong_current_password_changes_nothing(client, session):
+async def test_a_wrong_current_password_changes_nothing(client, gth_session):
     await web_login(client, "pw-wrong")
-    before = await _hash(session, "pw-wrong")
+    before = await _hash(gth_session, "pw-wrong")
     resp = await client.post("/settings/password", headers=HX,
                              data={**GOOD, "current_password": "not-it-at-all"})
     assert resp.status_code == 422
     assert "That isn't your current password." in unescape(resp.text)
-    assert await _hash(session, "pw-wrong") == before
+    assert await _hash(gth_session, "pw-wrong") == before
 
 
-async def test_a_short_or_mismatched_new_password_is_refused(client, session):
+async def test_a_short_or_mismatched_new_password_is_refused(client, gth_session):
     await web_login(client, "pw-checks")
-    before = await _hash(session, "pw-checks")
+    before = await _hash(gth_session, "pw-checks")
     short = await client.post("/settings/password", headers=HX,
                               data={**GOOD, "new_password": "short", "new_password_confirm": "short"})
     mismatch = await client.post("/settings/password", headers=HX,
                                  data={**GOOD, "new_password_confirm": "something-else"})
     assert short.status_code == mismatch.status_code == 422
-    assert await _hash(session, "pw-checks") == before
+    assert await _hash(gth_session, "pw-checks") == before
 
 
-async def test_changing_it_signs_in_with_the_new_password_only(client, session):
+async def test_changing_it_signs_in_with_the_new_password_only(client, gth_session):
     await web_login(client, "pw-change")
     resp = await client.post("/settings/password", headers=HX, data=GOOD)
     assert resp.status_code == 200
     assert json.loads(resp.headers["HX-Trigger"])["showToast"]["message"] == "Password changed"
     assert "hunter2!" not in resp.text and "brand-new-pass" not in resp.text
-    assert verify_password("brand-new-pass", await _hash(session, "pw-change"))
+    assert verify_password("brand-new-pass", await _hash(gth_session, "pw-change"))
 
     old = await post_login(client, "pw-change", "hunter2!",
                             follow_redirects=False)
@@ -65,10 +65,10 @@ async def test_changing_it_signs_in_with_the_new_password_only(client, session):
     assert new.status_code == 303
 
 
-async def test_anonymous_visitors_change_nothing(client, session):
+async def test_anonymous_visitors_change_nothing(client, gth_session):
     await web_login(client, "pw-anon")
-    before = await _hash(session, "pw-anon")
+    before = await _hash(gth_session, "pw-anon")
     client.cookies.clear()
     resp = await client.post("/settings/password", headers=HX, data=GOOD, follow_redirects=False)
     assert resp.status_code == 401 and resp.headers["HX-Redirect"] == "/login"
-    assert await _hash(session, "pw-anon") == before
+    assert await _hash(gth_session, "pw-anon") == before

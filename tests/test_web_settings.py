@@ -90,8 +90,8 @@ async def test_dates_follow_the_users_format(client):
     assert "10/07/2024" in page and "10 Jul 2024" not in page
 
 
-async def test_rows_per_page_follow_the_user(client, session):
-    await seed_demo(session, environment="development")  # demo-user: 52 transactions
+async def test_rows_per_page_follow_the_user(client, gth_session):
+    await seed_demo(gth_session, environment="development")  # demo-user: 52 transactions
     login = await post_login(client, "demo-user", "demo-user-pass",
                               follow_redirects=False)
     client.cookies.set("gth_session", login.cookies["gth_session"])

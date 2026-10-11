@@ -4,14 +4,27 @@ import json
 
 from unittest.mock import AsyncMock, patch
 
+import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
-from sqlalchemy import event
-from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import SQLModel
 
 from pyfinbot import models  # noqa: F401  # registers model tables on SQLModel.metadata
+
+# greentechhub-core's database fixtures: gth_session, gth_connection,
+# gth_sessionmaker and gth_database, each test inside a rolled-back transaction.
+pytest_plugins = ["greentechhub_core.testing.sqlalchemy"]
+
+
+@pytest.fixture(scope="session")
+def gth_metadata():
+    return SQLModel.metadata
+
+
+@pytest.fixture(scope="session")
+def gth_session_class():
+    return AsyncSession
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -36,70 +49,19 @@ async def _ensure_auth_registered():
     register_auth(app_module.app, app_module.settings)
 
 
-@pytest_asyncio.fixture(scope="session")
-async def engine(tmp_path_factory):
-    tmp_path = tmp_path_factory.mktemp("db")
-    db_url = f"sqlite+aiosqlite:///{tmp_path / 'test.db'}"
-    _engine = create_async_engine(db_url)
-
-    # pysqlite (via aiosqlite) autocommits outside of explicit DML transactions,
-    # which breaks SAVEPOINT-based per-test rollback unless disabled like this.
-    # https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#serializable-isolation-savepoints-transactional-ddl
-    @event.listens_for(_engine.sync_engine, "connect")
-    def _do_connect(dbapi_connection, connection_record):
-        dbapi_connection.isolation_level = None
-
-    @event.listens_for(_engine.sync_engine, "begin")
-    def _do_begin(conn):
-        conn.exec_driver_sql("BEGIN")
-
-    async with _engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.create_all)
-    yield _engine
-    await _engine.dispose()
-
-
 @pytest_asyncio.fixture
-async def connection(engine):
-    async with engine.connect() as conn:
-        await conn.begin()
-        try:
-            yield conn
-        finally:
-            await conn.rollback()
-
-
-@pytest_asyncio.fixture
-async def session(connection):
-    async with AsyncSession(bind=connection, join_transaction_mode="create_savepoint") as s:
-        yield s
-
-
-@pytest_asyncio.fixture
-async def client(connection):
-    from sqlalchemy.ext.asyncio import async_sessionmaker
-
+async def client(gth_database):
+    from pyfinbot.db.session import db
     from pyfinbot.pyfinbot import app
-    from pyfinbot.db.session import get_session, set_session_factory_override
 
-    async def _get_session():
-        async with AsyncSession(bind=connection, join_transaction_mode="create_savepoint") as s:
-            yield s
-
-    app.dependency_overrides[get_session] = _get_session
-    # The settings store (register_settings) opens its own sessions through
-    # db.session.get_session_factory, not get_session: point it at the same
-    # per-test connection so its writes roll back with everything else.
-    set_session_factory_override(async_sessionmaker(
-        bind=connection, class_=AsyncSession, join_transaction_mode="create_savepoint",
-        expire_on_commit=False))
-
-    with patch("pyfinbot.pyfinbot.init_db", new=AsyncMock()):
+    # Every session the app opens (get_session, the settings and grant
+    # stores, the readiness check) comes from db, so they all join the test's
+    # rolled-back transaction.
+    with gth_database(db), patch("pyfinbot.pyfinbot.init_db", new=AsyncMock()):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             yield c
 
     app.dependency_overrides.clear()
-    set_session_factory_override(None)
 
 
 async def create_user(client: AsyncClient, user_id: str, password: str = "hunter2!") -> None:
@@ -119,8 +81,8 @@ async def create_user(client: AsyncClient, user_id: str, password: str = "hunter
 
 async def make_admin(client: AsyncClient, user_id: str) -> None:
     """Grant `user_id` the admin role, as /admin/roles would. The grant
-    store uses db.session.session_factory, which the client fixture points
-    at the test connection."""
+    store uses db.session.session_factory, which follows the client
+    fixture's gth_database(db) to the test connection."""
     from greentechhub_fastapi.permissions import GRANTS_STATE_KEY
 
     from pyfinbot.core.permissions import ADMIN

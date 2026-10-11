@@ -29,9 +29,9 @@ async def _seed(client, session):
     await _txn(client, cba["id"], "Buy", "10", "100", _day(-5))
 
 
-async def test_tiles_show_this_fy(client, session):
+async def test_tiles_show_this_fy(client, gth_session):
     await web_login(client, "web-dashboard")
-    await _seed(client, session)
+    await _seed(client, gth_session)
     page = (await client.get("/")).text
     assert "gth-stat-grid" in page
     assert f"Realised gain/loss, FY {fiscal_year_label(FY)}" in page
@@ -41,9 +41,9 @@ async def test_tiles_show_this_fy(client, session):
     assert "Coming soon" not in page
 
 
-async def test_largest_holdings_first(client, session):
+async def test_largest_holdings_first(client, gth_session):
     await web_login(client, "web-dashboard")
-    await _seed(client, session)
+    await _seed(client, gth_session)
     page = (await client.get("/")).text
     assert "Largest holdings" in page
     assert page.index('title="BHP Group"') < page.index('title="Commonwealth Bank"')
@@ -70,9 +70,9 @@ async def test_new_user_gets_an_empty_state(client):
     assert "Largest holdings" not in page
 
 
-async def test_other_users_holdings_stay_out(client, session):
+async def test_other_users_holdings_stay_out(client, gth_session):
     await web_login(client, "web-dashboard")
-    await _seed(client, session)
+    await _seed(client, gth_session)
     await web_login(client, "web-dashboard-other")
     page = (await client.get("/")).text
     assert "BHP Group" not in page
