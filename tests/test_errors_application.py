@@ -21,20 +21,20 @@ def test_both_are_application_errors_with_their_code_and_status():
                                                         "Set up your email account first.")
 
 
-async def test_the_api_answers_an_email_sync_error_from_its_status(client: AsyncClient):
-    headers = await register_and_login(client, "errors-a")
+async def test_the_api_answers_an_email_sync_error_from_its_status(gth_client: AsyncClient):
+    headers = await register_and_login(gth_client, "errors-a")
     with patch("pyfinbot.api.email_routes._sync_commsec_emails",
                new=AsyncMock(side_effect=EmailSyncError(502, "IMAP fetch failed: timed out"))), \
          patch("pyfinbot.api.email_routes.load_email_account", new=AsyncMock()):
-        resp = await client.post("/api/emails/sync-commsec", headers=headers)
+        resp = await gth_client.post("/api/emails/sync-commsec", headers=headers)
     assert resp.status_code == 502
     assert resp.json() == {"code": "email_sync_failed", "message": "IMAP fetch failed: timed out",
                            "details": None}
 
 
-async def test_the_api_answers_an_empty_import_as_a_400(client: AsyncClient):
-    headers = await register_and_login(client, "errors-b")
-    resp = await client.post("/api/transactions/import", headers=headers,
+async def test_the_api_answers_an_empty_import_as_a_400(gth_client: AsyncClient):
+    headers = await register_and_login(gth_client, "errors-b")
+    resp = await gth_client.post("/api/transactions/import", headers=headers,
                              files={"file": ("empty.csv", b"", "text/csv")})
     assert resp.status_code == 400
     assert resp.json()["code"] == "import_failed"

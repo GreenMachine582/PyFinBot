@@ -31,30 +31,30 @@ async def _seed_stocks(client):
 
 
 class TestApiStocks:
-    async def test_default_sort_is_market_then_symbol(self, client):
-        await _seed_stocks(client)
-        items = (await _stocks(client))["items"]
+    async def test_default_sort_is_market_then_symbol(self, gth_client):
+        await _seed_stocks(gth_client)
+        items = (await _stocks(gth_client))["items"]
         assert [(s["market"], s["symbol"]) for s in items] == [("ASX", "AAA"), ("ASX", "BBB"), ("NYSE", "CCC")]
 
-    async def test_sort_descending(self, client):
-        await _seed_stocks(client)
-        assert [s["symbol"] for s in (await _stocks(client, sort="-symbol"))["items"]] == ["CCC", "BBB", "AAA"]
+    async def test_sort_descending(self, gth_client):
+        await _seed_stocks(gth_client)
+        assert [s["symbol"] for s in (await _stocks(gth_client, sort="-symbol"))["items"]] == ["CCC", "BBB", "AAA"]
 
-    async def test_or_group_and_ignored_unknown_field(self, client):
-        await _seed_stocks(client)
+    async def test_or_group_and_ignored_unknown_field(self, gth_client):
+        await _seed_stocks(gth_client)
         filters = json.dumps({"or": [{"field": "symbol", "op": "eq", "value": "AAA"},
                                      {"field": "market", "op": "==", "value": "NYSE"}]})
-        assert {s["symbol"] for s in (await _stocks(client, filters=filters))["items"]} == {"AAA", "CCC"}
+        assert {s["symbol"] for s in (await _stocks(gth_client, filters=filters))["items"]} == {"AAA", "CCC"}
         unknown = json.dumps([{"field": "nope", "op": "eq", "value": "x"}])
-        assert (await _stocks(client, filters=unknown))["total"] == 3
+        assert (await _stocks(gth_client, filters=unknown))["total"] == 3
 
-    async def test_flat_filter_string(self, client):
-        await _seed_stocks(client)
-        assert [s["symbol"] for s in (await _stocks(client, filter="symbol:contains:bb"))["items"]] == ["BBB"]
+    async def test_flat_filter_string(self, gth_client):
+        await _seed_stocks(gth_client)
+        assert [s["symbol"] for s in (await _stocks(gth_client, filter="symbol:contains:bb"))["items"]] == ["BBB"]
 
-    async def test_paging(self, client):
-        await _seed_stocks(client)
-        body = await _stocks(client, page=2, size=1)
+    async def test_paging(self, gth_client):
+        await _seed_stocks(gth_client)
+        body = await _stocks(gth_client, page=2, size=1)
         assert [s["symbol"] for s in body["items"]] == ["BBB"]
         assert (body["total"], body["page"], body["size"], body["pages"]) == (3, 2, 1, 3)
 
@@ -63,49 +63,49 @@ class TestApiStocks:
         json.dumps({"not": {"field": "symbol", "op": "eq", "value": "AAA"}}),
         json.dumps([{"field": "symbol", "op": "eq"}]),
     ])
-    async def test_unsupported_filters_are_400_invalid_filters(self, client, filters):
-        resp = await client.get("/api/stocks/", params={"filters": filters})
+    async def test_unsupported_filters_are_400_invalid_filters(self, gth_client, filters):
+        resp = await gth_client.get("/api/stocks/", params={"filters": filters})
         assert resp.status_code == 400
         assert resp.json()["code"] == "invalid_filters"
 
-    async def test_bad_sort_is_400_invalid_sort(self, client):
-        resp = await client.get("/api/stocks/", params={"sort": "symbol,-"})
+    async def test_bad_sort_is_400_invalid_sort(self, gth_client):
+        resp = await gth_client.get("/api/stocks/", params={"sort": "symbol,-"})
         assert resp.status_code == 400
         assert resp.json()["code"] == "invalid_sort"
 
 
 class TestApiTransactions:
-    async def test_user_scoped_sorted_and_nested_stock(self, client):
-        stock = await create_stock(client, "QRY", "ASX", "Query Ltd")
-        mine = await register_and_login(client, "query-a")
-        theirs = await register_and_login(client, "query-b")
+    async def test_user_scoped_sorted_and_nested_stock(self, gth_client):
+        stock = await create_stock(gth_client, "QRY", "ASX", "Query Ltd")
+        mine = await register_and_login(gth_client, "query-a")
+        theirs = await register_and_login(gth_client, "query-b")
         for day, headers in (("2024-08-01", mine), ("2024-09-01", mine), ("2024-10-01", theirs)):
-            resp = await client.post("/api/transactions/", headers=headers, json={
+            resp = await gth_client.post("/api/transactions/", headers=headers, json={
                 "stock_id": stock["id"], "type": "Buy", "units": 1, "price": 1, "fees": 0,
                 "transaction_date": day})
             assert resp.status_code == 201, resp.text
 
-        body = (await client.get("/api/transactions/", headers=mine)).json()
+        body = (await gth_client.get("/api/transactions/", headers=mine)).json()
         assert [t["transaction_date"] for t in body["items"]] == ["2024-09-01", "2024-08-01"]  # newest first
         assert body["items"][0]["stock"] == {"market": "ASX", "symbol": "QRY", "name": "Query Ltd"}
 
         # Filtering on another user's id can only narrow the user's own rows.
         other = json.dumps([{"field": "user_id", "op": "eq", "value": "query-b"}])
-        assert (await client.get("/api/transactions/", headers=mine, params={"filters": other})).json()["total"] == 0
+        assert (await gth_client.get("/api/transactions/", headers=mine, params={"filters": other})).json()["total"] == 0
         by_date = json.dumps([{"field": "date", "op": "gte", "value": "2024-08-15"}])
-        resp = await client.get("/api/transactions/", headers=mine, params={"filters": by_date, "sort": "date"})
+        resp = await gth_client.get("/api/transactions/", headers=mine, params={"filters": by_date, "sort": "date"})
         assert [t["transaction_date"] for t in resp.json()["items"]] == ["2024-09-01"]
 
 
 class TestWebTables:
-    async def test_stock_table_sorts_and_pages_with_tie_breakers(self, client):
-        await web_login(client, "query-web")
+    async def test_stock_table_sorts_and_pages_with_tie_breakers(self, gth_client):
+        await web_login(gth_client, "query-web")
         for symbol in ("TIEB", "TIEA", "TIEC"):
-            await create_stock(client, symbol, "ASX", "Same Name")  # the sort key ties on name
-        resp = await client.get("/stocks", headers=HX, params={"q": "TIE", "sort": "name", "size": 10})
+            await create_stock(gth_client, symbol, "ASX", "Same Name")  # the sort key ties on name
+        resp = await gth_client.get("/stocks", headers=HX, params={"q": "TIE", "sort": "name", "size": 10})
         page = resp.text
         assert page.index("TIEA") < page.index("TIEB") < page.index("TIEC")  # then market, symbol
-        resp = await client.get("/stocks", headers=HX, params={"q": "TIE", "sort": "name", "dir": "desc",
+        resp = await gth_client.get("/stocks", headers=HX, params={"q": "TIE", "sort": "name", "dir": "desc",
                                                                "size": 10})
         page = resp.text
         assert page.index("TIEC") < page.index("TIEB") < page.index("TIEA")

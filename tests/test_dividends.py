@@ -15,20 +15,20 @@ async def _buy(client, stock_id, headers, units=10, price=25, date="2024-08-01")
 
 
 class TestSyncDividendsEndpoint:
-    async def test_no_token_returns_401(self, client):
-        resp = await client.post("/api/dividends/sync")
+    async def test_no_token_returns_401(self, gth_client):
+        resp = await gth_client.post("/api/dividends/sync")
         assert resp.status_code == 401
 
-    async def test_syncs_stocks_from_users_transactions(self, client):
-        headers = await register_and_login(client, USER_ID)
-        stock = await create_stock(client)
-        await _buy(client, stock["id"], headers)
+    async def test_syncs_stocks_from_users_transactions(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
+        stock = await create_stock(gth_client)
+        await _buy(gth_client, stock["id"], headers)
 
         with patch(
             "pyfinbot.api.dividend_routes.syncDividends",
             new=AsyncMock(return_value=(["ASX:BHP@2024-08-01"], [], [])),
         ) as mock_sync:
-            resp = await client.post("/api/dividends/sync", headers=headers)
+            resp = await gth_client.post("/api/dividends/sync", headers=headers)
 
         assert resp.status_code == 200
         data = resp.json()
@@ -39,18 +39,18 @@ class TestSyncDividendsEndpoint:
         _, kwargs = mock_sync.call_args
         assert kwargs["stock_ids"] == [stock["id"]]
 
-    async def test_explicit_stock_id_bypasses_transaction_lookup(self, client):
-        headers = await register_and_login(client, USER_ID)
-        stock = await create_stock(client)
-        other_stock = await create_stock(client, symbol="CBA", name="Commonwealth Bank")
+    async def test_explicit_stock_id_bypasses_transaction_lookup(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
+        stock = await create_stock(gth_client)
+        other_stock = await create_stock(gth_client, symbol="CBA", name="Commonwealth Bank")
         # user has never transacted `other_stock`, but ?stock_id= should sync it anyway
-        await _buy(client, stock["id"], headers)
+        await _buy(gth_client, stock["id"], headers)
 
         with patch(
             "pyfinbot.api.dividend_routes.syncDividends",
             new=AsyncMock(return_value=([], [], [])),
         ) as mock_sync:
-            resp = await client.post(
+            resp = await gth_client.post(
                 "/api/dividends/sync", params={"stock_id": other_stock["id"]}, headers=headers
             )
 
@@ -58,14 +58,14 @@ class TestSyncDividendsEndpoint:
         _, kwargs = mock_sync.call_args
         assert kwargs["stock_ids"] == [other_stock["id"]]
 
-    async def test_no_transactions_syncs_empty_list(self, client):
-        headers = await register_and_login(client, USER_ID)
+    async def test_no_transactions_syncs_empty_list(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
 
         with patch(
             "pyfinbot.api.dividend_routes.syncDividends",
             new=AsyncMock(return_value=([], [], [])),
         ) as mock_sync:
-            resp = await client.post("/api/dividends/sync", headers=headers)
+            resp = await gth_client.post("/api/dividends/sync", headers=headers)
 
         assert resp.status_code == 200
         _, kwargs = mock_sync.call_args

@@ -41,69 +41,69 @@ async def test_role_bootstrap_makes_an_admin_without_any_grant():
 # the admin pages
 
 
-async def test_admin_reaches_settings_app_and_roles(client):
-    await web_login(client, "perm-admin")
-    await make_admin(client, "perm-admin")
-    home = (await client.get("/", headers=HTML)).text
+async def test_admin_reaches_settings_app_and_roles(gth_client):
+    await web_login(gth_client, "perm-admin")
+    await make_admin(gth_client, "perm-admin")
+    home = (await gth_client.get("/", headers=HTML)).text
     assert 'href="/admin/roles"' in home  # the admin-only nav item
 
-    settings_page = (await client.get("/settings", headers=HTML)).text
+    settings_page = (await gth_client.get("/settings", headers=HTML)).text
     assert 'id="gth-settings-app"' in settings_page and "Site banner" in settings_page
 
-    roles = await client.get("/admin/roles", headers=HTML)
+    roles = await gth_client.get("/admin/roles", headers=HTML)
     assert roles.status_code == 200 and "perm-admin" in roles.text
 
-    await register_and_login(client, "perm-new")  # an existing user to promote
-    resp = await client.post("/admin/roles", headers=HX, data={"subject": "perm-new", "roles": "admin"})
+    await register_and_login(gth_client, "perm-new")  # an existing user to promote
+    resp = await gth_client.post("/admin/roles", headers=HX, data={"subject": "perm-new", "roles": "admin"})
     assert resp.status_code == 200 and "perm-new" in resp.text
 
 
-async def test_normal_user_has_no_admin_pages(client):
-    await web_login(client, "perm-plain")
-    home = (await client.get("/", headers=HTML)).text
+async def test_normal_user_has_no_admin_pages(gth_client):
+    await web_login(gth_client, "perm-plain")
+    home = (await gth_client.get("/", headers=HTML)).text
     assert 'href="/admin/roles"' not in home
-    assert (await client.get("/admin/roles", headers=HTML)).status_code == 403
-    settings_page = (await client.get("/settings", headers=HTML)).text
+    assert (await gth_client.get("/admin/roles", headers=HTML)).status_code == 403
+    settings_page = (await gth_client.get("/settings", headers=HTML)).text
     assert 'id="gth-settings-preferences"' in settings_page
     assert 'id="gth-settings-app"' not in settings_page
-    resp = await client.post("/settings/app", headers=HX, data={"site.banner": "Hacked"})
+    resp = await gth_client.post("/settings/app", headers=HX, data={"site.banner": "Hacked"})
     assert resp.status_code == 403
 
 
-async def test_site_banner_set_by_an_admin_shows_for_everyone(client):
-    await web_login(client, "banner-admin")
-    await make_admin(client, "banner-admin")
-    resp = await client.post("/settings/app", headers=HX, data={
+async def test_site_banner_set_by_an_admin_shows_for_everyone(gth_client):
+    await web_login(gth_client, "banner-admin")
+    await make_admin(gth_client, "banner-admin")
+    resp = await gth_client.post("/settings/app", headers=HX, data={
         "site.banner": "Maintenance tonight 22:00", "site.banner_tone": "bad"})
     assert resp.status_code == 200, resp.text
 
-    await web_login(client, "banner-reader")
-    page = (await client.get("/", headers=HTML)).text
+    await web_login(gth_client, "banner-reader")
+    page = (await gth_client.get("/", headers=HTML)).text
     assert 'data-gth-banner="site"' in page and "Maintenance tonight 22:00" in page
     assert "alert-danger" in page
 
-    await web_login(client, "banner-admin-2")
-    await make_admin(client, "banner-admin-2")
-    await client.post("/settings/app", headers=HX, data={"site.banner": "", "site.banner_tone": "warn"})
-    assert 'data-gth-banner="site"' not in (await client.get("/", headers=HTML)).text
+    await web_login(gth_client, "banner-admin-2")
+    await make_admin(gth_client, "banner-admin-2")
+    await gth_client.post("/settings/app", headers=HX, data={"site.banner": "", "site.banner_tone": "warn"})
+    assert 'data-gth-banner="site"' not in (await gth_client.get("/", headers=HTML)).text
 
 
 # the users API
 
 
-async def test_users_api_needs_users_manage(client):
-    assert (await client.get("/api/users/")).status_code == 401
-    assert (await client.post("/api/users/", json={"id": "x", "password": "y"})).status_code == 401
-    plain = await register_and_login(client, "api-plain")
-    assert (await client.get("/api/users/", headers=plain)).status_code == 403
-    assert (await client.post("/api/users/", json={"id": "x", "password": "y"},
+async def test_users_api_needs_users_manage(gth_client):
+    assert (await gth_client.get("/api/users/")).status_code == 401
+    assert (await gth_client.post("/api/users/", json={"id": "x", "password": "y"})).status_code == 401
+    plain = await register_and_login(gth_client, "api-plain")
+    assert (await gth_client.get("/api/users/", headers=plain)).status_code == 403
+    assert (await gth_client.post("/api/users/", json={"id": "x", "password": "y"},
                               headers=plain)).status_code == 403
-    admin = await register_and_login(client, "api-admin")
-    await make_admin(client, "api-admin")
-    assert (await client.get("/api/users/", headers=admin)).status_code == 200
-    created = await client.post("/api/users/", json={"id": "api-made", "password": "pw"}, headers=admin)
+    admin = await register_and_login(gth_client, "api-admin")
+    await make_admin(gth_client, "api-admin")
+    assert (await gth_client.get("/api/users/", headers=admin)).status_code == 200
+    created = await gth_client.post("/api/users/", json={"id": "api-made", "password": "pw"}, headers=admin)
     assert created.status_code == 201
-    assert (await client.get("/api/users/api-made", headers=admin)).status_code == 403  # still self-only
+    assert (await gth_client.get("/api/users/api-made", headers=admin)).status_code == 403  # still self-only
 
 
 # the first user

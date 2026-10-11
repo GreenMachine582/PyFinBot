@@ -51,89 +51,89 @@ async def _api_get(client: AsyncClient, user_id: str, transaction_id: int) -> di
 
 
 class TestAuthGuard:
-    async def test_page_redirects_to_login(self, client):
-        resp = await client.get("/transactions", follow_redirects=False)
+    async def test_page_redirects_to_login(self, gth_client):
+        resp = await gth_client.get("/transactions", follow_redirects=False)
         assert resp.status_code == 303
         assert resp.headers["location"] == "/login"
 
-    async def test_htmx_request_gets_hx_redirect(self, client):
-        resp = await client.post("/transactions", headers=HX, data={}, follow_redirects=False)
+    async def test_htmx_request_gets_hx_redirect(self, gth_client):
+        resp = await gth_client.post("/transactions", headers=HX, data={}, follow_redirects=False)
         assert resp.status_code == 401
         assert resp.headers["HX-Redirect"] == "/login"
 
 
 class TestCreate:
-    async def test_new_form_renders_combobox_and_defaults_to_buy(self, client):
-        await web_login(client, "web-txn")
-        resp = await client.get("/transactions/new")
+    async def test_new_form_renders_combobox_and_defaults_to_buy(self, gth_client):
+        await web_login(gth_client, "web-txn")
+        resp = await gth_client.get("/transactions/new")
         assert resp.status_code == 200
         assert "New transaction" in resp.text
         assert 'role="combobox"' in resp.text
         assert '<input type="hidden" name="stock_id" value=""' in resp.text
         assert _checked_type(resp.text) == "Buy"
 
-    async def test_create_computes_derived_fields(self, client):
-        await web_login(client, "web-txn")
-        stock = await create_stock(client)
-        resp = await client.post("/transactions", data=_form(stock["id"], notes="first buy"))
+    async def test_create_computes_derived_fields(self, gth_client):
+        await web_login(gth_client, "web-txn")
+        stock = await create_stock(gth_client)
+        resp = await gth_client.post("/transactions", data=_form(stock["id"], notes="first buy"))
         assert resp.status_code == 204
         triggers = hx_triggers(resp)
         assert triggers["showToast"]["message"] == "Added Buy BHP"
         assert triggers["closeModal"] and triggers["transactionsChanged"]
 
-        txn = await _api_get(client, "web-txn", await _only_transaction_id(client, "web-txn"))
+        txn = await _api_get(gth_client, "web-txn", await _only_transaction_id(gth_client, "web-txn"))
         assert txn["total_value"] == 255.0
         assert txn["cost"] == -264.95
         assert txn["notes"] == "first buy"
         assert txn["user_id"] == "web-txn"
 
-    async def test_missing_fields_rerender_with_422(self, client):
-        await web_login(client, "web-txn")
-        resp = await client.post("/transactions", data=_form("", units="", transaction_date=""))
+    async def test_missing_fields_rerender_with_422(self, gth_client):
+        await web_login(gth_client, "web-txn")
+        resp = await gth_client.post("/transactions", data=_form("", units="", transaction_date=""))
         assert resp.status_code == 422
         assert "Choose a stock." in resp.text
         assert "Enter a date." in resp.text
         assert "This field is required." in resp.text
 
-    async def test_invalid_values_rerender_with_422(self, client):
-        await web_login(client, "web-txn")
-        stock = await create_stock(client)
-        resp = await client.post("/transactions", data=_form(stock["id"], units="0", price="-1", fees="-2"))
+    async def test_invalid_values_rerender_with_422(self, gth_client):
+        await web_login(gth_client, "web-txn")
+        stock = await create_stock(gth_client)
+        resp = await gth_client.post("/transactions", data=_form(stock["id"], units="0", price="-1", fees="-2"))
         assert resp.status_code == 422
         assert "Must be greater than 0." in resp.text
         assert resp.text.count("Can&#39;t be negative.") == 2
 
-    async def test_unparseable_values_rerender_with_422(self, client):
-        await web_login(client, "web-txn")
-        stock = await create_stock(client)
-        resp = await client.post("/transactions", data=_form(stock["id"], units="lots"))
+    async def test_unparseable_values_rerender_with_422(self, gth_client):
+        await web_login(gth_client, "web-txn")
+        stock = await create_stock(gth_client)
+        resp = await gth_client.post("/transactions", data=_form(stock["id"], units="lots"))
         assert resp.status_code == 422
         assert "is-invalid" in resp.text
 
-    async def test_search_text_is_kept_when_no_stock_picked(self, client):
-        await web_login(client, "web-txn")
-        resp = await client.post("/transactions", data=_form("", stock_id_search="bh", type="Sell"))
+    async def test_search_text_is_kept_when_no_stock_picked(self, gth_client):
+        await web_login(gth_client, "web-txn")
+        resp = await gth_client.post("/transactions", data=_form("", stock_id_search="bh", type="Sell"))
         assert resp.status_code == 422
         assert 'value="bh"' in resp.text
         assert _checked_type(resp.text) == "Sell"
 
-    async def test_unknown_stock_is_a_field_error(self, client):
-        await web_login(client, "web-txn")
-        resp = await client.post("/transactions", data=_form(999999))
+    async def test_unknown_stock_is_a_field_error(self, gth_client):
+        await web_login(gth_client, "web-txn")
+        resp = await gth_client.post("/transactions", data=_form(999999))
         assert resp.status_code == 422
         assert "Choose a stock." in resp.text
 
 
 class TestList:
-    async def test_rows_show_resolved_stock_and_only_own_transactions(self, client):
-        await web_login(client, "web-other")
-        stock = await create_stock(client)
-        await _add(client, stock["id"], notes="not yours")
+    async def test_rows_show_resolved_stock_and_only_own_transactions(self, gth_client):
+        await web_login(gth_client, "web-other")
+        stock = await create_stock(gth_client)
+        await _add(gth_client, stock["id"], notes="not yours")
 
-        await web_login(client, "web-txn")
-        await _add(client, stock["id"], notes="mine")
+        await web_login(gth_client, "web-txn")
+        await _add(gth_client, stock["id"], notes="mine")
 
-        resp = await client.get("/transactions")
+        resp = await gth_client.get("/transactions")
         assert resp.status_code == 200
         assert "BHP</span> · ASX" in resp.text
         assert "mine" in resp.text
@@ -143,45 +143,45 @@ class TestList:
         assert 'hx-trigger="transactionsChanged from:body"' in resp.text  # refreshed after saves
         assert "gth-badge" in resp.text and "Buy</span>" in resp.text
 
-    async def test_filters(self, client):
-        await web_login(client, "web-txn")
-        bhp = await create_stock(client, "BHP")
-        cba = await create_stock(client, "CBA", name="Commonwealth Bank")
-        await _add(client, bhp["id"], notes="bhp-buy", transaction_date="2023-08-01")
-        await _add(client, cba["id"], notes="cba-sell", type="Sell", transaction_date="2024-08-01")
+    async def test_filters(self, gth_client):
+        await web_login(gth_client, "web-txn")
+        bhp = await create_stock(gth_client, "BHP")
+        cba = await create_stock(gth_client, "CBA", name="Commonwealth Bank")
+        await _add(gth_client, bhp["id"], notes="bhp-buy", transaction_date="2023-08-01")
+        await _add(gth_client, cba["id"], notes="cba-sell", type="Sell", transaction_date="2024-08-01")
 
-        resp = await client.get("/transactions", headers=HX, params={"stock": "cba"})
+        resp = await gth_client.get("/transactions", headers=HX, params={"stock": "cba"})
         assert "cba-sell" in resp.text and "bhp-buy" not in resp.text
 
-        resp = await client.get("/transactions", headers=HX, params={"type": "Buy"})
+        resp = await gth_client.get("/transactions", headers=HX, params={"type": "Buy"})
         assert "bhp-buy" in resp.text and "cba-sell" not in resp.text
 
-        resp = await client.get("/transactions", headers=HX, params={"fy": "2024"})
+        resp = await gth_client.get("/transactions", headers=HX, params={"fy": "2024"})
         assert "cba-sell" in resp.text and "bhp-buy" not in resp.text
 
-        resp = await client.get("/transactions", headers=HX, params={"date_from": "2024-01-01"})
+        resp = await gth_client.get("/transactions", headers=HX, params={"date_from": "2024-01-01"})
         assert "cba-sell" in resp.text and "bhp-buy" not in resp.text
 
-        resp = await client.get("/transactions", headers=HX, params={"date_to": "2024-01-01", "date_from": "not-a-date"})
+        resp = await gth_client.get("/transactions", headers=HX, params={"date_to": "2024-01-01", "date_from": "not-a-date"})
         assert "bhp-buy" in resp.text and "cba-sell" not in resp.text
 
-        resp = await client.get("/transactions", headers=HX, params={"sort": "transaction_date", "dir": "asc"})
+        resp = await gth_client.get("/transactions", headers=HX, params={"sort": "transaction_date", "dir": "asc"})
         assert resp.text.index("bhp-buy") < resp.text.index("cba-sell")
 
-    async def test_empty_state(self, client):
-        await web_login(client, "web-txn")
-        resp = await client.get("/transactions", headers=HX)
+    async def test_empty_state(self, gth_client):
+        await web_login(gth_client, "web-txn")
+        resp = await gth_client.get("/transactions", headers=HX)
         assert "No transactions match these filters." in resp.text
 
 
 class TestEdit:
-    async def test_edit_form_prefills(self, client):
-        await web_login(client, "web-txn")
-        stock = await create_stock(client)
-        await _add(client, stock["id"])
-        transaction_id = await _only_transaction_id(client, "web-txn")
+    async def test_edit_form_prefills(self, gth_client):
+        await web_login(gth_client, "web-txn")
+        stock = await create_stock(gth_client)
+        await _add(gth_client, stock["id"])
+        transaction_id = await _only_transaction_id(gth_client, "web-txn")
 
-        resp = await client.get(f"/transactions/{transaction_id}/edit")
+        resp = await gth_client.get(f"/transactions/{transaction_id}/edit")
         assert resp.status_code == 200
         assert "Edit transaction" in resp.text
         assert 'value="25.5"' in resp.text and 'value="9.95"' in resp.text
@@ -189,61 +189,61 @@ class TestEdit:
         assert 'value="BHP · ASX — BHP Group"' in resp.text
         assert _checked_type(resp.text) == "Buy"
 
-    async def test_full_edit_recomputes(self, client):
-        await web_login(client, "web-txn")
-        bhp = await create_stock(client, "BHP")
-        cba = await create_stock(client, "CBA", name="Commonwealth Bank")
-        await _add(client, bhp["id"], transaction_date="2024-06-30")
-        transaction_id = await _only_transaction_id(client, "web-txn")
-        before = await _api_get(client, "web-txn", transaction_id)
+    async def test_full_edit_recomputes(self, gth_client):
+        await web_login(gth_client, "web-txn")
+        bhp = await create_stock(gth_client, "BHP")
+        cba = await create_stock(gth_client, "CBA", name="Commonwealth Bank")
+        await _add(gth_client, bhp["id"], transaction_date="2024-06-30")
+        transaction_id = await _only_transaction_id(gth_client, "web-txn")
+        before = await _api_get(gth_client, "web-txn", transaction_id)
 
-        resp = await client.post(f"/transactions/{transaction_id}", data=_form(
+        resp = await gth_client.post(f"/transactions/{transaction_id}", data=_form(
             cba["id"], type="Sell", units="4", price="100", fees="10", transaction_date="2024-07-01",
         ))
         assert resp.status_code == 204
         assert hx_triggers(resp)["showToast"]["message"] == "Saved Sell CBA"
 
-        after = await _api_get(client, "web-txn", transaction_id)
+        after = await _api_get(gth_client, "web-txn", transaction_id)
         assert after["stock"]["symbol"] == "CBA"
         assert after["total_value"] == 400.0
         assert after["cost"] == 390.0  # sell: +total - fees
         assert after["fy"] == before["fy"] + 1  # crossed 30 June
 
-    async def test_invalid_edit_rerenders_with_422(self, client):
-        await web_login(client, "web-txn")
-        stock = await create_stock(client)
-        await _add(client, stock["id"])
-        transaction_id = await _only_transaction_id(client, "web-txn")
-        resp = await client.post(f"/transactions/{transaction_id}", data=_form(stock["id"], units=""))
+    async def test_invalid_edit_rerenders_with_422(self, gth_client):
+        await web_login(gth_client, "web-txn")
+        stock = await create_stock(gth_client)
+        await _add(gth_client, stock["id"])
+        transaction_id = await _only_transaction_id(gth_client, "web-txn")
+        resp = await gth_client.post(f"/transactions/{transaction_id}", data=_form(stock["id"], units=""))
         assert resp.status_code == 422
         assert "This field is required." in resp.text
         assert f'hx-post="/transactions/{transaction_id}"' in resp.text  # still the edit form
 
-    async def test_other_users_transaction_is_404(self, client):
-        await web_login(client, "web-owner")
-        stock = await create_stock(client)
-        await _add(client, stock["id"])
-        transaction_id = await _only_transaction_id(client, "web-owner")
+    async def test_other_users_transaction_is_404(self, gth_client):
+        await web_login(gth_client, "web-owner")
+        stock = await create_stock(gth_client)
+        await _add(gth_client, stock["id"])
+        transaction_id = await _only_transaction_id(gth_client, "web-owner")
 
-        await web_login(client, "web-intruder")
-        assert (await client.get(f"/transactions/{transaction_id}/edit")).status_code == 404
-        assert (await client.post(f"/transactions/{transaction_id}", data=_form(stock["id"]))).status_code == 404
-        assert (await client.get(f"/transactions/{transaction_id}/delete")).status_code == 404
-        assert (await client.delete(f"/transactions/{transaction_id}")).status_code == 404
+        await web_login(gth_client, "web-intruder")
+        assert (await gth_client.get(f"/transactions/{transaction_id}/edit")).status_code == 404
+        assert (await gth_client.post(f"/transactions/{transaction_id}", data=_form(stock["id"]))).status_code == 404
+        assert (await gth_client.get(f"/transactions/{transaction_id}/delete")).status_code == 404
+        assert (await gth_client.delete(f"/transactions/{transaction_id}")).status_code == 404
 
 
 class TestDelete:
-    async def test_confirm_then_delete(self, client):
-        await web_login(client, "web-txn")
-        stock = await create_stock(client)
-        await _add(client, stock["id"])
-        transaction_id = await _only_transaction_id(client, "web-txn")
+    async def test_confirm_then_delete(self, gth_client):
+        await web_login(gth_client, "web-txn")
+        stock = await create_stock(gth_client)
+        await _add(gth_client, stock["id"])
+        transaction_id = await _only_transaction_id(gth_client, "web-txn")
 
-        resp = await client.get(f"/transactions/{transaction_id}/delete")
+        resp = await gth_client.get(f"/transactions/{transaction_id}/delete")
         assert resp.status_code == 200
         assert "Delete this Buy of BHP?" in resp.text
 
-        resp = await client.delete(f"/transactions/{transaction_id}")
+        resp = await gth_client.delete(f"/transactions/{transaction_id}")
         assert resp.status_code == 204
         assert hx_triggers(resp)["showToast"]["message"] == "Deleted Buy BHP"
-        assert "No transactions match these filters." in (await client.get("/transactions", headers=HX)).text
+        assert "No transactions match these filters." in (await gth_client.get("/transactions", headers=HX)).text

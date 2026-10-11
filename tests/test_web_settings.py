@@ -49,16 +49,16 @@ def test_registry_is_the_shared_preferences_with_pyfinbots_defaults():
 # access
 
 
-async def test_settings_needs_login(client):
-    resp = await client.get("/settings", headers=HTML, follow_redirects=False)
+async def test_settings_needs_login(gth_client):
+    resp = await gth_client.get("/settings", headers=HTML, follow_redirects=False)
     assert resp.status_code == 303 and resp.headers["location"].startswith("/login")
-    resp = await client.post("/settings/preferences", data={"ui.page_size": "10"}, headers=HX)
+    resp = await gth_client.post("/settings/preferences", data={"ui.page_size": "10"}, headers=HX)
     assert resp.status_code == 401
 
 
-async def test_settings_page_shows_preferences_only(client):
-    await web_login(client, "settings-page")
-    resp = await client.get("/settings", headers=HTML)
+async def test_settings_page_shows_preferences_only(gth_client):
+    await web_login(gth_client, "settings-page")
+    resp = await gth_client.get("/settings", headers=HTML)
     assert resp.status_code == 200
     assert 'id="gth-settings-preferences"' in resp.text
     assert 'id="gth-settings-app"' not in resp.text
@@ -70,61 +70,61 @@ async def test_settings_page_shows_preferences_only(client):
 # per-user values
 
 
-async def test_preferences_persist_per_user(client):
-    await web_login(client, "settings-alice")
-    saved = await _save_preferences(client, ui__page_size=10, locale__date_format="dmy")
+async def test_preferences_persist_per_user(gth_client):
+    await web_login(gth_client, "settings-alice")
+    saved = await _save_preferences(gth_client, ui__page_size=10, locale__date_format="dmy")
     assert "HX-Trigger" in saved.headers
-    assert _field_value((await client.get("/settings", headers=HTML)).text, "ui.page_size") == "10"
+    assert _field_value((await gth_client.get("/settings", headers=HTML)).text, "ui.page_size") == "10"
 
-    await web_login(client, "settings-bob")
-    assert _field_value((await client.get("/settings", headers=HTML)).text, "ui.page_size") == "50"
+    await web_login(gth_client, "settings-bob")
+    assert _field_value((await gth_client.get("/settings", headers=HTML)).text, "ui.page_size") == "50"
 
 
-async def test_dates_follow_the_users_format(client):
-    await web_login(client, "settings-dates")
-    stock = await create_stock(client, symbol="STD")
-    await _txn(client, stock["id"], "Buy", "10", "40", "2024-07-10")
-    assert "10 Jul 2024" in (await client.get("/transactions", headers=HX)).text  # PyFinBot's default
-    await _save_preferences(client, locale__date_format="dmy")
-    page = (await client.get("/transactions", headers=HX)).text
+async def test_dates_follow_the_users_format(gth_client):
+    await web_login(gth_client, "settings-dates")
+    stock = await create_stock(gth_client, symbol="STD")
+    await _txn(gth_client, stock["id"], "Buy", "10", "40", "2024-07-10")
+    assert "10 Jul 2024" in (await gth_client.get("/transactions", headers=HX)).text  # PyFinBot's default
+    await _save_preferences(gth_client, locale__date_format="dmy")
+    page = (await gth_client.get("/transactions", headers=HX)).text
     assert "10/07/2024" in page and "10 Jul 2024" not in page
 
 
-async def test_rows_per_page_follow_the_user(client, gth_session):
+async def test_rows_per_page_follow_the_user(gth_client, gth_session):
     await seed_demo(gth_session, environment="development")  # demo-user: 52 transactions
-    login = await post_login(client, "demo-user", "demo-user-pass",
+    login = await post_login(gth_client, "demo-user", "demo-user-pass",
                               follow_redirects=False)
-    client.cookies.set("gth_session", login.cookies["gth_session"])
+    gth_client.cookies.set("gth_session", login.cookies["gth_session"])
 
     def rows(html):
         return len(re.findall(r'hx-get="/(?:transactions|stocks)/\d+/edit"', html))  # one per row
 
-    assert rows((await client.get("/transactions", headers=HX)).text) == 50
-    await _save_preferences(client, ui__page_size=10)
-    page = (await client.get("/transactions", headers=HX)).text
+    assert rows((await gth_client.get("/transactions", headers=HX)).text) == 50
+    await _save_preferences(gth_client, ui__page_size=10)
+    page = (await gth_client.get("/transactions", headers=HX)).text
     assert rows(page) == 10 and "Load more" in page
-    assert rows((await client.get("/stocks", headers=HX)).text) <= 10
+    assert rows((await gth_client.get("/stocks", headers=HX)).text) <= 10
 
 
 # user menu and theme
 
 
-async def test_user_menu_has_settings_and_log_out(client):
-    await web_login(client, "settings-menu")
-    page = (await client.get("/", headers=HTML)).text
+async def test_user_menu_has_settings_and_log_out(gth_client):
+    await web_login(gth_client, "settings-menu")
+    page = (await gth_client.get("/", headers=HTML)).text
     assert 'href="/settings"' in page
     assert page.count('action="/logout"') == 1  # the user menu's; the dashboard's own form is gone
-    out = await client.post("/logout", follow_redirects=False)
+    out = await gth_client.post("/logout", follow_redirects=False)
     assert out.status_code == 303 and out.headers["location"] == "/login"
-    client.cookies.clear()
-    assert (await client.get("/", headers=HTML, follow_redirects=False)).status_code == 303
+    gth_client.cookies.clear()
+    assert (await gth_client.get("/", headers=HTML, follow_redirects=False)).status_code == 303
 
 
-async def test_theme_toggle_saves_to_the_users_settings(client):
-    await web_login(client, "settings-theme")
-    resp = await client.post("/settings/theme", data={"theme": "light"}, headers=HX)
+async def test_theme_toggle_saves_to_the_users_settings(gth_client):
+    await web_login(gth_client, "settings-theme")
+    resp = await gth_client.post("/settings/theme", data={"theme": "light"}, headers=HX)
     assert resp.status_code == 204
-    page = (await client.get("/", headers=HTML)).text
+    page = (await gth_client.get("/", headers=HTML)).text
     assert 'var server = "light";' in page  # app.html's pre-paint theme script
     assert 'data-gth-theme-save-url="/settings/theme"' in page
 

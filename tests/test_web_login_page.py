@@ -9,8 +9,8 @@ HTML = {"Accept": "text/html"}
 HX = {"HX-Request": "true"}
 
 
-async def test_login_is_greentechhub_uis_sign_in_page(client: AsyncClient):
-    resp = await client.get("/login", headers=HTML)
+async def test_login_is_greentechhub_uis_sign_in_page(gth_client: AsyncClient):
+    resp = await gth_client.get("/login", headers=HTML)
     assert resp.status_code == 200
     page = resp.text
     assert '<main class="gth-auth">' in page  # layout="auth"
@@ -20,9 +20,9 @@ async def test_login_is_greentechhub_uis_sign_in_page(client: AsyncClient):
     assert 'action="/login"' in page and 'name="user_id"' in page and 'name="password"' in page
 
 
-async def test_wrong_password_keeps_the_user_id_but_not_the_password(client: AsyncClient):
-    await create_user(client, "login-a")
-    resp = await post_login(client, "login-a", "not-it-123")
+async def test_wrong_password_keeps_the_user_id_but_not_the_password(gth_client: AsyncClient):
+    await create_user(gth_client, "login-a")
+    resp = await post_login(gth_client, "login-a", "not-it-123")
     assert resp.status_code == 401
     assert "gth-toast-inline gth-toast-danger" in resp.text
     assert "Incorrect user ID or password" in resp.text
@@ -30,24 +30,24 @@ async def test_wrong_password_keeps_the_user_id_but_not_the_password(client: Asy
     assert "not-it-123" not in resp.text
 
 
-async def test_sign_in_still_lands_on_the_dashboard(client: AsyncClient):
-    await create_user(client, "login-b")
-    resp = await post_login(client, "login-b", "hunter2!",
+async def test_sign_in_still_lands_on_the_dashboard(gth_client: AsyncClient):
+    await create_user(gth_client, "login-b")
+    resp = await post_login(gth_client, "login-b", "hunter2!",
                              follow_redirects=False)
     assert resp.status_code == 303 and resp.headers["location"] == "/"
     assert "gth_session" in resp.headers.get("set-cookie", "")
 
 
-async def test_site_banner_shows_once_on_the_login_page(client: AsyncClient):
+async def test_site_banner_shows_once_on_the_login_page(gth_client: AsyncClient):
     # fastapi's settings_context emits the banner (core's site_banner_settings);
     # signed out, the login page still shows it, once.
-    await web_login(client, "login-admin")
-    await make_admin(client, "login-admin")
-    resp = await client.post("/settings/app", headers=HX, data={
+    await web_login(gth_client, "login-admin")
+    await make_admin(gth_client, "login-admin")
+    resp = await gth_client.post("/settings/app", headers=HX, data={
         "site.banner": "Maintenance tonight 22:00", "site.banner_tone": "bad"})
     assert resp.status_code == 200, resp.text
-    client.cookies.clear()  # signed out
+    gth_client.cookies.clear()  # signed out
 
-    page = (await client.get("/login", headers=HTML)).text
+    page = (await gth_client.get("/login", headers=HTML)).text
     assert page.count('data-gth-banner="site"') == 1
     assert "Maintenance tonight 22:00" in page

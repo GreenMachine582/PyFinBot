@@ -31,21 +31,21 @@ async def _add(client, headers, stock_id, type_, day, units=10, price=20):
     return resp.json()
 
 
-async def test_30_june_and_1_july_fall_in_different_years(client):
-    headers = await register_and_login(client, "fy-boundary")
-    stock = await create_stock(client, "FYB", "ASX", "FY Boundary")
-    assert (await _add(client, headers, stock["id"], "Buy", "2025-06-30"))["fy"] == 2024
-    assert (await _add(client, headers, stock["id"], "Buy", "2025-07-01"))["fy"] == 2025
+async def test_30_june_and_1_july_fall_in_different_years(gth_client):
+    headers = await register_and_login(gth_client, "fy-boundary")
+    stock = await create_stock(gth_client, "FYB", "ASX", "FY Boundary")
+    assert (await _add(gth_client, headers, stock["id"], "Buy", "2025-06-30"))["fy"] == 2024
+    assert (await _add(gth_client, headers, stock["id"], "Buy", "2025-07-01"))["fy"] == 2025
 
 
-async def test_gains_for_a_year_end_on_30_june(client):
-    headers = await register_and_login(client, "fy-gains")
-    stock = await create_stock(client, "FYG", "ASX", "FY Gains")
-    await _add(client, headers, stock["id"], "Buy", "2024-08-01", units=20, price=20)
-    await _add(client, headers, stock["id"], "Sell", "2025-06-30", units=10, price=30)  # last day of FY 2024
-    await _add(client, headers, stock["id"], "Sell", "2025-07-01", units=10, price=40)  # FY 2025
+async def test_gains_for_a_year_end_on_30_june(gth_client):
+    headers = await register_and_login(gth_client, "fy-gains")
+    stock = await create_stock(gth_client, "FYG", "ASX", "FY Gains")
+    await _add(gth_client, headers, stock["id"], "Buy", "2024-08-01", units=20, price=20)
+    await _add(gth_client, headers, stock["id"], "Sell", "2025-06-30", units=10, price=30)  # last day of FY 2024
+    await _add(gth_client, headers, stock["id"], "Sell", "2025-07-01", units=10, price=40)  # FY 2025
 
-    fy2024 = (await client.get("/api/reports/capital-gains", params={"fy": 2024}, headers=headers)).json()
+    fy2024 = (await gth_client.get("/api/reports/capital-gains", params={"fy": 2024}, headers=headers)).json()
     assert [i["proceeds"] for i in fy2024["items"]] == [pytest.approx(300)]
-    fy2025 = (await client.get("/api/reports/capital-gains", params={"fy": 2025}, headers=headers)).json()
+    fy2025 = (await gth_client.get("/api/reports/capital-gains", params={"fy": 2025}, headers=headers)).json()
     assert [i["proceeds"] for i in fy2025["items"]] == [pytest.approx(400)]

@@ -36,43 +36,43 @@ def _csv(resp) -> list[list[str]]:
 
 
 class TestAuthGuard:
-    async def test_page_redirects_to_login(self, client):
-        resp = await client.get("/reports", follow_redirects=False)
+    async def test_page_redirects_to_login(self, gth_client):
+        resp = await gth_client.get("/reports", follow_redirects=False)
         assert resp.status_code == 303
         assert resp.headers["location"] == "/login"
 
-    async def test_pane_gets_hx_redirect(self, client):
-        resp = await client.get("/reports/holdings", headers=HX, follow_redirects=False)
+    async def test_pane_gets_hx_redirect(self, gth_client):
+        resp = await gth_client.get("/reports/holdings", headers=HX, follow_redirects=False)
         assert resp.status_code == 401
         assert resp.headers["HX-Redirect"] == "/login"
 
-    async def test_csv_redirects_to_login(self, client):
-        resp = await client.get("/reports/holdings.csv", follow_redirects=False)
+    async def test_csv_redirects_to_login(self, gth_client):
+        resp = await gth_client.get("/reports/holdings.csv", follow_redirects=False)
         assert resp.status_code == 303
 
 
 class TestPage:
-    async def test_renders_lazy_tabs(self, client):
-        await web_login(client, "web-reports")
-        resp = await client.get("/reports")
+    async def test_renders_lazy_tabs(self, gth_client):
+        await web_login(gth_client, "web-reports")
+        resp = await gth_client.get("/reports")
         assert resp.status_code == 200
         for url in ("/reports/holdings", "/reports/gains", "/reports/dividends"):
             assert f'hx-get="{url}"' in resp.text
         assert 'href="/reports" aria-current="page"' in resp.text
 
-    async def test_tab_param_picks_the_open_tab(self, client):
-        await web_login(client, "web-reports")
-        resp = await client.get("/reports", params={"tab": "gains"})
+    async def test_tab_param_picks_the_open_tab(self, gth_client):
+        await web_login(gth_client, "web-reports")
+        resp = await gth_client.get("/reports", params={"tab": "gains"})
         assert 'class="nav-link active" id="reports-tab-gains"' in resp.text
-        resp = await client.get("/reports", params={"tab": "bogus"})
+        resp = await gth_client.get("/reports", params={"tab": "bogus"})
         assert 'class="nav-link active" id="reports-tab-holdings"' in resp.text
 
 
 class TestHoldings:
-    async def test_holdings(self, client, gth_session):
-        await web_login(client, "web-reports")
-        await _seed(client, gth_session)
-        resp = await client.get("/reports/holdings", headers=HX, params={"as_of": "2025-06-30"})
+    async def test_holdings(self, gth_client, gth_session):
+        await web_login(gth_client, "web-reports")
+        await _seed(gth_client, gth_session)
+        resp = await gth_client.get("/reports/holdings", headers=HX, params={"as_of": "2025-06-30"})
         assert resp.status_code == 200
         assert "<html" not in resp.text
         assert "BHP Group" in resp.text
@@ -82,28 +82,28 @@ class TestHoldings:
         assert "300.00" in resp.text           # dividend: 200 units × 1.50
         assert 'href="/reports/holdings.csv?as_of=2025-06-30"' in resp.text
 
-    async def test_as_of_before_first_buy_is_empty(self, client, gth_session):
-        await web_login(client, "web-reports")
-        await _seed(client, gth_session)
-        resp = await client.get("/reports/holdings", params={"as_of": "2024-01-01"})
+    async def test_as_of_before_first_buy_is_empty(self, gth_client, gth_session):
+        await web_login(gth_client, "web-reports")
+        await _seed(gth_client, gth_session)
+        resp = await gth_client.get("/reports/holdings", params={"as_of": "2024-01-01"})
         assert "You held no stocks on 1 Jan 2024." in resp.text
 
-    async def test_bad_date_falls_back_to_today(self, client):
-        await web_login(client, "web-reports")
-        resp = await client.get("/reports/holdings", params={"as_of": "not-a-date"})
+    async def test_bad_date_falls_back_to_today(self, gth_client):
+        await web_login(gth_client, "web-reports")
+        resp = await gth_client.get("/reports/holdings", params={"as_of": "not-a-date"})
         assert resp.status_code == 200
 
-    async def test_only_own_transactions(self, client, gth_session):
-        await web_login(client, "web-reports-a")
-        await _seed(client, gth_session)
-        await web_login(client, "web-reports-b")
-        resp = await client.get("/reports/holdings", params={"as_of": "2025-06-30"})
+    async def test_only_own_transactions(self, gth_client, gth_session):
+        await web_login(gth_client, "web-reports-a")
+        await _seed(gth_client, gth_session)
+        await web_login(gth_client, "web-reports-b")
+        resp = await gth_client.get("/reports/holdings", params={"as_of": "2025-06-30"})
         assert "BHP Group" not in resp.text
 
-    async def test_csv(self, client, gth_session):
-        await web_login(client, "web-reports")
-        await _seed(client, gth_session)
-        resp = await client.get("/reports/holdings.csv", params={"as_of": "2025-06-30"})
+    async def test_csv(self, gth_client, gth_session):
+        await web_login(gth_client, "web-reports")
+        await _seed(gth_client, gth_session)
+        resp = await gth_client.get("/reports/holdings.csv", params={"as_of": "2025-06-30"})
         assert resp.status_code == 200
         assert resp.headers["content-type"] == "text/csv; charset=utf-8"
         assert resp.content.startswith(chr(0xFEFF).encode("utf-8"))  # the BOM Excel needs to read UTF-8
@@ -115,30 +115,30 @@ class TestHoldings:
 
 
 class TestGains:
-    async def test_defaults_to_latest_fy(self, client, gth_session):
-        await web_login(client, "web-reports")
-        await _seed(client, gth_session)
-        resp = await client.get("/reports/gains")
+    async def test_defaults_to_latest_fy(self, gth_client, gth_session):
+        await web_login(gth_client, "web-reports")
+        await _seed(gth_client, gth_session)
+        resp = await gth_client.get("/reports/gains")
         assert '<option value="2024" selected>2024–25</option>' in resp.text
         assert "740.00" in resp.text  # 50 × 60 − 10 − 50 × 45
         assert "text-success" in resp.text
 
-    async def test_fy_without_sells(self, client, gth_session):
-        await web_login(client, "web-reports")
-        await _seed(client, gth_session)
-        resp = await client.get("/reports/gains", params={"fy": "2023"})
+    async def test_fy_without_sells(self, gth_client, gth_session):
+        await web_login(gth_client, "web-reports")
+        await _seed(gth_client, gth_session)
+        resp = await gth_client.get("/reports/gains", params={"fy": "2023"})
         assert "No sells in FY 2023–24." in resp.text
 
-    async def test_no_transactions_uses_current_fy(self, client):
-        await web_login(client, "web-reports")
-        resp = await client.get("/reports/gains")
+    async def test_no_transactions_uses_current_fy(self, gth_client):
+        await web_login(gth_client, "web-reports")
+        resp = await gth_client.get("/reports/gains")
         assert resp.status_code == 200
         assert "No sells in FY" in resp.text
 
-    async def test_csv(self, client, gth_session):
-        await web_login(client, "web-reports")
-        await _seed(client, gth_session)
-        resp = await client.get("/reports/gains.csv", params={"fy": "2024"})
+    async def test_csv(self, gth_client, gth_session):
+        await web_login(gth_client, "web-reports")
+        await _seed(gth_client, gth_session)
+        resp = await gth_client.get("/reports/gains.csv", params={"fy": "2024"})
         assert 'filename="pyfinbot-gains-fy2024.csv"' in resp.headers["content-disposition"]
         rows = _csv(resp)
         assert rows[0][-1] == "Gain/loss"
@@ -146,31 +146,31 @@ class TestGains:
 
 
 class TestDividends:
-    async def test_all_time_and_fy(self, client, gth_session):
-        await web_login(client, "web-reports")
-        await _seed(client, gth_session)
-        resp = await client.get("/reports/dividends")
+    async def test_all_time_and_fy(self, gth_client, gth_session):
+        await web_login(gth_client, "web-reports")
+        await _seed(gth_client, gth_session)
+        resp = await gth_client.get("/reports/dividends")
         assert "Received, all time" in resp.text
         assert "1 Sep 2024" in resp.text and "$300.00" in resp.text
         assert 'href="/reports/dividends.csv"' in resp.text
 
-        resp = await client.get("/reports/dividends", params={"fy": "2024"})
+        resp = await gth_client.get("/reports/dividends", params={"fy": "2024"})
         assert "300.00" in resp.text
         assert 'href="/reports/dividends.csv?fy=2024"' in resp.text
 
-        resp = await client.get("/reports/dividends", params={"fy": "2023"})
+        resp = await gth_client.get("/reports/dividends", params={"fy": "2023"})
         assert "No dividends received in FY 2023–24." in resp.text
 
-    async def test_csv(self, client, gth_session):
-        await web_login(client, "web-reports")
-        await _seed(client, gth_session)
-        resp = await client.get("/reports/dividends.csv")
+    async def test_csv(self, gth_client, gth_session):
+        await web_login(gth_client, "web-reports")
+        await _seed(gth_client, gth_session)
+        resp = await gth_client.get("/reports/dividends.csv")
         assert 'filename="pyfinbot-dividends-all.csv"' in resp.headers["content-disposition"]
         rows = _csv(resp)
         assert rows[0][0] == "Ex date"
         assert rows[1][0] == "2024-09-01" and float(rows[1][-1]) == 300
 
-    async def test_unknown_csv_is_404(self, client):
-        await web_login(client, "web-reports")
-        resp = await client.get("/reports/bogus.csv")
+    async def test_unknown_csv_is_404(self, gth_client):
+        await web_login(gth_client, "web-reports")
+        resp = await gth_client.get("/reports/bogus.csv")
         assert resp.status_code == 404

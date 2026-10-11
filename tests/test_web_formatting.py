@@ -20,11 +20,11 @@ def test_filters_are_gth_uis_not_app_overrides():
 
 
 class TestTransactionsTable:
-    async def test_dates_numbers_and_money(self, client):
-        await web_login(client, "web-formatting")
-        bhp = await create_stock(client)
-        await _txn(client, bhp["id"], "Buy", "100", "40.50", "2024-07-10", fees="9.95")
-        resp = await client.get("/transactions", headers=HX)
+    async def test_dates_numbers_and_money(self, gth_client):
+        await web_login(gth_client, "web-formatting")
+        bhp = await create_stock(gth_client)
+        await _txn(gth_client, bhp["id"], "Buy", "100", "40.50", "2024-07-10", fees="9.95")
+        resp = await gth_client.get("/transactions", headers=HX)
         row = resp.text.split("<tbody")[1]
         assert "10 Jul 2024" in row
         assert ">100<" in row and ">40.5<" in row  # units / price: full precision, zeros trimmed
@@ -34,22 +34,22 @@ class TestTransactionsTable:
 
 
 class TestReports:
-    async def test_holdings_units_from_floats_and_money(self, client):
-        await web_login(client, "web-formatting")
-        bhp = await create_stock(client)
-        await _txn(client, bhp["id"], "Buy", "100", "40", "2024-07-10")
-        await _txn(client, bhp["id"], "Buy", "50", "55", "2024-08-10")
-        resp = await client.get("/reports/holdings", headers=HX, params={"as_of": "2025-06-30"})
+    async def test_holdings_units_from_floats_and_money(self, gth_client):
+        await web_login(gth_client, "web-formatting")
+        bhp = await create_stock(gth_client)
+        await _txn(gth_client, bhp["id"], "Buy", "100", "40", "2024-07-10")
+        await _txn(gth_client, bhp["id"], "Buy", "50", "55", "2024-08-10")
+        resp = await gth_client.get("/reports/holdings", headers=HX, params={"as_of": "2025-06-30"})
         assert ">150<" in resp.text and "150.0" not in resp.text  # float units, no noise
         assert "$45.00" in resp.text  # average cost basis
         assert "$6,750.00" in resp.text  # cost base
 
-    async def test_dividend_dates(self, client, gth_session):
-        await web_login(client, "web-formatting")
-        bhp = await create_stock(client)
-        await _txn(client, bhp["id"], "Buy", "200", "40", "2024-07-10")
+    async def test_dividend_dates(self, gth_client, gth_session):
+        await web_login(gth_client, "web-formatting")
+        bhp = await create_stock(gth_client)
+        await _txn(gth_client, bhp["id"], "Buy", "200", "40", "2024-07-10")
         await _seed_dividend(gth_session, bhp["id"], "2024-09-01", "1.50")
-        resp = await client.get("/reports/dividends", headers=HX)
+        resp = await gth_client.get("/reports/dividends", headers=HX)
         assert "1 Sep 2024" in resp.text
         assert ">—<" in resp.text  # no pay date: |date gives "", so the "or" fallback shows
         assert ">1.5<" in resp.text  # per share: |number, not rounded money

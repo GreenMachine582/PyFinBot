@@ -11,50 +11,50 @@ async def _register(client: AsyncClient, user_id: str, password: str = "hunter2!
     await create_user(client, user_id, password)
 
 
-async def test_login_form_renders(client: AsyncClient):
-    resp = await client.get("/login")
+async def test_login_form_renders(gth_client: AsyncClient):
+    resp = await gth_client.get("/login")
     assert resp.status_code == 200
     assert "Sign in" in resp.text  # greentechhub-ui's login_page.html (fastapi v0.11)
 
 
-async def test_dashboard_redirects_when_not_logged_in(client: AsyncClient):
-    resp = await client.get("/", follow_redirects=False)
+async def test_dashboard_redirects_when_not_logged_in(gth_client: AsyncClient):
+    resp = await gth_client.get("/", follow_redirects=False)
     assert resp.status_code == 303
     assert resp.headers["location"] == "/login"
 
 
-async def test_login_wrong_password_shows_error(client: AsyncClient):
-    await _register(client, "weba")
-    resp = await post_login(client, "weba", "wrong")
+async def test_login_wrong_password_shows_error(gth_client: AsyncClient):
+    await _register(gth_client, "weba")
+    resp = await post_login(gth_client, "weba", "wrong")
     assert resp.status_code == 401
     assert "Incorrect user ID or password" in resp.text
 
 
-async def test_login_unknown_user_shows_error(client: AsyncClient):
-    resp = await post_login(client, "nobody", "wrong")
+async def test_login_unknown_user_shows_error(gth_client: AsyncClient):
+    resp = await post_login(gth_client, "nobody", "wrong")
     assert resp.status_code == 401
     assert "Incorrect user ID or password" in resp.text
 
 
-async def test_login_success_sets_session_cookie_and_dashboard_loads(client: AsyncClient):
-    await _register(client, "webb")
-    resp = await post_login(client, "webb", "hunter2!", follow_redirects=False)
+async def test_login_success_sets_session_cookie_and_dashboard_loads(gth_client: AsyncClient):
+    await _register(gth_client, "webb")
+    resp = await post_login(gth_client, "webb", "hunter2!", follow_redirects=False)
     assert resp.status_code == 303
     assert resp.headers["location"] == "/"
     assert "gth_session" in resp.cookies
 
-    resp2 = await client.get("/", cookies={"gth_session": resp.cookies["gth_session"]})
+    resp2 = await gth_client.get("/", cookies={"gth_session": resp.cookies["gth_session"]})
     assert resp2.status_code == 200
     assert "Dashboard" in resp2.text
     assert "webb" in resp2.text
 
 
-async def test_logout_clears_session(client: AsyncClient):
-    await _register(client, "webc")
-    login_resp = await post_login(client, "webc", "hunter2!", follow_redirects=False)
+async def test_logout_clears_session(gth_client: AsyncClient):
+    await _register(gth_client, "webc")
+    login_resp = await post_login(gth_client, "webc", "hunter2!", follow_redirects=False)
     cookie = login_resp.cookies["gth_session"]
 
-    logout_resp = await client.post(
+    logout_resp = await gth_client.post(
         "/logout", cookies={"gth_session": cookie}, follow_redirects=False
     )
     assert logout_resp.status_code == 303

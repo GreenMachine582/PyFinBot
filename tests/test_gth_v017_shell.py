@@ -3,8 +3,8 @@ signed-in page carries the bar and its script without PyFinBot opting in."""
 from .conftest import web_login
 
 
-async def test_pages_carry_the_loading_bar(client):
-    await web_login(client, "gth-loading-bar")
-    page = (await client.get("/")).text
+async def test_pages_carry_the_loading_bar(gth_client):
+    await web_login(gth_client, "gth-loading-bar")
+    page = (await gth_client.get("/")).text
     assert 'class="gth-loading-bar" data-gth-loading-bar' in page
     assert "/js/loading-bar.js" in page

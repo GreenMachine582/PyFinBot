@@ -1,6 +1,6 @@
 """The test database is greentechhub-core's (testing.sqlalchemy, v0.14):
-each test runs inside a rolled-back transaction, and the client fixture
-points the app's Database at it with gth_database(db)."""
+each test runs inside a rolled-back transaction, and with gth_db set
+gth_client points the app's Database at it (gth_database)."""
 from sqlmodel import select
 
 from pyfinbot.db.session import db, get_session
@@ -19,11 +19,11 @@ async def test_it_is_rolled_back_before_the_next_test(gth_session):
     assert (await gth_session.exec(select(User).where(User.id == USER_ID))).first() is None
 
 
-async def test_the_client_uses_the_test_sessionmaker(client, gth_sessionmaker):
+async def test_the_client_uses_the_test_sessionmaker(gth_client, gth_sessionmaker):
     assert db.sessionmaker() is gth_sessionmaker
 
 
-async def test_closing_get_session_ends_its_session_at_once(client):
+async def test_closing_get_session_ends_its_session_at_once(gth_client):
     """FastAPI closes get_session after the response. Its db.session() must
     close then too, not when it's collected: until then its SAVEPOINT stays
     open and the next session's nests inside it."""

@@ -25,76 +25,76 @@ def _envelope(resp, status, code):
 # /api: the envelope
 
 
-async def test_api_not_found_and_bad_requests(client):
-    _envelope(await client.get("/api/stocks/999"), 404, "not_found")
-    _envelope(await client.get("/api/stocks/", params={"filters": "{not json"}), 400, "invalid_filters")
-    await create_stock(client, "DUP")
-    dup = await client.post("/api/stocks/", json={"symbol": "DUP", "market": "ASX", "name": "Dup"})
+async def test_api_not_found_and_bad_requests(gth_client):
+    _envelope(await gth_client.get("/api/stocks/999"), 404, "not_found")
+    _envelope(await gth_client.get("/api/stocks/", params={"filters": "{not json"}), 400, "invalid_filters")
+    await create_stock(gth_client, "DUP")
+    dup = await gth_client.post("/api/stocks/", json={"symbol": "DUP", "market": "ASX", "name": "Dup"})
     assert _envelope(dup, 400, "stock_exists")["message"] == "Stock already registered"
 
 
-async def test_api_auth_errors_keep_the_bearer_challenge(client):
-    no_token = await client.get("/api/users/")
+async def test_api_auth_errors_keep_the_bearer_challenge(gth_client):
+    no_token = await gth_client.get("/api/users/")
     _envelope(no_token, 401, "unauthorized")
     assert no_token.headers["WWW-Authenticate"] == "Bearer"
 
-    bad_token = await client.get("/api/users/", headers={"Authorization": "Bearer nope"})
+    bad_token = await gth_client.get("/api/users/", headers={"Authorization": "Bearer nope"})
     assert _envelope(bad_token, 401, "unauthorized")["message"] == "Could not validate credentials"
     assert bad_token.headers["WWW-Authenticate"] == "Bearer"
 
-    wrong_password = await client.post("/api/auth/login", data={"username": "nobody", "password": "x"})
+    wrong_password = await gth_client.post("/api/auth/login", data={"username": "nobody", "password": "x"})
     _envelope(wrong_password, 401, "unauthorized")
 
-    plain = await register_and_login(client, "obs-plain")
-    _envelope(await client.get("/api/users/", headers=plain), 403, "forbidden")
-    _envelope(await client.get("/api/users/someone-else", headers=plain), 403, "forbidden")
+    plain = await register_and_login(gth_client, "obs-plain")
+    _envelope(await gth_client.get("/api/users/", headers=plain), 403, "forbidden")
+    _envelope(await gth_client.get("/api/users/someone-else", headers=plain), 403, "forbidden")
 
 
-async def test_api_validation_and_routing_errors(client):
-    admin = await register_and_login(client, "obs-admin")
-    await make_admin(client, "obs-admin")
-    invalid = await client.post("/api/users/", json={"id": "no-password"}, headers=admin)
+async def test_api_validation_and_routing_errors(gth_client):
+    admin = await register_and_login(gth_client, "obs-admin")
+    await make_admin(gth_client, "obs-admin")
+    invalid = await gth_client.post("/api/users/", json={"id": "no-password"}, headers=admin)
     body = _envelope(invalid, 422, "validation_error")
     assert isinstance(body["details"], list) and body["details"][0]["loc"][-1] == "password"
 
-    _envelope(await client.get("/api/no-such-route"), 404, "not_found")
-    _envelope(await client.delete("/api/users/", headers=admin), 405, "method_not_allowed")
+    _envelope(await gth_client.get("/api/no-such-route"), 404, "not_found")
+    _envelope(await gth_client.delete("/api/users/", headers=admin), 405, "method_not_allowed")
 
 
 # pages: unchanged
 
 
-async def test_pages_keep_their_redirects_and_errors(client):
-    page = await client.get("/transactions", follow_redirects=False)
+async def test_pages_keep_their_redirects_and_errors(gth_client):
+    page = await gth_client.get("/transactions", follow_redirects=False)
     assert page.status_code == 303 and page.headers["location"] == "/login"
-    hx = await client.get("/transactions", headers=HX, follow_redirects=False)
+    hx = await gth_client.get("/transactions", headers=HX, follow_redirects=False)
     assert hx.status_code == 401 and hx.headers["HX-Redirect"] == "/login"
     assert "code" not in hx.text
 
-    await web_login(client, "obs-pages")
-    missing = await client.get("/stocks/999/edit", headers=HX)
+    await web_login(gth_client, "obs-pages")
+    missing = await gth_client.get("/stocks/999/edit", headers=HX)
     assert missing.status_code == 404 and "code" not in missing.json()  # FastAPI's {"detail": ...}
-    roles = await client.get("/admin/roles", headers={"Accept": "text/html"})
+    roles = await gth_client.get("/admin/roles", headers={"Accept": "text/html"})
     assert roles.status_code == 403 and "message" not in roles.text
 
 
 # health
 
 
-async def test_health_and_readiness(client):
-    live = await client.get("/health")
+async def test_health_and_readiness(gth_client):
+    live = await gth_client.get("/health")
     assert live.status_code == 200 and live.json() == {"status": "healthy"}
-    ready = await client.get("/health/ready")
+    ready = await gth_client.get("/health/ready")
     assert ready.status_code == 200, ready.text
     assert ready.json()["status"] == "healthy"
 
 
-async def test_readiness_fails_when_the_database_check_does(client, monkeypatch):
+async def test_readiness_fails_when_the_database_check_does(gth_client, monkeypatch):
     async def down():
         return HealthResult.unhealthy("database", "connection refused")
 
     monkeypatch.setattr(session_module.db, "ready", down)
-    ready = await client.get("/health/ready")
+    ready = await gth_client.get("/health/ready")
     assert ready.status_code == 503 and ready.json()["status"] != "healthy"
 
 

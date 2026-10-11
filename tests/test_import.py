@@ -12,11 +12,11 @@ def _csv_file(content: str) -> dict:
 
 
 class TestImportCSV:
-    async def test_single_valid_row(self, client):
-        headers = await register_and_login(client, "importer-user")
-        await create_stock(client)
+    async def test_single_valid_row(self, gth_client):
+        headers = await register_and_login(gth_client, "importer-user")
+        await create_stock(gth_client)
         csv = CSV_HEADER + "2024-08-01,ASX:BHP,Buy,10,25.50,9.95,Test import\n"
-        resp = await client.post("/api/transactions/import",
+        resp = await gth_client.post("/api/transactions/import",
                                  files=_csv_file(csv), headers=headers)
         assert resp.status_code == 200
         data = resp.json()
@@ -24,42 +24,42 @@ class TestImportCSV:
         assert data["skipped"] == 0
         assert data["errors"] == []
 
-    async def test_multiple_rows(self, client):
-        headers = await register_and_login(client, "importer-user")
-        await create_stock(client, "BHP")
-        await create_stock(client, "CBA", name="Commonwealth Bank")
+    async def test_multiple_rows(self, gth_client):
+        headers = await register_and_login(gth_client, "importer-user")
+        await create_stock(gth_client, "BHP")
+        await create_stock(gth_client, "CBA", name="Commonwealth Bank")
         csv = (CSV_HEADER
                + "2024-08-01,ASX:BHP,Buy,10,25.50,9.95,\n"
                + "2024-08-02,ASX:CBA,Sell,5,100.00,9.95,\n")
-        resp = await client.post("/api/transactions/import",
+        resp = await gth_client.post("/api/transactions/import",
                                  files=_csv_file(csv), headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["created"] == 2
         assert data["skipped"] == 0
 
-    async def test_slash_date_format(self, client):
-        headers = await register_and_login(client, "importer-user")
-        await create_stock(client)
+    async def test_slash_date_format(self, gth_client):
+        headers = await register_and_login(gth_client, "importer-user")
+        await create_stock(gth_client)
         csv = CSV_HEADER + "01/08/2024,ASX:BHP,Buy,10,25.50,,\n"
-        resp = await client.post("/api/transactions/import",
+        resp = await gth_client.post("/api/transactions/import",
                                  files=_csv_file(csv), headers=headers)
         assert resp.status_code == 200
         assert resp.json()["created"] == 1
 
-    async def test_separate_market_column(self, client):
-        headers = await register_and_login(client, "importer-user")
-        await create_stock(client)
+    async def test_separate_market_column(self, gth_client):
+        headers = await register_and_login(gth_client, "importer-user")
+        await create_stock(gth_client)
         csv = "date,stock,market,type,units,price\n2024-08-01,BHP,ASX,Buy,10,25.50\n"
-        resp = await client.post("/api/transactions/import",
+        resp = await gth_client.post("/api/transactions/import",
                                  files=_csv_file(csv), headers=headers)
         assert resp.status_code == 200
         assert resp.json()["created"] == 1
 
-    async def test_unknown_stock_skips_row(self, client):
-        headers = await register_and_login(client, "importer-user")
+    async def test_unknown_stock_skips_row(self, gth_client):
+        headers = await register_and_login(gth_client, "importer-user")
         csv = CSV_HEADER + "2024-08-01,ASX:UNKNOWN,Buy,10,25.50,,\n"
-        resp = await client.post("/api/transactions/import",
+        resp = await gth_client.post("/api/transactions/import",
                                  files=_csv_file(csv), headers=headers)
         assert resp.status_code == 200
         data = resp.json()
@@ -67,39 +67,39 @@ class TestImportCSV:
         assert data["skipped"] == 1
         assert len(data["errors"]) == 1
 
-    async def test_invalid_type_skips_row(self, client):
-        headers = await register_and_login(client, "importer-user")
-        await create_stock(client)
+    async def test_invalid_type_skips_row(self, gth_client):
+        headers = await register_and_login(gth_client, "importer-user")
+        await create_stock(gth_client)
         csv = CSV_HEADER + "2024-08-01,ASX:BHP,Hold,10,25.50,,\n"
-        resp = await client.post("/api/transactions/import",
+        resp = await gth_client.post("/api/transactions/import",
                                  files=_csv_file(csv), headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["skipped"] == 1
 
-    async def test_mixed_valid_and_invalid_rows(self, client):
-        headers = await register_and_login(client, "importer-user")
-        await create_stock(client)
+    async def test_mixed_valid_and_invalid_rows(self, gth_client):
+        headers = await register_and_login(gth_client, "importer-user")
+        await create_stock(gth_client)
         csv = (CSV_HEADER
                + "2024-08-01,ASX:BHP,Buy,10,25.50,,\n"
                + "2024-08-02,ASX:NOPE,Buy,1,1.00,,\n")
-        resp = await client.post("/api/transactions/import",
+        resp = await gth_client.post("/api/transactions/import",
                                  files=_csv_file(csv), headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["created"] == 1
         assert data["skipped"] == 1
 
-    async def test_reupload_same_file_skips_duplicates(self, client):
-        headers = await register_and_login(client, "importer-user")
-        await create_stock(client)
+    async def test_reupload_same_file_skips_duplicates(self, gth_client):
+        headers = await register_and_login(gth_client, "importer-user")
+        await create_stock(gth_client)
         csv = CSV_HEADER + "2024-08-01,ASX:BHP,Buy,10,25.50,9.95,Test import\n"
-        first = await client.post("/api/transactions/import",
+        first = await gth_client.post("/api/transactions/import",
                                   files=_csv_file(csv), headers=headers)
         assert first.status_code == 200
         assert first.json()["created"] == 1
 
-        second = await client.post("/api/transactions/import",
+        second = await gth_client.post("/api/transactions/import",
                                    files=_csv_file(csv), headers=headers)
         assert second.status_code == 200
         data = second.json()
@@ -107,62 +107,62 @@ class TestImportCSV:
         assert data["skipped"] == 1
         assert "duplicate" in data["errors"][0].lower()
 
-    async def test_duplicate_rows_within_same_file_skips_second(self, client):
-        headers = await register_and_login(client, "importer-user")
-        await create_stock(client)
+    async def test_duplicate_rows_within_same_file_skips_second(self, gth_client):
+        headers = await register_and_login(gth_client, "importer-user")
+        await create_stock(gth_client)
         csv = (CSV_HEADER
                + "2024-08-01,ASX:BHP,Buy,10,25.50,9.95,\n"
                + "2024-08-01,ASX:BHP,Buy,10,25.50,9.95,\n")
-        resp = await client.post("/api/transactions/import",
+        resp = await gth_client.post("/api/transactions/import",
                                  files=_csv_file(csv), headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["created"] == 1
         assert data["skipped"] == 1
 
-    async def test_different_fees_not_treated_as_duplicate(self, client):
-        headers = await register_and_login(client, "importer-user")
-        await create_stock(client)
+    async def test_different_fees_not_treated_as_duplicate(self, gth_client):
+        headers = await register_and_login(gth_client, "importer-user")
+        await create_stock(gth_client)
         csv = (CSV_HEADER
                + "2024-08-01,ASX:BHP,Buy,10,25.50,9.95,\n"
                + "2024-08-01,ASX:BHP,Buy,10,25.50,4.95,\n")
-        resp = await client.post("/api/transactions/import",
+        resp = await gth_client.post("/api/transactions/import",
                                  files=_csv_file(csv), headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["created"] == 2
         assert data["skipped"] == 0
 
-    async def test_missing_required_column_returns_422(self, client):
-        headers = await register_and_login(client, "importer-user")
+    async def test_missing_required_column_returns_422(self, gth_client):
+        headers = await register_and_login(gth_client, "importer-user")
         csv = "date,stock,units,price\n2024-08-01,ASX:BHP,10,25.50\n"  # missing type
-        resp = await client.post("/api/transactions/import",
+        resp = await gth_client.post("/api/transactions/import",
                                  files=_csv_file(csv), headers=headers)
         assert resp.status_code == 422
 
-    async def test_no_token_returns_401(self, client):
+    async def test_no_token_returns_401(self, gth_client):
         csv = CSV_HEADER + "2024-08-01,ASX:BHP,Buy,10,25.50,,\n"
-        resp = await client.post("/api/transactions/import", files=_csv_file(csv))
+        resp = await gth_client.post("/api/transactions/import", files=_csv_file(csv))
         assert resp.status_code == 401
 
-    async def test_empty_file_returns_400(self, client):
-        headers = await register_and_login(client, "importer-user")
-        resp = await client.post("/api/transactions/import",
+    async def test_empty_file_returns_400(self, gth_client):
+        headers = await register_and_login(gth_client, "importer-user")
+        resp = await gth_client.post("/api/transactions/import",
                                  files={"file": ("empty.csv", io.BytesIO(b""), "text/csv")},
                                  headers=headers)
         assert resp.status_code == 400
 
-    async def test_bad_number_does_not_roll_back_earlier_rows(self, client):
-        headers = await register_and_login(client, "importer-user")
-        await create_stock(client)
+    async def test_bad_number_does_not_roll_back_earlier_rows(self, gth_client):
+        headers = await register_and_login(gth_client, "importer-user")
+        await create_stock(gth_client)
         csv = (CSV_HEADER
                + "2024-08-01,ASX:BHP,Buy,10,25.50,,\n"
                + "2024-08-02,ASX:BHP,Buy,lots,25.50,,\n")
-        resp = await client.post("/api/transactions/import",
+        resp = await gth_client.post("/api/transactions/import",
                                  files=_csv_file(csv), headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert (data["created"], data["skipped"]) == (1, 1)
         assert data["row_errors"] == [{"row": 3, "message": "'units', 'price' and 'fees' must be numbers"}]
-        items = (await client.get("/api/transactions/", headers=headers)).json()["items"]
+        items = (await gth_client.get("/api/transactions/", headers=headers)).json()["items"]
         assert len(items) == 1
