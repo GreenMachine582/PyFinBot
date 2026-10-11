@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional, Union
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from fastapi_pagination import Page
 from greentechhub_core.query.envelope import to_envelope
 from greentechhub_core.query.types import Sort
@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from ..core import audit_events
 from ..core.market_sync import syncMarket, MARKET_FETCHERS, market_sync_guard
 from ..models.stock_models import Stock
 from ..schemas.stock_schemas import StockCreate, StockRead, StockUpdate, SyncResult
@@ -130,6 +131,7 @@ async def delete_stock(stock_id: Union[int, str], session: AsyncSession = Depend
     summary="Sync all companies in a given market (e.g. ASX)"
 )
 async def sync_stocks_for_market(
+    request: Request,
     market: str,
     session: AsyncSession = Depends(get_session)
 ):
@@ -147,6 +149,7 @@ async def sync_stocks_for_market(
             raise ConflictError(f"{m} sync is already running")
         created, updated, archived = await syncMarket(session, m)
 
+    await audit_events.market_synced(request, m, created, updated, archived)
     return SyncResult(
         created=created,
         updated=updated,

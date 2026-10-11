@@ -14,6 +14,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from greentechhub_core.identity import Identity
 from greentechhub_fastapi.dependencies import get_current_identity
 
+from ..core import audit_events
 from ..core.commsec_import import sync_commsec_emails as _sync_commsec_emails
 from ..core.email_accounts import load_email_account
 from ..core.email_sync import fetch_commsec_emails, mark_seen
@@ -36,5 +37,7 @@ async def sync_commsec_emails(
     assert user_id is not None  # a stored user always has its primary key
     account = await load_email_account(get_settings_service(request), user_id)
     # fetch/mark passed from this module so tests can patch them here.
-    return await _sync_commsec_emails(session, user_id, account, include_seen=include_seen,
-                                      fetch=fetch_commsec_emails, mark=mark_seen)
+    summary = await _sync_commsec_emails(session, user_id, account, include_seen=include_seen,
+                                         fetch=fetch_commsec_emails, mark=mark_seen)
+    await audit_events.emails_synced(request, summary)
+    return summary

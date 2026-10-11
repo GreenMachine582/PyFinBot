@@ -13,7 +13,7 @@ from sqlalchemy import select
 
 from pyfinbot.admin import create_user as create_user_module
 from pyfinbot.admin.create_user import UserExists, create_user
-from pyfinbot.core.permissions import ADMIN, ROLES, SETTINGS_MANAGE, USERS_MANAGE
+from pyfinbot.core.permissions import ADMIN, AUDIT_VIEW, ROLES, SETTINGS_MANAGE, USERS_MANAGE
 from pyfinbot.dev.seed import DEMO_ADMIN, seed_demo
 from pyfinbot.models.settings_models import ROLE_GRANTS_TABLE
 from pyfinbot.models.user_models import User
@@ -25,7 +25,7 @@ HX = {"HX-Request": "true"}
 
 
 def test_the_admin_role():
-    assert ROLES == (ADMIN,) and ADMIN.permissions == {USERS_MANAGE, SETTINGS_MANAGE}
+    assert ROLES == (ADMIN,) and ADMIN.permissions == {USERS_MANAGE, SETTINGS_MANAGE, AUDIT_VIEW}
 
 
 async def test_role_bootstrap_makes_an_admin_without_any_grant():
