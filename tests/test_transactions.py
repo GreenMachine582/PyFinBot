@@ -24,10 +24,10 @@ async def _create_transaction(client, stock_id, headers, **overrides):
 
 
 class TestCreateTransaction:
-    async def test_creates_with_stock_id_int(self, client):
-        headers = await register_and_login(client, USER_ID)
-        stock = await create_stock(client)
-        data = await _create_transaction(client, stock["id"], headers)
+    async def test_creates_with_stock_id_int(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
+        stock = await create_stock(gth_client)
+        data = await _create_transaction(gth_client, stock["id"], headers)
         assert data["units"] == 10
         assert data["price"] == 25.5
         assert data["total_value"] == 255.0
@@ -35,121 +35,121 @@ class TestCreateTransaction:
         assert data["fy"] == 2024
         assert data["stock"]["symbol"] == "BHP"
 
-    async def test_creates_with_market_symbol_string(self, client):
-        headers = await register_and_login(client, USER_ID)
-        await create_stock(client)
-        data = await _create_transaction(client, "ASX:BHP", headers)
+    async def test_creates_with_market_symbol_string(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
+        await create_stock(gth_client)
+        data = await _create_transaction(gth_client, "ASX:BHP", headers)
         assert data["stock"]["market"] == "ASX"
         assert data["stock"]["symbol"] == "BHP"
 
-    async def test_user_id_comes_from_token(self, client):
-        headers = await register_and_login(client, USER_ID)
-        stock = await create_stock(client)
-        data = await _create_transaction(client, stock["id"], headers)
+    async def test_user_id_comes_from_token(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
+        stock = await create_stock(gth_client)
+        data = await _create_transaction(gth_client, stock["id"], headers)
         assert data["user_id"] == USER_ID
 
-    async def test_user_id_in_body_is_ignored(self, client):
-        headers = await register_and_login(client, USER_ID)
-        stock = await create_stock(client)
+    async def test_user_id_in_body_is_ignored(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
+        stock = await create_stock(gth_client)
         payload = {"stock_id": stock["id"], "type": "Buy", "units": 5, "price": 10,
                    "user_id": "body-user"}
-        resp = await client.post("/api/transactions/", json=payload, headers=headers)
+        resp = await gth_client.post("/api/transactions/", json=payload, headers=headers)
         assert resp.status_code == 201
         # user_id is no longer part of the request schema; the token's user wins.
         assert resp.json()["user_id"] == USER_ID
 
-    async def test_no_token_returns_401(self, client):
-        stock = await create_stock(client)
+    async def test_no_token_returns_401(self, gth_client):
+        stock = await create_stock(gth_client)
         payload = {"stock_id": stock["id"], "type": "Buy", "units": 5, "price": 10}
-        resp = await client.post("/api/transactions/", json=payload)
+        resp = await gth_client.post("/api/transactions/", json=payload)
         assert resp.status_code == 401
 
-    async def test_nonexistent_stock_returns_404(self, client):
-        headers = await register_and_login(client, USER_ID)
+    async def test_nonexistent_stock_returns_404(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
         payload = {"stock_id": 9999, "type": "Buy", "units": 5, "price": 10}
-        resp = await client.post("/api/transactions/", json=payload, headers=headers)
+        resp = await gth_client.post("/api/transactions/", json=payload, headers=headers)
         assert resp.status_code == 404
 
-    async def test_sell_cost_is_positive(self, client):
-        headers = await register_and_login(client, USER_ID)
-        stock = await create_stock(client)
+    async def test_sell_cost_is_positive(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
+        stock = await create_stock(gth_client)
         data = await _create_transaction(
-            client, stock["id"], headers, type="Sell", units=10, price=30, fees=9.95
+            gth_client, stock["id"], headers, type="Sell", units=10, price=30, fees=9.95
         )
         assert data["cost"] == pytest.approx(290.05)
 
 
 class TestListTransactions:
-    async def test_no_token_returns_401(self, client):
-        resp = await client.get("/api/transactions/")
+    async def test_no_token_returns_401(self, gth_client):
+        resp = await gth_client.get("/api/transactions/")
         assert resp.status_code == 401
 
-    async def test_returns_only_requesting_users_transactions(self, client):
-        headers = await register_and_login(client, USER_ID)
-        other_headers = await register_and_login(client, OTHER_USER_ID)
-        stock = await create_stock(client)
-        await _create_transaction(client, stock["id"], headers)
+    async def test_returns_only_requesting_users_transactions(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
+        other_headers = await register_and_login(gth_client, OTHER_USER_ID)
+        stock = await create_stock(gth_client)
+        await _create_transaction(gth_client, stock["id"], headers)
         # Create for other user
         payload = {"stock_id": stock["id"], "type": "Buy", "units": 1, "price": 1}
-        await client.post("/api/transactions/", json=payload, headers=other_headers)
+        await gth_client.post("/api/transactions/", json=payload, headers=other_headers)
 
-        resp = await client.get("/api/transactions/", headers=headers)
+        resp = await gth_client.get("/api/transactions/", headers=headers)
         assert resp.status_code == 200
         items = resp.json()["items"]
         assert all(t["user_id"] == USER_ID for t in items)
 
-    async def test_paginated_response_shape(self, client):
-        headers = await register_and_login(client, USER_ID)
-        stock = await create_stock(client)
-        await _create_transaction(client, stock["id"], headers)
-        resp = await client.get("/api/transactions/", headers=headers)
+    async def test_paginated_response_shape(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
+        stock = await create_stock(gth_client)
+        await _create_transaction(gth_client, stock["id"], headers)
+        resp = await gth_client.get("/api/transactions/", headers=headers)
         data = resp.json()
         assert "items" in data
         assert "total" in data
 
 
 class TestGetTransaction:
-    async def test_get_returns_transaction_with_stock(self, client):
-        headers = await register_and_login(client, USER_ID)
-        stock = await create_stock(client)
-        created = await _create_transaction(client, stock["id"], headers)
-        resp = await client.get(f"/api/transactions/{created['id']}", headers=headers)
+    async def test_get_returns_transaction_with_stock(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
+        stock = await create_stock(gth_client)
+        created = await _create_transaction(gth_client, stock["id"], headers)
+        resp = await gth_client.get(f"/api/transactions/{created['id']}", headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["id"] == created["id"]
         assert data["stock"]["symbol"] == "BHP"
 
-    async def test_other_user_gets_403(self, client):
-        headers = await register_and_login(client, USER_ID)
-        other_headers = await register_and_login(client, OTHER_USER_ID)
-        stock = await create_stock(client)
-        created = await _create_transaction(client, stock["id"], headers)
-        resp = await client.get(f"/api/transactions/{created['id']}", headers=other_headers)
+    async def test_other_user_gets_403(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
+        other_headers = await register_and_login(gth_client, OTHER_USER_ID)
+        stock = await create_stock(gth_client)
+        created = await _create_transaction(gth_client, stock["id"], headers)
+        resp = await gth_client.get(f"/api/transactions/{created['id']}", headers=other_headers)
         assert resp.status_code == 403
 
-    async def test_nonexistent_returns_404(self, client):
-        headers = await register_and_login(client, USER_ID)
-        resp = await client.get("/api/transactions/9999", headers=headers)
+    async def test_nonexistent_returns_404(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
+        resp = await gth_client.get("/api/transactions/9999", headers=headers)
         assert resp.status_code == 404
 
 
 class TestUpdateTransaction:
-    async def test_update_notes(self, client):
-        headers = await register_and_login(client, USER_ID)
-        stock = await create_stock(client)
-        created = await _create_transaction(client, stock["id"], headers)
-        resp = await client.put(f"/api/transactions/{created['id']}",
+    async def test_update_notes(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
+        stock = await create_stock(gth_client)
+        created = await _create_transaction(gth_client, stock["id"], headers)
+        resp = await gth_client.put(f"/api/transactions/{created['id']}",
                                 json={"notes": "updated note"}, headers=headers)
         assert resp.status_code == 200
         assert resp.json()["notes"] == "updated note"
 
-    async def test_full_update_recomputes_derived_fields(self, client):
-        headers = await register_and_login(client, USER_ID)
-        stock = await create_stock(client)
-        other = await create_stock(client, symbol="CBA", name="Commonwealth Bank")
-        created = await _create_transaction(client, stock["id"], headers, transaction_date="2024-06-30")
+    async def test_full_update_recomputes_derived_fields(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
+        stock = await create_stock(gth_client)
+        other = await create_stock(gth_client, symbol="CBA", name="Commonwealth Bank")
+        created = await _create_transaction(gth_client, stock["id"], headers, transaction_date="2024-06-30")
 
-        resp = await client.put(f"/api/transactions/{created['id']}", headers=headers, json={
+        resp = await gth_client.put(f"/api/transactions/{created['id']}", headers=headers, json={
             "stock_id": "ASX:CBA", "type": "Sell", "units": 4, "price": 100, "fees": 10,
             "transaction_date": "01/07/2024",
         })
@@ -162,51 +162,51 @@ class TestUpdateTransaction:
         assert body["fy"] == created["fy"] + 1
         assert body["notes"] == created["notes"]  # untouched fields are kept
 
-    async def test_null_fields_other_than_notes_are_ignored(self, client):
-        headers = await register_and_login(client, USER_ID)
-        stock = await create_stock(client)
-        created = await _create_transaction(client, stock["id"], headers, notes="keep?")
-        resp = await client.put(f"/api/transactions/{created['id']}", headers=headers,
+    async def test_null_fields_other_than_notes_are_ignored(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
+        stock = await create_stock(gth_client)
+        created = await _create_transaction(gth_client, stock["id"], headers, notes="keep?")
+        resp = await gth_client.put(f"/api/transactions/{created['id']}", headers=headers,
                                 json={"units": None, "notes": None})
         assert resp.status_code == 200
         assert resp.json()["units"] == created["units"]
         assert resp.json()["notes"] is None
 
-    async def test_update_to_unknown_stock_returns_404(self, client):
-        headers = await register_and_login(client, USER_ID)
-        stock = await create_stock(client)
-        created = await _create_transaction(client, stock["id"], headers)
-        resp = await client.put(f"/api/transactions/{created['id']}", headers=headers,
+    async def test_update_to_unknown_stock_returns_404(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
+        stock = await create_stock(gth_client)
+        created = await _create_transaction(gth_client, stock["id"], headers)
+        resp = await gth_client.put(f"/api/transactions/{created['id']}", headers=headers,
                                 json={"stock_id": 999999})
         assert resp.status_code == 404
 
-    async def test_other_user_gets_403(self, client):
-        headers = await register_and_login(client, USER_ID)
-        other_headers = await register_and_login(client, OTHER_USER_ID)
-        stock = await create_stock(client)
-        created = await _create_transaction(client, stock["id"], headers)
-        resp = await client.put(f"/api/transactions/{created['id']}",
+    async def test_other_user_gets_403(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
+        other_headers = await register_and_login(gth_client, OTHER_USER_ID)
+        stock = await create_stock(gth_client)
+        created = await _create_transaction(gth_client, stock["id"], headers)
+        resp = await gth_client.put(f"/api/transactions/{created['id']}",
                                 json={"notes": "hack"}, headers=other_headers)
         assert resp.status_code == 403
 
 
 class TestDeleteTransaction:
-    async def test_delete_returns_204(self, client):
-        headers = await register_and_login(client, USER_ID)
-        stock = await create_stock(client)
-        created = await _create_transaction(client, stock["id"], headers)
-        resp = await client.delete(f"/api/transactions/{created['id']}", headers=headers)
+    async def test_delete_returns_204(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
+        stock = await create_stock(gth_client)
+        created = await _create_transaction(gth_client, stock["id"], headers)
+        resp = await gth_client.delete(f"/api/transactions/{created['id']}", headers=headers)
         assert resp.status_code == 204
 
-    async def test_other_user_gets_403(self, client):
-        headers = await register_and_login(client, USER_ID)
-        other_headers = await register_and_login(client, OTHER_USER_ID)
-        stock = await create_stock(client)
-        created = await _create_transaction(client, stock["id"], headers)
-        resp = await client.delete(f"/api/transactions/{created['id']}", headers=other_headers)
+    async def test_other_user_gets_403(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
+        other_headers = await register_and_login(gth_client, OTHER_USER_ID)
+        stock = await create_stock(gth_client)
+        created = await _create_transaction(gth_client, stock["id"], headers)
+        resp = await gth_client.delete(f"/api/transactions/{created['id']}", headers=other_headers)
         assert resp.status_code == 403
 
-    async def test_delete_nonexistent_returns_404(self, client):
-        headers = await register_and_login(client, USER_ID)
-        resp = await client.delete("/api/transactions/9999", headers=headers)
+    async def test_delete_nonexistent_returns_404(self, gth_client):
+        headers = await register_and_login(gth_client, USER_ID)
+        resp = await gth_client.delete("/api/transactions/9999", headers=headers)
         assert resp.status_code == 404

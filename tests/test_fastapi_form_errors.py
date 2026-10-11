@@ -11,10 +11,10 @@ def test_hand_rolled_field_errors_is_gone():
     assert not hasattr(transactions, "_field_errors")
 
 
-async def test_unparseable_number_shows_pydantics_message_on_its_field(client):
-    stock = await create_stock(client)
-    await web_login(client, "form-errors")
-    resp = await client.post("/transactions", data=_form(stock["id"], price="cheap"))
+async def test_unparseable_number_shows_pydantics_message_on_its_field(gth_client):
+    stock = await create_stock(gth_client)
+    await web_login(gth_client, "form-errors")
+    resp = await gth_client.post("/transactions", data=_form(stock["id"], price="cheap"))
     assert resp.status_code == 422
     error = resp.text.split('id="gth-field-price-error"', 1)[1].split("</div>", 1)[0]
     assert "Input should be a valid number" in error

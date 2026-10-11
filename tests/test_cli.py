@@ -26,26 +26,26 @@ def _rows(text: str) -> list[list[str]]:
 
 
 class TestReports:
-    async def test_holdings_csv_matches_the_web_download(self, client, gth_session):
-        await web_login(client, USER_ID)
-        await _seed(client, gth_session)
+    async def test_holdings_csv_matches_the_web_download(self, gth_client, gth_session):
+        await web_login(gth_client, USER_ID)
+        await _seed(gth_client, gth_session)
         code, out, _ = await _cli("holdings", "--user", USER_ID, "--as-of", "2025-06-30")
         assert code == 0
-        web = await client.get("/reports/holdings.csv", params={"as_of": "2025-06-30"})
+        web = await gth_client.get("/reports/holdings.csv", params={"as_of": "2025-06-30"})
         assert _rows(out) == _csv(web)
         assert _rows(out)[1][:4] == ["ASX", "BHP", "BHP Group", "150.0"]
 
-    async def test_gains_csv_matches_the_web_download(self, client, gth_session):
-        await web_login(client, USER_ID)
-        await _seed(client, gth_session)
+    async def test_gains_csv_matches_the_web_download(self, gth_client, gth_session):
+        await web_login(gth_client, USER_ID)
+        await _seed(gth_client, gth_session)
         code, out, _ = await _cli("gains", "--user", USER_ID, "--fy", "2024")
         assert code == 0
-        assert _rows(out) == _csv(await client.get("/reports/gains.csv", params={"fy": "2024"}))
+        assert _rows(out) == _csv(await gth_client.get("/reports/gains.csv", params={"fy": "2024"}))
         assert float(_rows(out)[1][6]) == pytest.approx(740)
 
-    async def test_dividends_json_matches_the_api(self, client, gth_session):
-        await web_login(client, USER_ID)
-        await _seed(client, gth_session)
+    async def test_dividends_json_matches_the_api(self, gth_client, gth_session):
+        await web_login(gth_client, USER_ID)
+        await _seed(gth_client, gth_session)
         code, out, _ = await _cli("dividends", "--user", USER_ID, "--format", "json")
         assert code == 0
         body = json.loads(out)
@@ -53,26 +53,26 @@ class TestReports:
         assert body["total_dividends_received"] == pytest.approx(300)
         assert body["items"][0]["units_held_at_ex_date"] == pytest.approx(200)
 
-    async def test_dividends_fy_filter(self, client, gth_session):
-        await web_login(client, USER_ID)
-        bhp = await _seed(client, gth_session)
+    async def test_dividends_fy_filter(self, gth_client, gth_session):
+        await web_login(gth_client, USER_ID)
+        bhp = await _seed(gth_client, gth_session)
         await _seed_dividend(gth_session, bhp["id"], "2025-09-01", "2.00")
         _, out, _ = await _cli("dividends", "--user", USER_ID, "--fy", "2025", "--format", "json")
         body = json.loads(out)
         assert body["fy"] == 2025
         assert [i["ex_date"] for i in body["items"]] == ["2025-09-01"]
 
-    async def test_gains_defaults_to_the_current_fy(self, client):
-        await web_login(client, USER_ID)
+    async def test_gains_defaults_to_the_current_fy(self, gth_client):
+        await web_login(gth_client, USER_ID)
         _, out, _ = await _cli("gains", "--user", USER_ID, "--format", "json")
         from datetime import date
 
         from greentechhub_core.dates import fiscal_year
         assert json.loads(out)["fy"] == fiscal_year(date.today())
 
-    async def test_holdings_default_to_today_and_can_be_empty(self, client):
-        await web_login(client, USER_ID)
-        await create_stock(client)
+    async def test_holdings_default_to_today_and_can_be_empty(self, gth_client):
+        await web_login(gth_client, USER_ID)
+        await create_stock(gth_client)
         code, out, _ = await _cli("holdings", "--user", USER_ID)
         assert code == 0
         assert _rows(out) == [["Market", "Symbol", "Name", "Units held", "Avg cost", "Cost base",
@@ -80,25 +80,25 @@ class TestReports:
 
 
 class TestOutput:
-    async def test_output_file_gets_a_bom_like_the_web_download(self, client, gth_session, tmp_path):
-        await web_login(client, USER_ID)
-        await _seed(client, gth_session)
+    async def test_output_file_gets_a_bom_like_the_web_download(self, gth_client, gth_session, tmp_path):
+        await web_login(gth_client, USER_ID)
+        await _seed(gth_client, gth_session)
         path = tmp_path / "gains.csv"
         code, out, _ = await _cli("gains", "--user", USER_ID, "--fy", "2024", "-o", str(path))
         assert code == 0 and out == ""
         data = path.read_bytes()
         assert data.startswith(b"\xef\xbb\xbf")
-        assert data == (await client.get("/reports/gains.csv", params={"fy": "2024"})).content
+        assert data == (await gth_client.get("/reports/gains.csv", params={"fy": "2024"})).content
 
-    async def test_json_output_file_has_no_bom(self, client, tmp_path):
-        await web_login(client, USER_ID)
+    async def test_json_output_file_has_no_bom(self, gth_client, tmp_path):
+        await web_login(gth_client, USER_ID)
         path = tmp_path / "holdings.json"
         await _cli("holdings", "--user", USER_ID, "--format", "json", "--output", str(path))
         assert json.loads(path.read_text(encoding="utf-8"))["holdings"] == []
 
 
 class TestErrors:
-    async def test_unknown_user_exports_nothing(self, client, tmp_path):
+    async def test_unknown_user_exports_nothing(self, gth_client, tmp_path):
         path = tmp_path / "out.csv"
         code, out, err = await _cli("holdings", "--user", "nobody", "-o", str(path))
         assert code == 1

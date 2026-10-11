@@ -39,36 +39,36 @@ async def test_read_upload_reads_at_most_one_byte_past_the_limit():
     assert MAX_UPLOAD_BYTES == 5 * 1024 * 1024
 
 
-async def test_page_renders_the_drop_zone(client):
-    await web_login(client, "drop-page")
-    page = (await client.get("/import")).text
+async def test_page_renders_the_drop_zone(gth_client):
+    await web_login(gth_client, "drop-page")
+    page = (await gth_client.get("/import")).text
     assert "gth-file-drop" in page and 'data-max-size="5242880"' in page
     assert "up to 5 MB" in page and 'accept=".csv,.xls,.xlsx,.xlsm"' in page
     assert 'required="required"' in page
     assert "/js/file-drop.js" in page  # the client-side check and upload progress
 
 
-async def test_oversized_upload_gets_the_error_panel(client):
-    await web_login(client, "drop-big")
-    resp = await client.post("/import", files=_too_big(), headers=HX)
+async def test_oversized_upload_gets_the_error_panel(gth_client):
+    await web_login(gth_client, "drop-big")
+    resp = await gth_client.post("/import", files=_too_big(), headers=HX)
     assert resp.status_code == 422
     assert "File is larger than 5 MB." in resp.text
     toast = hx_triggers(resp)["showToast"]
     assert toast["kind"] == "danger" and toast["message"] == "File is larger than 5 MB."
 
 
-async def test_small_upload_still_imports(client):
-    await web_login(client, "drop-small")
-    await create_stock(client)
+async def test_small_upload_still_imports(gth_client):
+    await web_login(gth_client, "drop-small")
+    await create_stock(gth_client)
     csv = CSV_HEADER + "2024-08-01,ASX:BHP,Buy,10,25.50,9.95,\n"
-    resp = await client.post("/import", headers=HX,
+    resp = await gth_client.post("/import", headers=HX,
                              files={"file": ("trades.csv", io.BytesIO(csv.encode()), "text/csv")})
     assert resp.status_code == 200
     assert hx_triggers(resp)["showToast"]["message"] == "Imported 1 transaction."
 
 
-async def test_api_rejects_an_oversized_file(client):
-    headers = await register_and_login(client, "drop-api")
-    resp = await client.post("/api/transactions/import", files=_too_big(), headers=headers)
+async def test_api_rejects_an_oversized_file(gth_client):
+    headers = await register_and_login(gth_client, "drop-api")
+    resp = await gth_client.post("/api/transactions/import", files=_too_big(), headers=headers)
     assert resp.status_code == 413
     assert resp.json() == {"code": "import_failed", "message": "File is larger than 5 MB.", "details": None}

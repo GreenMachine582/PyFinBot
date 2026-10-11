@@ -29,10 +29,10 @@ async def _seed(client, session):
     await _txn(client, cba["id"], "Buy", "10", "100", _day(-5))
 
 
-async def test_tiles_show_this_fy(client, gth_session):
-    await web_login(client, "web-dashboard")
-    await _seed(client, gth_session)
-    page = (await client.get("/")).text
+async def test_tiles_show_this_fy(gth_client, gth_session):
+    await web_login(gth_client, "web-dashboard")
+    await _seed(gth_client, gth_session)
+    page = (await gth_client.get("/")).text
     assert "gth-stat-grid" in page
     assert f"Realised gain/loss, FY {fiscal_year_label(FY)}" in page
     assert "740.00" in page                    # realised gain
@@ -41,39 +41,39 @@ async def test_tiles_show_this_fy(client, gth_session):
     assert "Coming soon" not in page
 
 
-async def test_largest_holdings_first(client, gth_session):
-    await web_login(client, "web-dashboard")
-    await _seed(client, gth_session)
-    page = (await client.get("/")).text
+async def test_largest_holdings_first(gth_client, gth_session):
+    await web_login(gth_client, "web-dashboard")
+    await _seed(gth_client, gth_session)
+    page = (await gth_client.get("/")).text
     assert "Largest holdings" in page
     assert page.index('title="BHP Group"') < page.index('title="Commonwealth Bank"')
     assert "6,750.00" in page and "1,000.00" in page
 
 
-async def test_only_the_top_holdings_are_listed(client):
+async def test_only_the_top_holdings_are_listed(gth_client):
     from pyfinbot.web.routes.dashboard import TOP_HOLDINGS
 
-    await web_login(client, "web-dashboard")
+    await web_login(gth_client, "web-dashboard")
     for i in range(TOP_HOLDINGS + 1):
-        stock = await create_stock(client, symbol=f"S{i}", name=f"Stock {i}")
-        await _txn(client, stock["id"], "Buy", "1", str(10 + i), _day(-1))
-    page = (await client.get("/")).text
+        stock = await create_stock(gth_client, symbol=f"S{i}", name=f"Stock {i}")
+        await _txn(gth_client, stock["id"], "Buy", "1", str(10 + i), _day(-1))
+    page = (await gth_client.get("/")).text
     assert 'title="Stock 0"' not in page       # the cheapest drops off
     assert f'title="Stock {TOP_HOLDINGS}"' in page
 
 
-async def test_new_user_gets_an_empty_state(client):
-    await web_login(client, "web-dashboard-new")
-    page = (await client.get("/")).text
+async def test_new_user_gets_an_empty_state(gth_client):
+    await web_login(gth_client, "web-dashboard-new")
+    page = (await gth_client.get("/")).text
     assert "hold any stocks yet." in page
     assert 'href="/import"' in page
     assert "Largest holdings" not in page
 
 
-async def test_other_users_holdings_stay_out(client, gth_session):
-    await web_login(client, "web-dashboard")
-    await _seed(client, gth_session)
-    await web_login(client, "web-dashboard-other")
-    page = (await client.get("/")).text
+async def test_other_users_holdings_stay_out(gth_client, gth_session):
+    await web_login(gth_client, "web-dashboard")
+    await _seed(gth_client, gth_session)
+    await web_login(gth_client, "web-dashboard-other")
+    page = (await gth_client.get("/")).text
     assert "BHP Group" not in page
     assert "hold any stocks yet." in page

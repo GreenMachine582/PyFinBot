@@ -26,18 +26,18 @@ def test_no_banner_context_processor_of_our_own():
     assert templating.templates.context_processors == [ui_context, settings_context]
 
 
-async def test_a_banner_in_a_core_only_tone_shows_once(client):
-    await web_login(client, "banner-good")
-    await make_admin(client, "banner-good")
-    resp = await client.post("/settings/app", headers=HX, data={
+async def test_a_banner_in_a_core_only_tone_shows_once(gth_client):
+    await web_login(gth_client, "banner-good")
+    await make_admin(gth_client, "banner-good")
+    resp = await gth_client.post("/settings/app", headers=HX, data={
         "site.banner": "Upgrade finished", "site.banner_tone": "good"})
     assert resp.status_code == 200, resp.text
-    page = (await client.get("/", headers=HTML)).text
+    page = (await gth_client.get("/", headers=HTML)).text
     assert page.count('data-gth-banner="site"') == 1
     assert "alert-success" in page and "Upgrade finished" in page
 
 
-async def test_an_empty_banner_shows_nothing(client):
-    await web_login(client, "banner-none")
-    page = (await client.get("/", headers=HTML)).text
+async def test_an_empty_banner_shows_nothing(gth_client):
+    await web_login(gth_client, "banner-none")
+    page = (await gth_client.get("/", headers=HTML)).text
     assert 'data-gth-banner="site"' not in page

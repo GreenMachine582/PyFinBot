@@ -20,9 +20,6 @@ Web UI scope and architecture: see `web-implementation-brief.md`.
 
 One PR each, in this order. `requirements.txt` already pins core v0.14, fastapi v0.16 and ui v0.17.
 
-- [ ] `refactor(tests): fastapi HTTP fixtures` (fastapi v0.16)
-  - fastapi's HTTP fixtures (`gth_client`, …; fastapi docs/testing.md) replace PyFinBot's, so `tests/conftest.py`
-    keeps only its own (`create_user`, `make_admin`, `create_stock`, …).
 - [ ] `refactor(api): fastapi bearer auth` (fastapi v0.15)
   - `register_auth(app, settings, bearer=True)` with `issue_token`/`bearer_scheme` (fastapi docs/auth.md › API
     tokens) replaces `core/security.py`, most of `core/dependencies.py` and `ACCESS_TOKEN_EXPIRE_MINUTES`.

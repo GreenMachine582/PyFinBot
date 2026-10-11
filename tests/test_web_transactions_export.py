@@ -25,19 +25,19 @@ def _rows(resp) -> list[list[str]]:
     return list(csv.reader(io.StringIO(resp.content.decode("utf-8-sig"))))
 
 
-async def test_export_needs_a_signed_in_user(client: AsyncClient):
-    resp = await client.get("/transactions.csv", follow_redirects=False)
+async def test_export_needs_a_signed_in_user(gth_client: AsyncClient):
+    resp = await gth_client.get("/transactions.csv", follow_redirects=False)
     assert resp.status_code == 303 and resp.headers["location"] == "/login"
 
 
-async def test_export_is_the_users_rows_as_a_csv_download(client: AsyncClient):
-    bhp = await create_stock(client)
-    await web_login(client, "export-other")
-    await _add(client, bhp["id"], notes="someone else's")
-    await web_login(client, "export-a")
-    await _add(client, bhp["id"], notes="first, buy")
+async def test_export_is_the_users_rows_as_a_csv_download(gth_client: AsyncClient):
+    bhp = await create_stock(gth_client)
+    await web_login(gth_client, "export-other")
+    await _add(gth_client, bhp["id"], notes="someone else's")
+    await web_login(gth_client, "export-a")
+    await _add(gth_client, bhp["id"], notes="first, buy")
 
-    resp = await client.get("/transactions.csv")
+    resp = await gth_client.get("/transactions.csv")
     assert resp.status_code == 200
     assert resp.headers["content-type"] == "text/csv; charset=utf-8"
     assert resp.headers["content-disposition"] == 'attachment; filename="pyfinbot-transactions.csv"'
@@ -50,39 +50,39 @@ async def test_export_is_the_users_rows_as_a_csv_download(client: AsyncClient):
     assert fy == "2024–25" and notes == "first, buy"  # the table's FY label; csv quotes the comma
 
 
-async def test_export_takes_the_filters_and_sort_but_not_paging(client: AsyncClient):
-    bhp = await create_stock(client)
-    cba = await create_stock(client, "CBA", name="Commonwealth Bank")
-    await web_login(client, "export-b")
+async def test_export_takes_the_filters_and_sort_but_not_paging(gth_client: AsyncClient):
+    bhp = await create_stock(gth_client)
+    cba = await create_stock(gth_client, "CBA", name="Commonwealth Bank")
+    await web_login(gth_client, "export-b")
     for day in range(1, 11):  # 10 BHP buys in Aug 2024
-        await _add(client, bhp["id"], transaction_date=f"2024-08-{day:02d}")
-    await _add(client, bhp["id"], transaction_date="2024-09-01", type="Sell", units="2")
-    await _add(client, cba["id"], transaction_date="2023-05-01")
+        await _add(gth_client, bhp["id"], transaction_date=f"2024-08-{day:02d}")
+    await _add(gth_client, bhp["id"], transaction_date="2024-09-01", type="Sell", units="2")
+    await _add(gth_client, cba["id"], transaction_date="2023-05-01")
 
-    every = _rows(await client.get("/transactions.csv", params={"size": "10", "page": "2"}))
+    every = _rows(await gth_client.get("/transactions.csv", params={"size": "10", "page": "2"}))
     assert len(every) - 1 == 12  # page and size are ignored: every matching row
 
-    buys = _rows(await client.get("/transactions.csv", params={"type": "Buy", "stock": "bhp"}))
+    buys = _rows(await gth_client.get("/transactions.csv", params={"type": "Buy", "stock": "bhp"}))
     assert len(buys) - 1 == 10 and {r[2] for r in buys[1:]} == {"BHP"}
 
-    fy = _rows(await client.get("/transactions.csv", params={"fy": "2022"}))
+    fy = _rows(await gth_client.get("/transactions.csv", params={"fy": "2022"}))
     assert [r[2] for r in fy[1:]] == ["CBA"]
 
-    in_range = _rows(await client.get("/transactions.csv", params={"date_from": "2024-08-05",
+    in_range = _rows(await gth_client.get("/transactions.csv", params={"date_from": "2024-08-05",
                                                                    "date_to": "2024-08-07"}))
     assert [r[0] for r in in_range[1:]] == ["2024-08-07", "2024-08-06", "2024-08-05"]  # newest first
 
-    oldest_first = _rows(await client.get("/transactions.csv",
+    oldest_first = _rows(await gth_client.get("/transactions.csv",
                                           params={"sort": "transaction_date", "dir": "asc"}))
     assert oldest_first[1][0] == "2023-05-01" and oldest_first[-1][0] == "2024-09-01"
 
 
-async def test_table_has_export_link_view_menu_and_row_actions(client: AsyncClient):
-    bhp = await create_stock(client)
-    await web_login(client, "export-c")
-    await _add(client, bhp["id"])
+async def test_table_has_export_link_view_menu_and_row_actions(gth_client: AsyncClient):
+    bhp = await create_stock(gth_client)
+    await web_login(gth_client, "export-c")
+    await _add(gth_client, bhp["id"])
 
-    html = (await client.get("/transactions", headers=HX, params={"type": "Buy", "page": "1"})).text
+    html = (await gth_client.get("/transactions", headers=HX, params={"type": "Buy", "page": "1"})).text
     # Export: the current filters, never page or size.
     assert 'href="/transactions.csv?type=Buy' in html and "transactions.csv?page" not in html
     # View menu: Date and Stock pinned, Notes hidden until shown, no blank toggle.
@@ -97,21 +97,21 @@ async def test_table_has_export_link_view_menu_and_row_actions(client: AsyncClie
     assert 'hx-get="/transactions/' in html and 'hx-target="#gth-modal-host"' in html
 
 
-async def test_stock_table_has_the_row_actions_column(client: AsyncClient):
-    await create_stock(client)
-    await web_login(client, "export-d")
-    html = (await client.get("/stocks", headers=HX)).text
+async def test_stock_table_has_the_row_actions_column(gth_client: AsyncClient):
+    await create_stock(gth_client)
+    await web_login(gth_client, "export-d")
+    html = (await gth_client.get("/stocks", headers=HX)).text
     assert '<span class="visually-hidden">Actions</span>' in html
     assert 'aria-label="Edit BHP"' in html and 'aria-label="Delete BHP"' in html
     assert '<th scope="col"></th>' not in html  # no hand-built blank header
 
 
-async def test_export_is_utf8_with_a_bom_so_excel_reads_the_fy_dash(client: AsyncClient):
+async def test_export_is_utf8_with_a_bom_so_excel_reads_the_fy_dash(gth_client: AsyncClient):
     # Without a BOM, Excel opens UTF-8 as Windows-1252 and "2024–25" shows as "2024â€“25".
-    bhp = await create_stock(client)
-    await web_login(client, "export-e")
-    await _add(client, bhp["id"])
-    body = (await client.get("/transactions.csv")).content
+    bhp = await create_stock(gth_client)
+    await web_login(gth_client, "export-e")
+    await _add(gth_client, bhp["id"])
+    body = (await gth_client.get("/transactions.csv")).content
     bom = chr(0xFEFF).encode("utf-8")  # EF BB BF
     assert body.startswith(bom)
     assert "2024–25".encode("utf-8") in body

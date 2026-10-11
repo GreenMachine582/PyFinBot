@@ -112,14 +112,14 @@ def test_cli_refuses_in_production(monkeypatch, capsys):
     assert "development only" in capsys.readouterr().err
 
 
-async def test_seeded_transactions_page_for_demo_user(client, gth_session):
+async def test_seeded_transactions_page_for_demo_user(gth_client, gth_session):
     await seed_demo(gth_session, environment="development")
-    login = await post_login(client, "demo-user", "demo-user-pass",
+    login = await post_login(gth_client, "demo-user", "demo-user-pass",
                               follow_redirects=False)
     assert login.status_code == 303
     # Secure cookie over the tests' http:// base URL: re-set it, as web_login does.
-    client.cookies.set("gth_session", login.cookies["gth_session"])
-    resp = await client.get("/transactions", headers=HX)
+    gth_client.cookies.set("gth_session", login.cookies["gth_session"])
+    resp = await gth_client.get("/transactions", headers=HX)
     assert resp.status_code == 200
     total = len(await _demo_transactions(gth_session, "demo-user"))
     # More than one page: the table's "Load more" shows, with the total.

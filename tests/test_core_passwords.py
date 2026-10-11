@@ -45,17 +45,17 @@ async def _store_user(user_id: str, password_hash: str) -> None:
         await session.commit()
 
 
-async def test_a_user_with_an_old_hash_still_logs_in(client):
+async def test_a_user_with_an_old_hash_still_logs_in(gth_client):
     await _store_user("old-hash", _old_hash("hunter2!"))
-    api = await client.post("/api/auth/login", data={"username": "old-hash", "password": "hunter2!"})
+    api = await gth_client.post("/api/auth/login", data={"username": "old-hash", "password": "hunter2!"})
     assert api.status_code == 200 and api.json()["access_token"]
-    web = await post_login(client, "old-hash", "hunter2!", follow_redirects=False)
+    web = await post_login(gth_client, "old-hash", "hunter2!", follow_redirects=False)
     assert web.status_code == 303 and web.headers["location"] == "/"
 
 
-async def test_a_malformed_stored_hash_is_a_failed_login_not_a_500(client):
+async def test_a_malformed_stored_hash_is_a_failed_login_not_a_500(gth_client):
     await _store_user("bad-hash", "not-a-bcrypt-hash")
-    api = await client.post("/api/auth/login", data={"username": "bad-hash", "password": "hunter2!"})
+    api = await gth_client.post("/api/auth/login", data={"username": "bad-hash", "password": "hunter2!"})
     assert api.status_code == 401 and api.json()["code"] == "unauthorized"
-    web = await post_login(client, "bad-hash", "hunter2!", headers=HTML)
+    web = await post_login(gth_client, "bad-hash", "hunter2!", headers=HTML)
     assert web.status_code == 401

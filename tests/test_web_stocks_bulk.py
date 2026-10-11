@@ -37,27 +37,27 @@ class TestSetActive:
 
 
 class TestTable:
-    async def test_renders_the_bulk_bar_and_a_select_cell_per_row(self, client):
-        await web_login(client, "bulk-view")
-        await create_stock(client, "BLKA", "ASX", "Bulk A")
-        page = (await client.get("/stocks", headers=HX, params={"q": "BLK"})).text
+    async def test_renders_the_bulk_bar_and_a_select_cell_per_row(self, gth_client):
+        await web_login(gth_client, "bulk-view")
+        await create_stock(gth_client, "BLKA", "ASX", "Bulk A")
+        page = (await gth_client.get("/stocks", headers=HX, params={"q": "BLK"})).text
         assert 'hx-post="/stocks/bulk-archive"' in page and 'hx-post="/stocks/bulk-unarchive"' in page
         assert page.count("data-gth-select ") == 1
         assert 'aria-label="Select ASX:BLKA"' in page
 
 
 class TestBulkRoutes:
-    async def test_needs_login(self, client):
-        resp = await client.post("/stocks/bulk-archive", headers=HX, data={"ids": ["1"]}, follow_redirects=False)
+    async def test_needs_login(self, gth_client):
+        resp = await gth_client.post("/stocks/bulk-archive", headers=HX, data={"ids": ["1"]}, follow_redirects=False)
         assert resp.status_code == 401
         assert resp.headers["HX-Redirect"] == "/login"
 
-    async def test_archive_two_then_unarchive_one(self, client, gth_session):
-        await web_login(client, "bulk-user")
-        a = await create_stock(client, "BLKA", "ASX", "Bulk A")
-        b = await create_stock(client, "BLKB", "ASX", "Bulk B")
+    async def test_archive_two_then_unarchive_one(self, gth_client, gth_session):
+        await web_login(gth_client, "bulk-user")
+        a = await create_stock(gth_client, "BLKA", "ASX", "Bulk A")
+        b = await create_stock(gth_client, "BLKB", "ASX", "Bulk B")
 
-        resp = await client.post("/stocks/bulk-archive", headers=HX, data={"ids": [str(a["id"]), str(b["id"])]})
+        resp = await gth_client.post("/stocks/bulk-archive", headers=HX, data={"ids": [str(a["id"]), str(b["id"])]})
         assert resp.status_code == 204
         toast = hx_triggers(resp)
         assert toast["showToast"]["message"] == "Archived 2 stocks"
@@ -67,38 +67,38 @@ class TestBulkRoutes:
             stock = await _stock(gth_session, stock_id)
             assert not stock.is_active and stock.archived_at is not None
 
-        resp = await client.post("/stocks/bulk-unarchive", headers=HX, data={"ids": [str(a["id"])]})
+        resp = await gth_client.post("/stocks/bulk-unarchive", headers=HX, data={"ids": [str(a["id"])]})
         assert hx_triggers(resp)["showToast"]["message"] == "Unarchived 1 stock"
         stock = await _stock(gth_session, a["id"])
         assert stock.is_active and stock.archived_at is None
         assert not (await _stock(gth_session, b["id"])).is_active
 
-    async def test_already_archived_junk_and_unknown_ids_are_not_counted(self, client, gth_session):
-        await web_login(client, "bulk-mixed")
-        done = await create_stock(client, "BLKD", "ASX", "Bulk Done")
-        todo = await create_stock(client, "BLKT", "ASX", "Bulk Todo")
-        await client.post("/stocks/bulk-archive", headers=HX, data={"ids": [str(done["id"])]})
+    async def test_already_archived_junk_and_unknown_ids_are_not_counted(self, gth_client, gth_session):
+        await web_login(gth_client, "bulk-mixed")
+        done = await create_stock(gth_client, "BLKD", "ASX", "Bulk Done")
+        todo = await create_stock(gth_client, "BLKT", "ASX", "Bulk Todo")
+        await gth_client.post("/stocks/bulk-archive", headers=HX, data={"ids": [str(done["id"])]})
         first_stamp = (await _stock(gth_session, done["id"])).archived_at
 
-        resp = await client.post("/stocks/bulk-archive", headers=HX, data={
+        resp = await gth_client.post("/stocks/bulk-archive", headers=HX, data={
             "ids": [str(done["id"]), str(todo["id"]), "nope", "999999"]})
         assert hx_triggers(resp)["showToast"]["message"] == "Archived 1 stock"
         assert (await _stock(gth_session, done["id"])).archived_at == first_stamp
 
-    async def test_nothing_to_do_is_an_info_toast(self, client):
-        await web_login(client, "bulk-empty")
-        resp = await client.post("/stocks/bulk-unarchive", headers=HX, data={})
+    async def test_nothing_to_do_is_an_info_toast(self, gth_client):
+        await web_login(gth_client, "bulk-empty")
+        resp = await gth_client.post("/stocks/bulk-unarchive", headers=HX, data={})
         toast = hx_triggers(resp)
         assert toast["showToast"]["kind"] == "info"
         assert toast["showToast"]["message"] == "No stocks to unarchive."
         assert "stocksChanged" in toast
 
 
-async def test_api_reactivation_clears_archived_at(client, gth_session):
-    stock = await create_stock(client, "BLKR", "ASX", "Bulk Reactivate")
-    await client.put(f"/api/stocks/{stock['id']}", json={"is_active": False})
+async def test_api_reactivation_clears_archived_at(gth_client, gth_session):
+    stock = await create_stock(gth_client, "BLKR", "ASX", "Bulk Reactivate")
+    await gth_client.put(f"/api/stocks/{stock['id']}", json={"is_active": False})
     assert (await _stock(gth_session, stock["id"])).archived_at is not None
-    resp = await client.put(f"/api/stocks/{stock['id']}", json={"is_active": True, "name": "Renamed"})
+    resp = await gth_client.put(f"/api/stocks/{stock['id']}", json={"is_active": True, "name": "Renamed"})
     assert resp.status_code == 200 and resp.json()["name"] == "Renamed"
     after = await _stock(gth_session, stock["id"])
     assert after.is_active and after.archived_at is None
