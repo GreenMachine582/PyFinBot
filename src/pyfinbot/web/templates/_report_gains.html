@@ -1,24 +1,20 @@
-{% from "stat_card.html" import gth_stat_card %}
-{% from "table.html" import gth_table %}
+{% from "stat_card.html" import gth_stat_grid %}
+{% from "table.html" import gth_filter_bar, gth_table %}
+{% from "amount.html" import gth_amount %}
 {% from "empty_state.html" import gth_empty_state %}
 {% from "select.html" import gth_select %}
-<form class="d-flex flex-wrap align-items-end gap-2 mb-3"
-  hx-get="/reports/gains" hx-target="closest .tab-pane" hx-trigger="change">
+{% set export_url = "/reports/gains.csv?fy=" ~ report.fy ~ ("&method=" ~ report.method.value if report.method.value != "average" else "") %}
+{% call gth_filter_bar("/reports/gains", "closest .tab-pane", export_url=export_url) %}
   {{ gth_select("fy", "Financial year", fys|fy_options, value=report.fy, id="gains-fy", field_class="mb-0") }}
   {{ gth_select("method", "Cost basis", methods, value=report.method.value, id="gains-method", field_class="mb-0") }}
-  <a class="btn btn-outline-secondary ms-auto" href="/reports/gains.csv?fy={{ report.fy }}{% if report.method.value != "average" %}&amp;method={{ report.method.value }}{% endif %}" download>
-    <i class="bi bi-download" aria-hidden="true"></i> CSV
-  </a>
-</form>
+{% endcall %}
 
 {% set total = report.total_gain_loss %}
-<div class="row g-3 mb-3">
-  <div class="col-6 col-md-4">
-    {{ gth_stat_card("Net gain/loss, FY " ~ report.fy|fy, total|money,
-        value_tone="good" if total > 0 else ("bad" if total < 0 else "neutral")) }}
-  </div>
-  <div class="col-6 col-md-4">{{ gth_stat_card("Stocks sold", report.items|length) }}</div>
-</div>
+{{ gth_stat_grid([
+    {"label": "Net gain/loss, FY " ~ report.fy|fy, "value": total|money,
+     "value_tone": "good" if total > 0 else ("bad" if total < 0 else "neutral")},
+    {"label": "Stocks sold", "value": report.items|length},
+], cols=3) }}
 
 {% if report.items %}
 {% call gth_table(["Stock", "Units sold", "Avg cost", "Proceeds", "Gain/loss"], table_class="table-sm") %}
@@ -28,7 +24,7 @@
     <td class="text-end">{{ g.units_sold|number }}</td>
     <td class="text-end">{{ g.avg_cost_basis|money }}</td>
     <td class="text-end">{{ g.proceeds|money }}</td>
-    <td class="text-end {{ 'text-success' if g.gain_loss > 0 else ('text-danger' if g.gain_loss < 0 else '') }}">{{ g.gain_loss|money }}</td>
+    <td class="text-end">{{ gth_amount(g.gain_loss) }}</td>
   </tr>
   {% endfor %}
 {% endcall %}
