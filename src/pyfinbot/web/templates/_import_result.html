@@ -1,16 +1,14 @@
-{% from "card.html" import gth_card %}
-{% from "badge.html" import gth_badge %}
+{% from "result_panel.html" import gth_result_panel %}
 {% from "table.html" import gth_table %}
-{% from "toast.html" import gth_alert %}
+{% set heading = "Results — " ~ (filename or "upload") %}
 {% if error %}
-{{ gth_alert(error, kind="danger", title="Couldn't import " ~ (filename or "the file")) }}
+{{ gth_result_panel(heading, error=error, error_title="Couldn't import " ~ (filename or "the file")) }}
 {% else %}
-{% call gth_card("Results — " ~ (filename or "upload")) %}
-  <p class="d-flex flex-wrap gap-2 mb-3">
-    {{ gth_badge(summary.total_rows ~ " rows", "neutral") }}
-    {{ gth_badge(summary.created ~ " imported", "good" if summary.created else "neutral") }}
-    {{ gth_badge(summary.skipped ~ " skipped", "warn" if summary.skipped else "neutral") }}
-  </p>
+{% call gth_result_panel(heading,
+    badges=[(summary.total_rows ~ " rows", "neutral"),
+            (summary.created ~ " imported", "good" if summary.created else "neutral"),
+            (summary.skipped ~ " skipped", "warn" if summary.skipped else "neutral")],
+    link=("/transactions", "View transactions") if summary.created else None) %}
   {% if summary.row_errors %}
   {% call gth_table(["Row", "Problem"], table_class="table-sm mb-2") %}
     {% for e in summary.row_errors %}
@@ -18,9 +16,6 @@
     {% endfor %}
   {% endcall %}
   <p class="form-text">Row numbers match the spreadsheet (the header is row 1). Fix these rows and re-upload the file; rows already imported are skipped as duplicates.</p>
-  {% endif %}
-  {% if summary.created %}
-  <a href="/transactions" class="btn btn-outline-primary btn-sm">View transactions</a>
   {% endif %}
 {% endcall %}
 {% endif %}

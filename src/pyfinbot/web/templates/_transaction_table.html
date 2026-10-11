@@ -1,5 +1,6 @@
 {% from "table.html" import gth_data_table, gth_table_actions_cell, gth_table_select_cell %}
 {% from "badge.html" import gth_badge %}
+{% from "amount.html" import gth_amount %}
 {#- view_options: a View menu to hide columns (Date and Stock always shown,
     Notes hidden until asked for) and switch density, remembered per browser.
     row_actions: the edit/delete column, which the View menu never lists.
@@ -31,7 +32,7 @@
   <td class="text-end">{{ txn.price|number }}</td>
   <td class="text-end">{{ txn.fees|money }}</td>
   <td class="text-end">{{ txn.total_value|money }}</td>
-  <td class="text-end {{ 'text-danger' if txn.cost < 0 else 'text-success' }}">{{ txn.cost|money }}</td>
+  <td class="text-end">{{ gth_amount(txn.cost) }}</td>
   <td class="text-nowrap">{{ txn.fy|fy }}</td>
   <td class="text-truncate" style="max-width: 12rem" title="{{ txn.notes or '' }}">{{ txn.notes or "" }}</td>
   {{ gth_table_actions_cell([

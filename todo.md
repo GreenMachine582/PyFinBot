@@ -20,12 +20,6 @@ Web UI scope and architecture: see `web-implementation-brief.md`.
 
 One PR each, in this order. `requirements.txt` already pins core v0.14, fastapi v0.16 and ui v0.17.
 
-- [ ] `refactor(web): gth ui macros` (ui v0.16)
-  - `gth_result_panel` for `_import_result.html`/`_sync_result.html`.
-  - `gth_filter_bar` and `gth_download_button` for the three report panes.
-  - `gth_form_actions` (or `gth_modal_form`) for the stock/transaction forms.
-  - The `tone` and `fy` filters and `gth_amount`; drop `templating.py`'s own `fy` filter.
-  - `gth_stat_grid` for the dashboard's stat tiles.
 - [ ] `feat(web): CSRF on in-app forms` (fastapi v0.16, ui v0.17)
   - **Why:** the sign-in form has CSRF, but `POST /logout`, `/settings`, `/admin/roles` and PyFinBot's own htmx
     forms (stocks, transactions, imports, syncs) don't.

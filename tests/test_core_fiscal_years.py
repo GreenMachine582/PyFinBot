@@ -16,9 +16,10 @@ def test_hand_rolled_fiscal_year_module_is_gone():
     assert importlib.util.find_spec("pyfinbot.core.fiscal_year") is None
 
 
-def test_fy_filter_is_cores_label():
+def test_fy_filter_labels_like_core():
+    # The filter is greentechhub-ui's own |fy (install()), kept in step with core's.
     fy = templates.env.filters["fy"]
-    assert fy is fiscal_year_label
+    assert all(fy(year) == fiscal_year_label(year) for year in range(1990, 2040))
     assert (fy(2024), fy(1999)) == ("2024–25", "1999–00")
     assert templates.env.filters["fy_options"]([2025, 2024]) == [(2025, "2025–26"), (2024, "2024–25")]
 

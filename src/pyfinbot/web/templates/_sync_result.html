@@ -1,20 +1,4 @@
-{% from "card.html" import gth_card %}
-{% from "badge.html" import gth_badge %}
-{% from "toast.html" import gth_alert %}
-{% if error %}
-{{ gth_alert(error, kind="danger", title=heading,
-    action={"label": "Open Settings", "url": settings_url} if settings_url else None) }}
-{% else %}
-{% call gth_card(heading) %}
-  <p class="d-flex flex-wrap gap-2 mb-3">
-    {% for label, tone in badges %}{{ gth_badge(label, tone) }}{% endfor %}
-  </p>
-  {% if problems %}
-  <h6>Problems</h6>
-  <ul class="small mb-3">
-    {% for p in problems %}<li>{{ p }}</li>{% endfor %}
-  </ul>
-  {% endif %}
-  {% if link %}<a href="{{ link[0] }}" class="btn btn-outline-primary btn-sm">{{ link[1] }}</a>{% endif %}
-{% endcall %}
-{% endif %}
+{% from "result_panel.html" import gth_result_panel %}
+{{ gth_result_panel(heading, badges=badges|default(()), problems=problems|default(none), error=error|default(none),
+    link=link|default(none),
+    error_action={"label": "Open Settings", "url": settings_url} if settings_url|default(none) else None) }}
