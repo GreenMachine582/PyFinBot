@@ -20,13 +20,6 @@ Web UI scope and architecture: see `web-implementation-brief.md`.
 
 One PR each, in this order. `requirements.txt` already pins core v0.14, fastapi v0.16 and ui v0.17.
 
-- [ ] `feat(web): audit log` (fastapi v0.16, ui v0.17)
-  - Record sign-ins, failed sign-ins, lockouts, role and settings changes (fastapi records these itself) plus
-    PyFinBot's sync runs (market, dividends, email) and imports.
-  - `register_audit(app, settings, store=..., views=AuditViews(...))` (fastapi docs/registration.md) with ui's
-    audit log page. Core's `gth_audit_log` table needs a migration here (`audit_log_table` on
-    `SQLModel.metadata`, as with `gth_login_attempts`).
-  - The activity feed is its own item below.
 - [ ] `feat(web): dashboard and report charts` (ui v0.17)
   - **Dashboard:** sparklines in the stat tiles (cost base over time, dividends by month) with `gth_sparkline` in
     `gth_stat_card` (`web/routes/dashboard.py`).
@@ -84,6 +77,8 @@ Each is one PR here once it ships: bump the pin, adopt, remove the item. Each is
 - htmx 2 through `shell_globals(htmx=2)`, ahead of ui's breaking switch (ui's CI already runs its e2e suite on it).
 - One sync-result handler for the email, dividend and import routes (refuse when running, count, pick the toast
   tone, swap the badges panel). Stays here until a second service has the same shape.
+- Prune `gth_audit_log` entries older than a retention period (`AUDIT_STORE.prune(before)` on startup or a
+  schedule): entries pile up, though slowly at personal-use scale.
 
 ## Waiting on a decision: user email addresses
 

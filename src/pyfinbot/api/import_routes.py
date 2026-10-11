@@ -5,11 +5,12 @@ with the web Import page).
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, UploadFile, status
+from fastapi import APIRouter, Depends, File, Request, UploadFile, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 from greentechhub_core.identity import Identity
 from greentechhub_fastapi.dependencies import get_current_identity
 
+from ..core import audit_events
 from ..core.transaction_import import import_transactions as _import_transactions
 from ..core.transaction_import import read_upload
 from ..db.session import get_session
@@ -25,6 +26,7 @@ router = APIRouter(prefix="/transactions", tags=["Transactions"])
     summary="Bulk-import transactions from a CSV or Excel file",
 )
 async def import_transactions(
+    request: Request,
     file: UploadFile = File(...),
     session: AsyncSession = Depends(get_session),
     identity: Identity = Depends(get_current_identity),
@@ -42,4 +44,6 @@ async def import_transactions(
     content = await read_upload(file)
     user_id = identity.subject
     assert user_id is not None  # a stored user always has its primary key
-    return await _import_transactions(session, user_id, content, file.filename or "")
+    summary = await _import_transactions(session, user_id, content, file.filename or "")
+    await audit_events.transactions_imported(request, summary, file.filename or "")
+    return summary

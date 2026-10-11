@@ -8,8 +8,9 @@ import pkgutil
 import greentechhub_ui
 from fastapi import Depends, FastAPI
 from greentechhub_core.settings.crypto import settings_cipher
-from greentechhub_core.sqlalchemy import SQLAlchemyGrantStore, SQLAlchemySettingsStore
+from greentechhub_core.sqlalchemy import SQLAlchemyAuditStore, SQLAlchemyGrantStore, SQLAlchemySettingsStore
 from greentechhub_fastapi import (
+    register_audit,
     register_auth,
     register_core,
     register_csrf,
@@ -18,6 +19,7 @@ from greentechhub_fastapi import (
     register_permissions,
     register_settings,
 )
+from greentechhub_fastapi.audit import AuditViews
 from greentechhub_fastapi.auth import bearer_scheme
 from greentechhub_fastapi.exceptions import register_api_error_handlers, register_exception_handlers
 from greentechhub_fastapi.permissions import RoleAdminViews
@@ -26,11 +28,11 @@ from greentechhub_fastapi.templating import mount_static_dirs
 
 from . import version, api
 from .core.login_throttle import LOGIN_THROTTLE
-from .core.permissions import ROLES, SETTINGS_MANAGE, USERS_MANAGE
+from .core.permissions import AUDIT_VIEW, ROLES, SETTINGS_MANAGE, USERS_MANAGE
 from .core.settings import settings
 from .core.user_settings import USER_SETTINGS
 from .db.session import database_ready, init_db, session_factory
-from .models.settings_models import ROLE_GRANTS_TABLE, SETTINGS_TABLE
+from .models.settings_models import AUDIT_LOG_TABLE, ROLE_GRANTS_TABLE, SETTINGS_TABLE
 from .web.templating import templates
 from .web.routes import (
     auth as web_auth,
@@ -92,6 +94,13 @@ register_auth(app, settings, bearer=True)
 # csrf_token). The page routers (web/deps.py page_router_deps), settings,
 # roles and logout check it.
 register_csrf(app)
+
+# The audit log (gth_audit_log), read by admins at /admin/audit. fastapi's
+# views record sign-ins, lockouts, password, role and settings changes into
+# it; PyFinBot's syncs and imports add theirs (core/audit_events.py).
+AUDIT_STORE = SQLAlchemyAuditStore(AUDIT_LOG_TABLE, async_session_factory=session_factory)
+register_audit(app, settings, store=AUDIT_STORE,
+               views=AuditViews(templates=templates, permission=AUDIT_VIEW))
 
 # Roles: the admin role (core/permissions.py) comes from ROLE_BOOTSTRAP /
 # ROLE_GROUPS or a grant made at /admin/roles (gth_role_grants). Before

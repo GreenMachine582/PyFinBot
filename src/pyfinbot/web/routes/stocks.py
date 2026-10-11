@@ -13,6 +13,7 @@ from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ...api.stock_routes import ALLOWED_FIELDS
+from ...core import audit_events
 from ...core.market_sync import MARKET_FETCHERS, market_sync_guard, syncMarket
 from ...core.user_settings import DEFAULT_ROWS_PER_PAGE, PAGE_SIZES
 from ...db.session import get_session
@@ -216,7 +217,7 @@ async def delete_stock(stock_id: int, session: AsyncSession = Depends(get_sessio
 
 
 @router.post("/sync/{market}")
-async def sync_market(market: str, session: AsyncSession = Depends(get_session)):
+async def sync_market(request: Request, market: str, session: AsyncSession = Depends(get_session)):
     market = market.upper()
     if market not in MARKET_FETCHERS:
         return hx_response(f"Sync for market '{market}' is not supported.", "danger")
@@ -229,6 +230,7 @@ async def sync_market(market: str, session: AsyncSession = Depends(get_session))
         except Exception:  # network/parse failures: log the detail, toast a summary
             logger.exception("%s market sync failed", market)
             return hx_response(f"{market} sync failed — see the server logs.", "danger", title="Sync failed")
+    await audit_events.market_synced(request, market, created, updated, archived)
     changed = len(created) + len(updated) + len(archived)
     return hx_response(
         f"{len(created)} created, {len(updated)} updated, {len(archived)} archived",

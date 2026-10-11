@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Request
 from greentechhub_core.identity import Identity
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from ...core import audit_events
 from ...core.dividend_sync import syncDividends, user_stock_ids
 from ...core.market_sync import sync_guard
 from ...db.session import get_session
@@ -47,6 +48,7 @@ async def sync(request: Request, session: AsyncSession = Depends(get_session),
             return hx_response("A dividend sync is already running — wait for it to finish.", "warning")
         created, updated, errors = await syncDividends(session, stock_ids=target_ids)
 
+    await audit_events.dividends_synced(request, target_ids, created, updated, errors)
     changed = len(created) + len(updated)
     if errors:
         kind = "warning" if changed else "danger"

@@ -10,6 +10,9 @@ USERS_MANAGE = Permission("users.manage")
 SETTINGS_MANAGE = Permission("settings.manage")
 """Change app-wide settings (Settings › App), e.g. the site banner."""
 
-ADMIN = Role(name="admin", permissions={USERS_MANAGE, SETTINGS_MANAGE})
+AUDIT_VIEW = Permission("audit.view")
+"""Read the audit log (/admin/audit)."""
+
+ADMIN = Role(name="admin", permissions={USERS_MANAGE, SETTINGS_MANAGE, AUDIT_VIEW})
 
 ROLES = (ADMIN,)

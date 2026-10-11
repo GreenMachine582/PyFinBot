@@ -37,6 +37,8 @@ greentechhub_ui.install(
             # Only admins (users.manage) see it: filtered per request on `granted`.
             {"label": "Roles", "url": "/admin/roles", "icon": "shield-lock",
              "required_permission": "users.manage"},
+            {"label": "Audit log", "url": "/admin/audit", "icon": "journal-text",
+             "required_permission": "audit.view"},
         ],
     ),
 )

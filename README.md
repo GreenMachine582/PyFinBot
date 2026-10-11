@@ -94,6 +94,8 @@ cp .env.example .env
 
 **CSRF.** Every form carries a CSRF token: greentechhub-fastapi's double-submit `gth_csrf` cookie, sent back in the sign-in form and, for everything else, as the `X-CSRF-Token` header greentechhub-ui's app shell adds to every htmx request. The page routes that change things (stocks, transactions, import, the email and dividend syncs), Settings, `/admin/roles` and `POST /logout` refuse a request without it (403, "Your session expired"), so a page on another site can't post them. Like the session cookie, the token cookie is `Secure`: sign in over HTTPS, or `http://localhost` (which browsers treat as secure). Over plain HTTP on another address, every sign-in is refused with "Your session expired". The API's `/api/auth/login` takes no token. The rest of the API also accepts the session cookie when there's no `Authorization` header (greentechhub-fastapi's bearer auth); the cookie is `SameSite=Lax`, so another site can't send it with a POST.
 
+**Audit log.** Admins (the `audit.view` permission) read it at `/admin/audit`: sign-ins, failed sign-ins and lockouts, password, role and settings changes (recorded by greentechhub-fastapi), plus each completed market, dividend and email sync and each import, from the web or the API, with who ran it and the counts. Filter by user, action or date. Entries aren't pruned yet.
+
 ### Database Migrations
 Apply the schema to your database:
 ```bash

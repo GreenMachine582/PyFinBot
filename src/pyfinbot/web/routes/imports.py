@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, File, Request, UploadFile
 from greentechhub_core.identity import Identity
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from ...core import audit_events
 from ...core.transaction_import import (
     ACCEPTED_EXTENSIONS,
     COLUMN_ALIASES,
@@ -53,6 +54,7 @@ async def upload(request: Request, file: UploadFile | None = File(None),
             headers={"HX-Trigger": greentechhub_ui.toast(exc.message, "danger", title="Import failed")},
         )
 
+    await audit_events.transactions_imported(request, summary, filename or "")
     if not summary.total_rows:
         kind, message = "info", "The file has no rows to import."
     elif not summary.skipped:
