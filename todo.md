@@ -29,9 +29,13 @@ Each is one PR here once it ships: bump the pin, adopt, remove the item. Each is
   - **Why:** since the bearer auth switch the API also accepts the session cookie when there's no
     `Authorization` header, and `require_csrf` isn't on the API (bearer scripts would then need a token).
     The cookie's `SameSite=Lax` keeps other sites' POSTs from carrying it, so this is defence in depth.
-  - **Waits on:** greentechhub-fastapi checking CSRF only when a request is authenticated by the cookie, not a
-    bearer token (not yet registered in its TODO).
+  - **Waits on:** greentechhub-fastapi M6.6, CSRF checked only when a request is authenticated by the cookie, not
+    a bearer token.
   - **Then:** turn it on for the `/api` routers in `pyfinbot.py`.
+- [ ] `refactor(tests): audit entries read from the table`
+  - **Waits on:** greentechhub-core's `fix(testing)` (a store's writes survive a route's rollback): today a route
+    session's closing rollback in tests can undo an entry the audit store committed inside it.
+  - **Then:** `test_web_audit.py` reads entries back from `gth_audit_log` and drops its `record()` spy.
 - [ ] `feat(web): strict CSP`
   - **Waits on:** greentechhub-fastapi M6 `register_csp` (ui v0.17's shell is already CSP-ready).
   - **Then:** turn it on with a `frame-src` for the Grafana origin.
