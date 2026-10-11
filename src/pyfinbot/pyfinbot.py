@@ -6,7 +6,7 @@ import importlib
 import pkgutil
 
 import greentechhub_ui
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from greentechhub_core.settings.crypto import settings_cipher
 from greentechhub_core.sqlalchemy import SQLAlchemyGrantStore, SQLAlchemySettingsStore
 from greentechhub_fastapi import (
@@ -17,6 +17,7 @@ from greentechhub_fastapi import (
     register_permissions,
     register_settings,
 )
+from greentechhub_fastapi.auth import bearer_scheme
 from greentechhub_fastapi.exceptions import register_api_error_handlers, register_exception_handlers
 from greentechhub_fastapi.permissions import RoleAdminViews
 from greentechhub_fastapi.settings import SettingsViews
@@ -83,7 +84,9 @@ register_health(app, checks=[database_ready])
 # greentechhub-fastapi's docs/auth.md) — not load-bearing for AUTH_ADAPTER=
 # local today, but the right order to not need revisiting later.
 register_core(app, settings)
-register_auth(app, settings)
+# bearer=True: the API also takes `Authorization: Bearer` tokens (issue_token
+# in api/auth_routes.py), through the same get_current_user as pages.
+register_auth(app, settings, bearer=True)
 
 # Roles: the admin role (core/permissions.py) comes from ROLE_BOOTSTRAP /
 # ROLE_GROUPS or a grant made at /admin/roles (gth_role_grants). Before
@@ -140,5 +143,8 @@ app.include_router(web_reports.router)
 for module_info in pkgutil.iter_modules(api.__path__):
     module = importlib.import_module(f"{api.__name__}.{module_info.name}")
     if hasattr(module, "router"):
-        app.include_router(module.router, prefix="/api")
+        # bearer_scheme only documents the token flow in OpenAPI (Swagger's
+        # Authorize button); get_current_identity does the checking.
+        app.include_router(module.router, prefix="/api",
+                           dependencies=[Depends(bearer_scheme("/api/auth/login"))])
 

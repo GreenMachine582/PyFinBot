@@ -11,13 +11,13 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query, Request, status
 from greentechhub_fastapi.settings import get_settings_service
 from sqlmodel.ext.asyncio.session import AsyncSession
+from greentechhub_core.identity import Identity
+from greentechhub_fastapi.dependencies import get_current_identity
 
 from ..core.commsec_import import sync_commsec_emails as _sync_commsec_emails
-from ..core.dependencies import get_current_user
 from ..core.email_accounts import load_email_account
 from ..core.email_sync import fetch_commsec_emails, mark_seen
 from ..db.session import get_session
-from ..models.user_models import User
 from ..schemas.email_schemas import EmailSyncSummary
 
 router = APIRouter(prefix="/emails", tags=["Emails"])
@@ -28,11 +28,11 @@ async def sync_commsec_emails(
     request: Request,
     include_seen: bool = Query(default=False, description="Reprocess already-\\Seen emails too (debugging)"),
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    identity: Identity = Depends(get_current_identity),
 ):
     # An EmailSyncError (503 not configured, 502 IMAP down, …) is answered by
     # the API's error handlers as an email_sync_failed envelope.
-    user_id = current_user.id
+    user_id = identity.subject
     assert user_id is not None  # a stored user always has its primary key
     account = await load_email_account(get_settings_service(request), user_id)
     # fetch/mark passed from this module so tests can patch them here.

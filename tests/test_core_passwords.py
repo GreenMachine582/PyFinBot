@@ -1,13 +1,13 @@
 """Password hashing comes from greentechhub_core.security: hash_password /
 verify_password replace core/security.py's bcrypt helpers. Same bcrypt
 $2b$ format, so passwords hashed before the switch still verify."""
+import importlib.util
 from pathlib import Path
 
 import bcrypt
 from greentechhub_core.security import hash_password, verify_password
 
 import pyfinbot
-from pyfinbot.core import security
 from pyfinbot.models.user_models import User
 
 from .conftest import post_login
@@ -21,7 +21,8 @@ def _old_hash(password: str) -> str:
 
 
 def test_pyfinbot_no_longer_hashes_passwords_itself():
-    assert not hasattr(security, "hash_password") and not hasattr(security, "verify_password")
+    # core/security.py itself is gone too (its API tokens are fastapi's issue_token).
+    assert importlib.util.find_spec("pyfinbot.core.security") is None
     src = Path(pyfinbot.__file__).parent
     assert not [p for p in src.rglob("*.py") if "import bcrypt" in p.read_text(encoding="utf-8")]
 

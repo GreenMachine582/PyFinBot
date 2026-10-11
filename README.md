@@ -82,7 +82,7 @@ Copy [`.env.example`](.env.example) to `.env` in the project root and fill in yo
 cp .env.example .env
 ```
 
-`SECRET_KEY` signs JWT access tokens. If unset, a random key is generated on every process start (fine for local dev, but every restart invalidates all issued tokens) — set it explicitly for any deployment that needs to survive a restart.
+`SECRET_KEY` signs the session cookie and API tokens (the same kind of JWT). If unset, a random key is generated on every process start (fine for local dev, but every restart invalidates all issued tokens) — set it explicitly for any deployment that needs to survive a restart.
 
 **Email sync is per user.** Each user sets their own mailbox for Commsec email sync at `/settings` › Email sync: address, an [App Password](https://myaccount.google.com/apppasswords) for Gmail, and optionally the IMAP server, port, mailbox and Commsec sender. The app password is write-only in the form and stored encrypted with `SETTINGS_CIPHER_KEY` (a Fernet key: `python -c "from greentechhub_core.settings.crypto import FernetCipher; print(FernetCipher.generate_key())"`). If that's unset, a key is derived from `SECRET_KEY`, and changing `SECRET_KEY` then means re-entering saved app passwords. An App Password grants full mailbox read access (not scoped to Commsec mail), so a dedicated account or label is recommended over your primary inbox.
 
@@ -92,7 +92,7 @@ cp .env.example .env
 
 **Sign-in lockout.** 5 failed sign-ins for an account, or from one client, within 15 minutes lock it out for 15 minutes. The web sign-in form and the API's `/api/auth/login` share the count, so a lockout on one covers the other; the API answers 429 with `Retry-After`. Behind a reverse proxy, set `TRUSTED_PROXIES` to the proxy's address(es) so each client is counted by its own IP (from `X-Forwarded-For`); otherwise every request has the proxy's address and one guesser locks everyone out.
 
-**Sign-in form CSRF.** The sign-in form carries a CSRF token: greentechhub-fastapi's double-submit `gth_csrf` cookie with the same value in the form, so a page on another site can't post it. Like the session cookie, the token cookie is `Secure`: sign in over HTTPS, or `http://localhost` (which browsers treat as secure). Over plain HTTP on another address, every sign-in is refused with "Your session expired". The API's `/api/auth/login` takes no token (bearer tokens, not cookies). `POST /logout` and the in-app htmx forms aren't covered yet; that waits on greentechhub-fastapi's planned CSRF for htmx forms.
+**Sign-in form CSRF.** The sign-in form carries a CSRF token: greentechhub-fastapi's double-submit `gth_csrf` cookie with the same value in the form, so a page on another site can't post it. Like the session cookie, the token cookie is `Secure`: sign in over HTTPS, or `http://localhost` (which browsers treat as secure). Over plain HTTP on another address, every sign-in is refused with "Your session expired". The API's `/api/auth/login` takes no token. The rest of the API also accepts the session cookie when there's no `Authorization` header (greentechhub-fastapi's bearer auth); the cookie is `SameSite=Lax`, so another site can't send it with a POST. `POST /logout` and the in-app htmx forms aren't covered yet; that waits on greentechhub-fastapi's planned CSRF for htmx forms.
 
 ### Database Migrations
 Apply the schema to your database:
@@ -145,11 +145,11 @@ python scripts/cli.py gains     --user alice -o gains.csv         # to a file (C
 ```
 
 ## API Overview
-All routes are mounted under `/api`. See `/docs` for full request/response schemas. Every route except `POST /api/auth/login` requires a `Bearer` token: log in to get one, then pass `Authorization: Bearer <token>` on subsequent requests. Creating and listing users (`POST`/`GET /api/users/`) also needs the `users.manage` permission (the admin role); a user can still read, update and delete their own account. See [First admin](#first-admin) for the first user.
+All routes are mounted under `/api`. See `/docs` for full request/response schemas. Every route except `POST /api/auth/login` requires a `Bearer` token: log in to get one (valid for 24 hours), then pass `Authorization: Bearer <token>` on subsequent requests. A bad or expired token is refused (401), never retried with a cookie; with no header, a signed-in browser's session cookie works too. Creating and listing users (`POST`/`GET /api/users/`) also needs the `users.manage` permission (the admin role); a user can still read, update and delete their own account. See [First admin](#first-admin) for the first user.
 
 | Router | Prefix | Purpose |
 |---|---|---|
-| Auth | `/api/auth` | `POST /login` — exchange a user id + password for a JWT access token |
+| Auth | `/api/auth` | `POST /login` — exchange a user id + password for an API token (24 hours) |
 | Users | `/api/users` | Create (register) and manage users |
 | Stocks | `/api/stocks` | CRUD for tracked stocks, plus market sync |
 | Transactions | `/api/transactions` | CRUD for Buy/Sell transactions (`PUT` accepts any subset of fields; total/cost/FY are recomputed) |

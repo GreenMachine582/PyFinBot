@@ -15,11 +15,11 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
+from greentechhub_core.identity import Identity
+from greentechhub_fastapi.dependencies import get_current_identity
 
 from ..core import reports
-from ..core.dependencies import get_current_user
 from ..db.session import get_session
-from ..models.user_models import User
 from ..schemas.report_schemas import CapitalGainsReport, CostMethod, DividendsReport, HoldingsReport
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
@@ -33,7 +33,7 @@ async def get_holdings(
     as_of: Optional[date] = Query(default=None, description="Snapshot date (default: today)"),
     method: CostMethod = METHOD_QUERY,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    identity: Identity = Depends(get_current_identity),
 ):
     """
     Return all stocks with a positive unit balance as of `as_of` date.
@@ -43,7 +43,7 @@ async def get_holdings(
     price across all qualifying buy transactions, or under `fifo`, that of the
     parcels still held.
     """
-    return await reports.holdings_report(session, current_user.id, as_of or date.today(), method)
+    return await reports.holdings_report(session, identity.subject, as_of or date.today(), method)
 
 
 @router.get("/capital-gains", response_model=CapitalGainsReport)
@@ -51,7 +51,7 @@ async def get_capital_gains(
     fy: int = Query(..., description="AU fiscal year (e.g. 2024 = FY ending 30 Jun 2025)"),
     method: CostMethod = METHOD_QUERY,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    identity: Identity = Depends(get_current_identity),
 ):
     """
     Realised capital gain/loss for a fiscal year.
@@ -65,17 +65,17 @@ async def get_capital_gains(
 
     A positive gain_loss means profit; negative means a loss.
     """
-    return await reports.capital_gains_report(session, current_user.id, fy, method)
+    return await reports.capital_gains_report(session, identity.subject, fy, method)
 
 
 @router.get("/dividends", response_model=DividendsReport)
 async def get_dividends_report(
     fy: Optional[int] = Query(default=None, description="AU fiscal year filter (by ex_date); omit for all-time"),
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    identity: Identity = Depends(get_current_identity),
 ):
     """
     For each Dividend belonging to a stock the user has ever transacted,
     compute units held on the ex_date and the resulting amount received.
     """
-    return await reports.dividends_report(session, current_user.id, fy)
+    return await reports.dividends_report(session, identity.subject, fy)

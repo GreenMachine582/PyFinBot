@@ -135,7 +135,9 @@ class TestDeleteUser:
         headers = await register_and_login(gth_client, "user-123")
         await gth_client.delete("/api/users/user-123", headers=headers)
         resp = await gth_client.get("/api/users/user-123", headers=headers)
-        assert resp.status_code == 401  # token's user no longer exists
+        # The token stays valid until it expires (stateless, as the session
+        # cookie always was: todo › Known limitations), but the user is gone.
+        assert resp.status_code == 404
 
     async def test_other_user_gets_403(self, gth_client):
         await _create_user(gth_client, "user-123")

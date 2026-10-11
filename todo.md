@@ -20,11 +20,6 @@ Web UI scope and architecture: see `web-implementation-brief.md`.
 
 One PR each, in this order. `requirements.txt` already pins core v0.14, fastapi v0.16 and ui v0.17.
 
-- [ ] `refactor(api): fastapi bearer auth` (fastapi v0.15)
-  - `register_auth(app, settings, bearer=True)` with `issue_token`/`bearer_scheme` (fastapi docs/auth.md › API
-    tokens) replaces `core/security.py`, most of `core/dependencies.py` and `ACCESS_TOKEN_EXPIRE_MINUTES`.
-  - API routes take an `Identity` (`identity.subject`) instead of a `User`.
-  - This also ends the session cookie being accepted as an API token (same secret and HS256 today).
 - [ ] `refactor(web): gth ui macros` (ui v0.16)
   - `gth_result_panel` for `_import_result.html`/`_sync_result.html`.
   - `gth_filter_bar` and `gth_download_button` for the three report panes.
@@ -108,7 +103,10 @@ reset, email verification, and notifications by email (`register_email` with cor
 ## Known limitations (accepted, not bugs)
 
 - Stateless JWT, 24h expiry, no refresh/revocation — a leaked token is valid
-  up to 24h with no force-logout. Acceptable for personal-use scale.
+  up to 24h with no force-logout, even after its user is deleted (nothing
+  looks the user up). An API token and the session cookie are the same kind
+  of JWT, so either works on pages and the API. Acceptable for personal-use
+  scale.
   Scripts move to revocable personal tokens (the personal API tokens item);
   browser sessions would need fastapi's "Sessions & devices" idea.
 - `SECRET_KEY` auto-generates a random value each process start if unset

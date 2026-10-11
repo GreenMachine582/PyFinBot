@@ -14,11 +14,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
+from greentechhub_core.identity import Identity
+from greentechhub_fastapi.dependencies import get_current_identity
 
 from ..api.stock_routes import _searchForStock
-from ..core.dependencies import get_current_user
 from ..models.transaction_models import Transaction
-from ..models.user_models import User
 from ..schemas.transaction_schemas import TransactionCreate, TransactionRead, TransactionUpdate
 from ..db.session import get_session
 
@@ -65,7 +65,7 @@ async def fetchTransaction(session: AsyncSession, transaction_id: int,
 async def create_transaction(
     transaction_in: TransactionCreate,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    identity: Identity = Depends(get_current_identity),
 ):
     # If stock_id is string "market:symbol" → resolve to stock record
     stock = await _searchForStock(session, transaction_in.stock_id)
@@ -75,7 +75,7 @@ async def create_transaction(
     transaction_in.stock_id = stock.id
 
     # Create new transaction object
-    user_id = current_user.id
+    user_id = identity.subject
     assert user_id is not None  # a stored user always has its primary key
     new_transaction = Transaction(**transaction_in.model_dump(), user_id=user_id)
 
@@ -94,7 +94,7 @@ async def create_transaction(
 @router.get("/", response_model=Page[TransactionRead])
 async def list_transactions(
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    identity: Identity = Depends(get_current_identity),
     params: PageParams = Depends(),
 ):
     """List the signed-in user's transactions: `page`/`size`, `sort`
@@ -103,7 +103,7 @@ async def list_transactions(
     stmt = (
         select(Transaction)
         .options(selectinload(Transaction.stock))  # type: ignore[arg-type]  # eager-load nested stock; SQLModel types a Relationship as its model
-        .where(Transaction.user_id == current_user.id)  # hard user scope
+        .where(Transaction.user_id == identity.subject)  # hard user scope
     )
     result = await page(session, stmt, params.to_page_request(), ALLOWED_FIELDS, default_sort=DEFAULT_SORT)
     return to_envelope(result)
@@ -113,12 +113,12 @@ async def list_transactions(
 async def get_transaction(
     transaction_id: int,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    identity: Identity = Depends(get_current_identity),
 ):
     if not (transaction := await fetchTransaction(session, transaction_id)):
         raise NotFoundError("Transaction not found")
 
-    if transaction.user_id != current_user.id:
+    if transaction.user_id != identity.subject:
         raise ForbiddenError("Not allowed to access this transaction")
 
     return transaction
@@ -129,12 +129,12 @@ async def update_transaction(
     transaction_id: int,
     transaction_update: TransactionUpdate,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    identity: Identity = Depends(get_current_identity),
 ):
     if not (transaction := await fetchTransaction(session, transaction_id)):
         raise NotFoundError("Transaction not found")
 
-    if transaction.user_id != current_user.id:
+    if transaction.user_id != identity.subject:
         raise ForbiddenError("Not allowed to modify this transaction")
 
     # An explicit null only makes sense for notes; for anything else it would
@@ -169,13 +169,13 @@ async def update_transaction(
 async def delete_transaction(
     transaction_id: int,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    identity: Identity = Depends(get_current_identity),
 ):
     transaction = await session.get(Transaction, transaction_id)
     if not transaction:
         raise NotFoundError("Transaction not found")
 
-    if transaction.user_id != current_user.id:
+    if transaction.user_id != identity.subject:
         raise ForbiddenError("Not allowed to delete this transaction")
 
     await session.delete(transaction)

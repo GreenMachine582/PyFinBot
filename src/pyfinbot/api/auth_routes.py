@@ -1,5 +1,5 @@
 """
-Login endpoint — issues JWT access tokens.
+Login endpoint — issues API tokens (greentechhub-fastapi's issue_token).
 
 Note: there is no separate username/email field on User. The OAuth2
 password form's "username" is the same string as User.id.
@@ -11,17 +11,23 @@ envelope (code "too_many_requests").
 """
 from __future__ import annotations
 
+from datetime import timedelta
+
 from fastapi import APIRouter, Depends, Request
 from fastapi.security import OAuth2PasswordRequestForm
+from greentechhub_core.identity import Identity
 from greentechhub_core.types import UnauthorizedError
-from greentechhub_fastapi.auth import client_address, resolve_dependency, throttled_login
+from greentechhub_fastapi.auth import client_address, issue_token, resolve_dependency, throttled_login
 
 from ..core.login_throttle import LOGIN_THROTTLE
-from ..core.security import create_access_token
 from ..core.users import check_password
 from ..db.session import get_session
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
+
+# How long an API token from /api/auth/login is valid (todo › Known
+# limitations: stateless, no revocation).
+API_TOKEN_LIFETIME = timedelta(hours=24)
 
 
 @router.post("/login")
@@ -42,5 +48,6 @@ async def login(
         # 401 envelope + WWW-Authenticate: Bearer (fastapi's register_api_error_handlers).
         raise UnauthorizedError("Incorrect user ID or password")
 
-    access_token = create_access_token(data={"sub": user_id})
+    identity = Identity(subject=user_id, username=user_id, email=None, groups=[], claims={})
+    access_token = issue_token(request, identity, expires_in=API_TOKEN_LIFETIME)
     return {"access_token": access_token, "token_type": "bearer"}
