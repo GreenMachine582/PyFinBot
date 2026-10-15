@@ -32,13 +32,6 @@ Each is one PR here once it ships: bump the pin, adopt, remove the item. Each is
   - **Waits on:** greentechhub-fastapi M6.6, CSRF checked only when a request is authenticated by the cookie, not
     a bearer token.
   - **Then:** turn it on for the `/api` routers in `pyfinbot.py`.
-- [ ] `refactor(tests): audit entries read from the table`
-  - **Waits on:** greentechhub-core's `fix(testing)` (a store's writes survive a route's rollback): today a route
-    session's closing rollback in tests can undo an entry the audit store committed inside it.
-  - **Then:** `test_web_audit.py` reads entries back from `gth_audit_log` and drops its `record()` spy.
-- [ ] `feat(web): strict CSP`
-  - **Waits on:** greentechhub-fastapi M6 `register_csp` (ui v0.17's shell is already CSP-ready).
-  - **Then:** turn it on with a `frame-src` for the Grafana origin.
 - [ ] `feat(api): personal API tokens`
   - **Waits on:** greentechhub-core's API token store and greentechhub-fastapi M6 personal API tokens.
   - **Then:** scripts use a revocable personal token instead of a 24h login JWT (see Known limitations).
@@ -48,11 +41,10 @@ Each is one PR here once it ships: bump the pin, adopt, remove the item. Each is
 - [ ] `feat(web): HTML error pages`
   - **Why:** pages get FastAPI's default JSON errors (`pyfinbot.py`'s handlers cover `/api` only).
   - **Waits on:** greentechhub-fastapi M6 `register_error_pages` (ui v0.17's 403/404/500 templates).
-- [ ] `refactor(web): leaner routes` — one step per gth helper as it ships:
-  - greentechhub-fastapi `get_owned_or_404` replaces `_get_stock_or_404`/`_get_transaction_or_404`;
-  - greentechhub-core's `held_lock` and per-user lock name replace `sync_guard` (`core/market_sync.py`) and
-    `email_sync_lock`;
-  - greentechhub-core's `GTHBaseSettings` `retired=` replaces `_warn_retired` (`core/settings.py`);
+- [ ] `refactor(web): leaner routes`: what's left, one step per gth helper as it ships:
+  - `_get_transaction_or_404` → greentechhub-fastapi's `get_owned_or_404` once it takes `options=` (passed to
+    `session.get`), so `transaction.stock` can stay eager-loaded. The delete modal and route read it, and a lazy
+    load fails under async. `_get_stock_or_404` already moved;
   - greentechhub-ui's `pluralise` filter replaces `_plural` (`web/routes/imports.py`) and the inline plurals in
     the email and dividend sync handlers.
 
@@ -66,7 +58,8 @@ Each is one PR here once it ships: bump the pin, adopt, remove the item. Each is
   - Keep `ROLE_BOOTSTRAP` as the recovery path.
   - Optional later: core's planned JWT validation (`X-authentik-jwt`).
 - [ ] Real Grafana panels once embedding is configured (`allow_embedding`, CSP/X-Frame-Options at Caddy; see the
-  brief). The dashboard side is ready: ui v0.17's `gth_embed_card`, with the strict CSP item's `frame-src`.
+  brief). The dashboard side is ready: ui's `gth_embed_card`, and the strict CSP allows the Grafana origin in `frame-src`
+  once `GRAFANA_ORIGIN` is set.
 
 ## Ideas — not scheduled
 

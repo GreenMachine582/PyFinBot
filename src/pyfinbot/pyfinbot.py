@@ -14,6 +14,7 @@ from greentechhub_fastapi import (
     register_audit,
     register_auth,
     register_core,
+    register_csp,
     register_csrf,
     register_health,
     register_logging,
@@ -43,6 +44,12 @@ from .web.routes import (
     stocks as web_stocks,
     transactions as web_transactions,
 )
+
+
+def csp_frame_src(config) -> list[str]:
+    """The origins the CSP's frame-src allows beyond 'self': the Grafana origin
+    for the dashboard's embedded panels, when GRAFANA_ORIGIN is set."""
+    return [config.GRAFANA_ORIGIN] if config.GRAFANA_ORIGIN else []
 
 
 @asynccontextmanager
@@ -89,6 +96,12 @@ register_core(app, settings)
 # bearer=True: the API also takes `Authorization: Bearer` tokens (issue_token
 # in api/auth_routes.py), through the same get_current_user as pages.
 register_auth(app, settings, bearer=True)
+# A strict Content-Security-Policy with a fresh nonce per request: greentechhub-
+# ui's shell puts it on every <script> (templates get it as csp_nonce through
+# ui_context), so only our own scripts run. After register_core, so the nonce
+# also reaches the 500 page. frame-src adds the Grafana origin for the
+# dashboard's embedded panels when GRAFANA_ORIGIN is set.
+register_csp(app, settings, frame_src=csp_frame_src(settings))
 # A CSRF token for every request (the gth_csrf cookie; templates get it as
 # csrf_token). The page routers (web/deps.py page_router_deps), settings,
 # roles and logout check it.

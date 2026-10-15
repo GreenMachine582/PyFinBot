@@ -2,9 +2,10 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request
 from greentechhub_core.query.types import Sort
 from greentechhub_core.sqlalchemy.query import order_by, paginate
+from greentechhub_fastapi.query import get_owned_or_404
 from greentechhub_fastapi.settings import get_effective_settings
 from greentechhub_ui import TableState
 from greentechhub_ui.htmx import wants_fragment
@@ -30,13 +31,6 @@ router = APIRouter(prefix="/stocks", dependencies=page_router_deps)
 CHANGED = "stocksChanged"
 STATUSES = {"active": "Active", "archived": "Archived", "all": "All"}
 OPTIONS_LIMIT = 20
-
-
-async def _get_stock_or_404(session: AsyncSession, stock_id: int) -> Stock:
-    stock = await session.get(Stock, stock_id)
-    if not stock:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock not found")
-    return stock
 
 
 def _table_state(request: Request, user_settings: dict[str, Any]) -> TableState:
@@ -111,7 +105,7 @@ async def new_stock_form(request: Request):
 
 @router.get("/{stock_id:int}/edit")
 async def edit_stock_form(request: Request, stock_id: int, session: AsyncSession = Depends(get_session)):
-    stock = await _get_stock_or_404(session, stock_id)
+    stock = await get_owned_or_404(session, Stock, stock_id)
     values = {"name": stock.name, "is_active": stock.is_active}
     return templates.TemplateResponse(request, "_stock_form_modal.html", {"stock": stock, "values": values, "errors": {}})
 
@@ -145,7 +139,7 @@ async def create_stock(request: Request, session: AsyncSession = Depends(get_ses
 
 @router.post("/{stock_id:int}")
 async def update_stock(request: Request, stock_id: int, session: AsyncSession = Depends(get_session)):
-    stock = await _get_stock_or_404(session, stock_id)
+    stock = await get_owned_or_404(session, Stock, stock_id)
     form = await request.form()
     name = str(form.get("name", ""))
     is_active = form.get("is_active") == "on"
@@ -194,13 +188,13 @@ async def bulk_unarchive(request: Request, session: AsyncSession = Depends(get_s
 
 @router.get("/{stock_id:int}/delete")
 async def delete_stock_confirm(request: Request, stock_id: int, session: AsyncSession = Depends(get_session)):
-    stock = await _get_stock_or_404(session, stock_id)
+    stock = await get_owned_or_404(session, Stock, stock_id)
     return templates.TemplateResponse(request, "_stock_delete_modal.html", {"stock": stock})
 
 
 @router.delete("/{stock_id:int}")
 async def delete_stock(stock_id: int, session: AsyncSession = Depends(get_session)):
-    stock = await _get_stock_or_404(session, stock_id)
+    stock = await get_owned_or_404(session, Stock, stock_id)
     label = f"{stock.market}:{stock.symbol}"
     # Transaction.stock_id has no cascade — deleting a referenced stock would
     # fail on the FK, so refuse up front and point at archiving instead.

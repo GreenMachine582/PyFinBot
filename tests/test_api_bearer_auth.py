@@ -56,6 +56,7 @@ async def test_openapi_documents_the_token_flow(gth_client):
     assert flows == ["/api/auth/login"]
 
 
-def test_access_token_expire_minutes_is_retired():
+def test_access_token_expire_minutes_is_retired(monkeypatch):
+    monkeypatch.setenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")
     with pytest.warns(UserWarning, match="ACCESS_TOKEN_EXPIRE_MINUTES is no longer used: API tokens last 24 hours"):
-        assert settings_module._warn_retired({"ACCESS_TOKEN_EXPIRE_MINUTES": "60"}) == ["ACCESS_TOKEN_EXPIRE_MINUTES"]
+        settings_module.Settings(secret_key="k", _env_file=None)
