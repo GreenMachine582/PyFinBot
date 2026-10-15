@@ -6,14 +6,14 @@ import warnings
 from unittest.mock import patch
 
 import pytest
+from greentechhub_core.background import held_lock, lock_name
 from greentechhub_core.settings.crypto import FernetCipher
 from sqlalchemy import select
 
 from pyfinbot.core.email_accounts import load_email_account
 from pyfinbot.core.email_sync import EmailAccount
-from pyfinbot.core.market_sync import sync_guard
 from pyfinbot.models.settings_models import SETTINGS_TABLE
-from pyfinbot.web.routes.emails import email_sync_lock
+from pyfinbot.web.routes.emails import EMAIL_SYNC_LOCK
 
 from .conftest import create_stock, hx_triggers, register_and_login, web_login
 from .test_email_sync import _fake_messages
@@ -126,18 +126,23 @@ async def test_an_unreadable_password_asks_for_it_again(gth_client):
 
 async def test_sync_locks_are_per_user(gth_client):
     await web_login(gth_client, "acct-lock-b")
-    with sync_guard(email_sync_lock("acct-lock-a")) as held, patch(FETCH, return_value=[]), patch(MARK):
+    with (held_lock(settings_module.settings, lock_name(EMAIL_SYNC_LOCK, "acct-lock-a"), ttl=60) as held,
+          patch(FETCH, return_value=[]), patch(MARK)):
         assert held  # user A's sync is running
         resp = await gth_client.post("/emails/sync", headers=HX)
     assert hx_triggers(resp)["showToast"]["kind"] == "info"  # user B still synced
-    assert email_sync_lock("a") != email_sync_lock("b") and "/" not in email_sync_lock("x/y")
+    assert lock_name(EMAIL_SYNC_LOCK, "a") != lock_name(EMAIL_SYNC_LOCK, "b")
+    assert "/" not in lock_name(EMAIL_SYNC_LOCK, "x/y")
 
 
 def test_retired_settings_warn_and_still_load(monkeypatch):
-    with pytest.warns(UserWarning, match="GMAIL_ADDRESS is no longer used"):
-        assert settings_module._warn_retired({"GMAIL_ADDRESS": "old@example.com"}) == ["GMAIL_ADDRESS"]
+    for name in settings_module.Settings.retired:
+        monkeypatch.delenv(name, raising=False)
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        assert settings_module._warn_retired({}) == []
+        settings_module.Settings(secret_key="k", _env_file=None)
+    monkeypatch.setenv("GMAIL_ADDRESS", "old@example.com")
+    with pytest.warns(UserWarning, match="GMAIL_ADDRESS is no longer used"):
+        settings_module.Settings(secret_key="k", _env_file=None)
     monkeypatch.setenv("GMAIL_APP_PASSWORD", "x")
     assert settings_module.Settings(secret_key="k").environment  # extra env keys are ignored

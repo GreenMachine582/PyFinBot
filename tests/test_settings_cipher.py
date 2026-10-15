@@ -15,6 +15,8 @@ from pyfinbot.core.settings import Settings
 
 
 def _config(monkeypatch, secret, cipher_key=None) -> Settings:
+    for name in Settings.retired:  # a local .env may still set them, which warns
+        monkeypatch.delenv(name, raising=False)
     if cipher_key is None:
         monkeypatch.delenv("SETTINGS_CIPHER_KEY", raising=False)
     else:

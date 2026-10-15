@@ -3,8 +3,10 @@ with test_email_sync.py)."""
 from unittest.mock import patch
 
 from pyfinbot.core.email_sync import NOT_CONFIGURED, GmailNotConfiguredError
-from pyfinbot.core.market_sync import sync_guard
-from pyfinbot.web.routes.emails import email_sync_lock
+from greentechhub_core.background import held_lock, lock_name
+
+from pyfinbot.core.settings import settings
+from pyfinbot.web.routes.emails import EMAIL_SYNC_LOCK
 
 from .conftest import create_stock, hx_triggers, web_login
 from .test_email_sync import _fake_messages
@@ -107,7 +109,8 @@ class TestSync:
 
     async def test_refused_while_running(self, gth_client):
         await web_login(gth_client, "web-emails")
-        with sync_guard(email_sync_lock("web-emails")) as held, patch(FETCH) as mock_fetch:
+        with (held_lock(settings, lock_name(EMAIL_SYNC_LOCK, "web-emails"), ttl=60) as held,
+              patch(FETCH) as mock_fetch):
             assert held
             resp = await gth_client.post("/emails/sync")
         assert resp.status_code == 204

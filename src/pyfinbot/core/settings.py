@@ -1,7 +1,5 @@
 
-import os
 import tempfile
-import warnings
 from os import path as os_path
 from typing import ClassVar
 
@@ -14,10 +12,26 @@ from pydantic_settings import SettingsConfigDict
 load_dotenv(dotenv_path=os_path.join(os_path.dirname(__file__), "..", "..", "..", ".env"))
 
 
+_EMAIL_MOVED = "each user sets their own email account at /settings › Email sync"
+_TOKEN_LIFETIME_FIXED = "API tokens last 24 hours (api/auth_routes.py API_TOKEN_LIFETIME)"
+
+
 class Settings(GTHBaseSettings):
-    # Ignore unknown keys rather than refuse to start, so an older .env
-    # (e.g. the retired GMAIL_* settings) still loads; see _warn_retired.
+    # Ignore unknown keys rather than refuse to start, so an older .env still
+    # loads whatever it holds.
     model_config = SettingsConfigDict(**{**GTHBaseSettings.model_config, "extra": "ignore"})
+
+    # Settings that still load when set but are no longer read, and why:
+    # core warns once per reason at startup (GTHBaseSettings.retired).
+    retired: ClassVar[dict[str, str]] = {
+        "GMAIL_ADDRESS": _EMAIL_MOVED,
+        "GMAIL_APP_PASSWORD": _EMAIL_MOVED,
+        "GMAIL_IMAP_HOST": _EMAIL_MOVED,
+        "GMAIL_IMAP_PORT": _EMAIL_MOVED,
+        "GMAIL_MAILBOX": _EMAIL_MOVED,
+        "COMMSEC_SENDER": _EMAIL_MOVED,
+        "ACCESS_TOKEN_EXPIRE_MINUTES": _TOKEN_LIFETIME_FIXED,
+    }
 
     ASYNC_DATABASE_URL: str = ""
     DATABASE_URL: str = ""
@@ -64,34 +78,3 @@ class Settings(GTHBaseSettings):
 
 
 settings = Settings()
-
-_EMAIL_MOVED = "each user sets their own email account at /settings › Email sync"
-_TOKEN_LIFETIME_FIXED = "API tokens last 24 hours (api/auth_routes.py API_TOKEN_LIFETIME)"
-
-# Settings that still load when set but are no longer read, and why.
-RETIRED_SETTINGS = {
-    "GMAIL_ADDRESS": _EMAIL_MOVED,
-    "GMAIL_APP_PASSWORD": _EMAIL_MOVED,
-    "GMAIL_IMAP_HOST": _EMAIL_MOVED,
-    "GMAIL_IMAP_PORT": _EMAIL_MOVED,
-    "GMAIL_MAILBOX": _EMAIL_MOVED,
-    "COMMSEC_SENDER": _EMAIL_MOVED,
-    "ACCESS_TOKEN_EXPIRE_MINUTES": _TOKEN_LIFETIME_FIXED,
-}
-
-
-def _warn_retired(environ=os.environ) -> list[str]:
-    """Warn about settings that are set but no longer read (RETIRED_SETTINGS),
-    one warning per reason. Returns them."""
-    found = [name for name in RETIRED_SETTINGS if environ.get(name)]
-    for reason in dict.fromkeys(RETIRED_SETTINGS[name] for name in found):
-        names = [name for name in found if RETIRED_SETTINGS[name] == reason]
-        warnings.warn(
-            f"{', '.join(names)} {'is' if len(names) == 1 else 'are'} no longer used: {reason}. "
-            "Remove them from the environment/.env.",
-            stacklevel=2,
-        )
-    return found
-
-
-_warn_retired()

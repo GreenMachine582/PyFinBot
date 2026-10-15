@@ -6,7 +6,9 @@ from unittest.mock import patch
 
 import pandas as pd
 
-from pyfinbot.core.market_sync import sync_guard
+from greentechhub_core.background import held_lock
+
+from pyfinbot.core.settings import settings
 from pyfinbot.web.routes.dividends import LOCK
 
 from .conftest import create_stock, hx_triggers, web_login
@@ -104,7 +106,7 @@ class TestSync:
         await web_login(gth_client, "web-divs")
         stock = await create_stock(gth_client)
         await _buy(gth_client, stock["id"])
-        with sync_guard(LOCK) as held, patch(FETCH) as mock_fetch:
+        with held_lock(settings, LOCK, ttl=60) as held, patch(FETCH) as mock_fetch:
             assert held
             resp = await gth_client.post("/dividends/sync")
         assert resp.status_code == 204
