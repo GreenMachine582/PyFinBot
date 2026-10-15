@@ -119,13 +119,13 @@ class TestGetTransaction:
         assert data["id"] == created["id"]
         assert data["stock"]["symbol"] == "BHP"
 
-    async def test_other_user_gets_403(self, gth_client):
+    async def test_other_user_gets_404(self, gth_client):  # not 403: ids don't leak
         headers = await register_and_login(gth_client, USER_ID)
         other_headers = await register_and_login(gth_client, OTHER_USER_ID)
         stock = await create_stock(gth_client)
         created = await _create_transaction(gth_client, stock["id"], headers)
         resp = await gth_client.get(f"/api/transactions/{created['id']}", headers=other_headers)
-        assert resp.status_code == 403
+        assert resp.status_code == 404
 
     async def test_nonexistent_returns_404(self, gth_client):
         headers = await register_and_login(gth_client, USER_ID)
@@ -180,14 +180,14 @@ class TestUpdateTransaction:
                                 json={"stock_id": 999999})
         assert resp.status_code == 404
 
-    async def test_other_user_gets_403(self, gth_client):
+    async def test_other_user_gets_404(self, gth_client):  # not 403: ids don't leak
         headers = await register_and_login(gth_client, USER_ID)
         other_headers = await register_and_login(gth_client, OTHER_USER_ID)
         stock = await create_stock(gth_client)
         created = await _create_transaction(gth_client, stock["id"], headers)
         resp = await gth_client.put(f"/api/transactions/{created['id']}",
                                 json={"notes": "hack"}, headers=other_headers)
-        assert resp.status_code == 403
+        assert resp.status_code == 404
 
 
 class TestDeleteTransaction:
@@ -198,13 +198,13 @@ class TestDeleteTransaction:
         resp = await gth_client.delete(f"/api/transactions/{created['id']}", headers=headers)
         assert resp.status_code == 204
 
-    async def test_other_user_gets_403(self, gth_client):
+    async def test_other_user_gets_404(self, gth_client):  # not 403: ids don't leak
         headers = await register_and_login(gth_client, USER_ID)
         other_headers = await register_and_login(gth_client, OTHER_USER_ID)
         stock = await create_stock(gth_client)
         created = await _create_transaction(gth_client, stock["id"], headers)
         resp = await gth_client.delete(f"/api/transactions/{created['id']}", headers=other_headers)
-        assert resp.status_code == 403
+        assert resp.status_code == 404
 
     async def test_delete_nonexistent_returns_404(self, gth_client):
         headers = await register_and_login(gth_client, USER_ID)

@@ -8,25 +8,23 @@ from dataclasses import dataclass
 from email.message import Message
 from typing import List, Optional, Tuple
 
-from greentechhub_core.email import IMAPConfig, ImapReader, message_text, received_at
+from greentechhub_core.email import IMAPConfig, ImapReader
 
 __all__ = [
     "COMMSEC_SENDER",
     "NOT_CONFIGURED",
     "EmailAccount",
-    "GmailNotConfiguredError",
+    "EmailNotConfiguredError",
     "commsec_criteria",
     "fetch_commsec_emails",
     "mark_seen",
-    "message_text",
-    "received_at",
 ]
 
 NOT_CONFIGURED = "Set your email address and app password in Settings to sync Commsec emails."
 COMMSEC_SENDER = "bounceback@commsec.com.au"
 
 
-class GmailNotConfiguredError(RuntimeError):
+class EmailNotConfiguredError(RuntimeError):
     pass
 
 
@@ -52,7 +50,7 @@ def commsec_criteria(account: EmailAccount, *, only_unseen: bool = True) -> str:
 
 def _config(account: EmailAccount) -> IMAPConfig:
     if account.imap is None:
-        raise GmailNotConfiguredError(NOT_CONFIGURED)
+        raise EmailNotConfiguredError(NOT_CONFIGURED)
     return account.imap
 
 

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, status
-from greentechhub_core.types import BadRequestError, ForbiddenError, NotFoundError
+from greentechhub_core.types import BadRequestError, ForbiddenError
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from greentechhub_core.identity import Identity
 from greentechhub_fastapi.dependencies import get_current_identity
 from greentechhub_fastapi.permissions import require_permission
+from greentechhub_fastapi.query import get_owned_or_404
 
 from ..core.permissions import USERS_MANAGE
 from ..core.users import new_user, set_password
@@ -60,9 +61,7 @@ async def get_user(
     if identity.subject != user_id:
         raise ForbiddenError("Not allowed to access this user")
 
-    user = await session.get(User, user_id)
-    if not user:
-        raise NotFoundError("User not found")
+    user = await get_owned_or_404(session, User, user_id)
     return user
 
 
@@ -76,9 +75,7 @@ async def update_user(
     if identity.subject != user_id:
         raise ForbiddenError("Not allowed to modify this user")
 
-    user = await session.get(User, user_id)
-    if not user:
-        raise NotFoundError("User not found")
+    user = await get_owned_or_404(session, User, user_id)
 
     update_data = user_update.model_dump(exclude_unset=True)
     password = update_data.pop("password", None)
@@ -107,9 +104,7 @@ async def delete_user(
     if identity.subject != user_id:
         raise ForbiddenError("Not allowed to delete this user")
 
-    user = await session.get(User, user_id)
-    if not user:
-        raise NotFoundError("User not found")
+    user = await get_owned_or_404(session, User, user_id)
 
     await session.delete(user)
     await session.commit()

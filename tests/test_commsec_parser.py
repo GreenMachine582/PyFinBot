@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from pyfinbot.core.commsec_parser import CommsecParseError, parse_commsec_email
-from pyfinbot.core.email_sync import message_text, received_at
+from greentechhub_core.email import message_text, received_at
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "commsec_emails"
 

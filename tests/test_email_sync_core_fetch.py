@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from greentechhub_core.email import IMAPConfig
 
-from pyfinbot.core.email_sync import EmailAccount, GmailNotConfiguredError, fetch_commsec_emails
+from pyfinbot.core.email_sync import EmailAccount, EmailNotConfiguredError, fetch_commsec_emails
 
 CONFIG = IMAPConfig(host="imap.example.com", username="me@example.com", password="secret")
 ACCOUNT = EmailAccount(imap=CONFIG)
@@ -28,6 +28,6 @@ def test_fetch_can_include_seen_mail():
 
 
 def test_fetch_without_a_mailbox_raises_before_connecting():
-    with patch("pyfinbot.core.email_sync.ImapReader") as reader, pytest.raises(GmailNotConfiguredError):
+    with patch("pyfinbot.core.email_sync.ImapReader") as reader, pytest.raises(EmailNotConfiguredError):
         fetch_commsec_emails(EmailAccount())
     reader.assert_not_called()

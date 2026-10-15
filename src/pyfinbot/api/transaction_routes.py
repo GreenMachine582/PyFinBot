@@ -8,8 +8,8 @@ from fastapi_pagination import Page
 from greentechhub_core.query.envelope import to_envelope
 from greentechhub_core.query.types import Sort
 from greentechhub_core.sqlalchemy.query import page
-from greentechhub_core.types import BadRequestError, ForbiddenError, NotFoundError
-from greentechhub_fastapi.query import PageParams
+from greentechhub_core.types import BadRequestError, NotFoundError
+from greentechhub_fastapi.query import PageParams, get_owned_or_404
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
@@ -115,12 +115,10 @@ async def get_transaction(
     session: AsyncSession = Depends(get_session),
     identity: Identity = Depends(get_current_identity),
 ):
-    if not (transaction := await fetchTransaction(session, transaction_id)):
+    # Scoped to the caller: someone else's transaction is the same 404 as a
+    # missing one, so ids don't leak (as on the web routes).
+    if not (transaction := await fetchTransaction(session, transaction_id, user_id=identity.subject)):
         raise NotFoundError("Transaction not found")
-
-    if transaction.user_id != identity.subject:
-        raise ForbiddenError("Not allowed to access this transaction")
-
     return transaction
 
 
@@ -131,11 +129,8 @@ async def update_transaction(
     session: AsyncSession = Depends(get_session),
     identity: Identity = Depends(get_current_identity),
 ):
-    if not (transaction := await fetchTransaction(session, transaction_id)):
+    if not (transaction := await fetchTransaction(session, transaction_id, user_id=identity.subject)):
         raise NotFoundError("Transaction not found")
-
-    if transaction.user_id != identity.subject:
-        raise ForbiddenError("Not allowed to modify this transaction")
 
     # An explicit null only makes sense for notes; for anything else it would
     # break recompute(), so treat it the same as "not sent".
@@ -171,12 +166,9 @@ async def delete_transaction(
     session: AsyncSession = Depends(get_session),
     identity: Identity = Depends(get_current_identity),
 ):
-    transaction = await session.get(Transaction, transaction_id)
-    if not transaction:
-        raise NotFoundError("Transaction not found")
-
-    if transaction.user_id != identity.subject:
-        raise ForbiddenError("Not allowed to delete this transaction")
+    # Someone else's transaction is the same 404 as a missing one, as on the
+    # web routes, so ids don't leak.
+    transaction = await get_owned_or_404(session, Transaction, transaction_id, owner=identity.subject)
 
     await session.delete(transaction)
     await session.commit()
