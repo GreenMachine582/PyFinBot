@@ -1,7 +1,6 @@
-import hashlib
-
 import greentechhub_ui
 from fastapi import APIRouter, Depends, Request
+from greentechhub_core.background import held_lock, lock_name
 from greentechhub_core.identity import Identity
 from greentechhub_fastapi.settings import get_settings_service
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -10,7 +9,8 @@ from ...core import audit_events
 from ...core.commsec_import import EmailSyncError, sync_commsec_emails
 from ...core.email_accounts import load_email_account
 from ...core.email_sync import EmailAccount
-from ...core.market_sync import sync_guard
+from ...core.market_sync import SYNC_LOCK_TTL_SECONDS
+from ...core.settings import settings
 from ...db.session import get_session
 from ..deps import page_identity, page_router_deps
 from ..htmx import hx_response
@@ -23,10 +23,9 @@ TITLE = "Email sync finished"
 SETTINGS_URL = "/settings#gth-settings-preferences"
 
 
-def email_sync_lock(subject: str) -> str:
-    """The sync lock for one user: each syncs their own mailbox, so users
-    don't block each other. Hashed, since the name becomes a lock file."""
-    return "commsec-email-sync-" + hashlib.sha256(subject.encode()).hexdigest()[:16]
+# The sync lock is per user (each syncs their own mailbox, so users don't
+# block each other): lock_name hashes the subject into a filename-safe name.
+EMAIL_SYNC_LOCK = "commsec-email-sync"
 
 
 @router.get("")
@@ -48,7 +47,8 @@ async def emails_page(request: Request, identity: Identity = Depends(page_identi
 async def sync(request: Request, session: AsyncSession = Depends(get_session),
                identity: Identity = Depends(page_identity)):
     """Runs the sync and swaps the result panel in, with a summary toast."""
-    with sync_guard(email_sync_lock(identity.subject)) as acquired:
+    with held_lock(settings, lock_name(EMAIL_SYNC_LOCK, identity.subject),
+                   ttl=SYNC_LOCK_TTL_SECONDS) as acquired:
         if not acquired:
             return hx_response("An email sync is already running — wait for it to finish.", "warning")
         try:

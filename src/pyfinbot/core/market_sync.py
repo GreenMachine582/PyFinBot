@@ -1,12 +1,11 @@
 
 import asyncio
 from contextlib import AbstractContextManager
-from functools import lru_cache
 from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional, Tuple
 
 import pandas as pd
-from greentechhub_core.background.locks import FileLock, held
+from greentechhub_core.background import held_lock
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -38,29 +37,18 @@ MARKET_FETCHERS = {
 SYNC_LOCK_TTL_SECONDS = 15 * 60
 
 
-@lru_cache(maxsize=1)
-def _sync_locks() -> FileLock:
-    # Lazy so importing this module doesn't create the lock directory.
-    return FileLock(directory=settings.lock_directory())
-
-
-def sync_guard(name: str) -> AbstractContextManager[bool]:
-    """core's `held` on the named sync lock: yields True (and releases on
-    exit) if this caller may run the sync, False if one is already running —
-    in this process, another worker, or another replica on the host
-    (greentechhub_core's FileLock is an OS advisory lock).
+def market_sync_guard(market: str) -> AbstractContextManager[bool]:
+    """core's held_lock on one market's listing sync: yields True (and
+    releases on exit) if this caller may run it, False if one is already
+    running, in this process, another worker or another replica on the host
+    (a FileLock in settings.lock_directory()).
 
         with market_sync_guard("ASX") as acquired:
             if not acquired:
                 ...  # refuse: already running
             await syncMarket(session, "ASX")
     """
-    return held(_sync_locks(), name, ttl=SYNC_LOCK_TTL_SECONDS)
-
-
-def market_sync_guard(market: str) -> AbstractContextManager[bool]:
-    """sync_guard for one market's listing sync."""
-    return sync_guard(f"market-sync-{market.upper()}")
+    return held_lock(settings, f"market-sync-{market.upper()}", ttl=SYNC_LOCK_TTL_SECONDS)
 
 
 async def syncMarket(session: AsyncSession, market: str, fetch_data: Optional[Callable] = None) -> Tuple[List[str], List[str], List[str]]:
