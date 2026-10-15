@@ -39,9 +39,6 @@ Each is one PR here once it ships: bump the pin, adopt, remove the item. Each is
 - [ ] `feat(web): strict CSP`
   - **Waits on:** greentechhub-fastapi M6 `register_csp` (ui v0.17's shell is already CSP-ready).
   - **Then:** turn it on with a `frame-src` for the Grafana origin.
-- [ ] `feat(web): Admin nav group`
-  - **Waits on:** greentechhub-fastapi M6 `register_admin`.
-  - **Then:** Roles and Audit log under "Admin", shown to admins only.
 - [ ] `feat(api): personal API tokens`
   - **Waits on:** greentechhub-core's API token store and greentechhub-fastapi M6 personal API tokens.
   - **Then:** scripts use a revocable personal token instead of a 24h login JWT (see Known limitations).

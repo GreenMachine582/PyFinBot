@@ -10,6 +10,7 @@ from fastapi import Depends, FastAPI
 from greentechhub_core.settings.crypto import settings_cipher
 from greentechhub_core.sqlalchemy import SQLAlchemyAuditStore, SQLAlchemyGrantStore, SQLAlchemySettingsStore
 from greentechhub_fastapi import (
+    register_admin,
     register_audit,
     register_auth,
     register_core,
@@ -19,21 +20,19 @@ from greentechhub_fastapi import (
     register_permissions,
     register_settings,
 )
-from greentechhub_fastapi.audit import AuditViews
 from greentechhub_fastapi.auth import bearer_scheme
 from greentechhub_fastapi.exceptions import register_api_error_handlers, register_exception_handlers
-from greentechhub_fastapi.permissions import RoleAdminViews
 from greentechhub_fastapi.settings import SettingsViews
 from greentechhub_fastapi.templating import mount_static_dirs
 
 from . import version, api
 from .core.login_throttle import LOGIN_THROTTLE
-from .core.permissions import AUDIT_VIEW, ROLES, SETTINGS_MANAGE, USERS_MANAGE
+from .core.permissions import ROLES, SETTINGS_MANAGE
 from .core.settings import settings
 from .core.user_settings import USER_SETTINGS
 from .db.session import database_ready, init_db, session_factory
 from .models.settings_models import AUDIT_LOG_TABLE, ROLE_GRANTS_TABLE, SETTINGS_TABLE
-from .web.templating import templates
+from .web.templating import ADMIN_VIEWS, AUDIT_VIEWS, templates
 from .web.routes import (
     auth as web_auth,
     dashboard as web_dashboard,
@@ -99,8 +98,7 @@ register_csrf(app)
 # views record sign-ins, lockouts, password, role and settings changes into
 # it; PyFinBot's syncs and imports add theirs (core/audit_events.py).
 AUDIT_STORE = SQLAlchemyAuditStore(AUDIT_LOG_TABLE, async_session_factory=session_factory)
-register_audit(app, settings, store=AUDIT_STORE,
-               views=AuditViews(templates=templates, permission=AUDIT_VIEW))
+register_audit(app, settings, store=AUDIT_STORE, views=AUDIT_VIEWS)
 
 # Roles: the admin role (core/permissions.py) comes from ROLE_BOOTSTRAP /
 # ROLE_GROUPS or a grant made at /admin/roles (gth_role_grants). Before
@@ -142,8 +140,10 @@ web_auth_router = web_auth.build_router()
 if web_auth_router is not None:
     app.include_router(web_auth_router)
 app.include_router(web_dashboard.router)
-# /admin/roles: assign roles to users (USERS_MANAGE).
-app.include_router(RoleAdminViews(templates=templates, permission=USERS_MANAGE, csrf=True).router())
+# The admin pages (web/templating.py ADMIN_VIEWS, under the nav's "Admin"
+# group): /admin/roles assigns roles (USERS_MANAGE); /admin/audit, already
+# mounted by register_audit above, isn't mounted twice.
+register_admin(app, settings, views=ADMIN_VIEWS)
 app.include_router(web_stocks.router)
 app.include_router(web_transactions.router)
 app.include_router(web_imports.router)

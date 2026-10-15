@@ -5,8 +5,12 @@ import greentechhub_ui
 from fastapi.templating import Jinja2Templates
 from greentechhub_core.dates import fiscal_year_label
 
+from ..core.permissions import AUDIT_VIEW, USERS_MANAGE
 from ..models.stock_models import CODE_MAX
 from ..models.transaction_models import NOTES_MAX
+from greentechhub_fastapi.admin import admin_nav_item
+from greentechhub_fastapi.audit import AuditViews
+from greentechhub_fastapi.permissions import RoleAdminViews
 from greentechhub_fastapi.settings import settings_context
 from greentechhub_fastapi.templating import ui_context
 
@@ -18,6 +22,13 @@ from greentechhub_fastapi.templating import ui_context
 # in USER_SETTINGS) as site_banners, above the navbar on every page.
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates",
                             context_processors=[ui_context, settings_context])
+
+# The admin pages, mounted by register_admin in pyfinbot.py (the audit page
+# through register_audit) and listed under one "Admin" nav group: each entry
+# carries its permission, so ui's per-request nav filter shows a user only the
+# pages they can open, and no group at all without any.
+AUDIT_VIEWS = AuditViews(templates=templates, permission=AUDIT_VIEW)
+ADMIN_VIEWS = [RoleAdminViews(templates=templates, permission=USERS_MANAGE, csrf=True), AUDIT_VIEWS]
 
 # greentechhub-ui's template dirs (after ours) plus the shared shell globals
 # (brand, nav, vendored asset URLs under the mounts in pyfinbot.py) — see
@@ -34,11 +45,7 @@ greentechhub_ui.install(
             {"label": "Emails", "url": "/emails", "icon": "envelope"},
             {"label": "Dividends", "url": "/dividends", "icon": "cash-coin"},
             {"label": "Reports", "url": "/reports", "icon": "bar-chart"},
-            # Only admins (users.manage) see it: filtered per request on `granted`.
-            {"label": "Roles", "url": "/admin/roles", "icon": "shield-lock",
-             "required_permission": "users.manage"},
-            {"label": "Audit log", "url": "/admin/audit", "icon": "journal-text",
-             "required_permission": "audit.view"},
+            admin_nav_item(ADMIN_VIEWS),
         ],
     ),
 )
