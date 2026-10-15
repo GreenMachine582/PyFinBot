@@ -25,22 +25,20 @@ CSV = "date,stock,type,units,price,fees,notes\n2024-08-01,ASX:AUD,Buy,10,20,0,\n
 
 @pytest.fixture
 def recorded():
-    """The entries recorded during the test, newest last. Read off the store's
-    record() rather than back from the table: in tests every session shares
-    one connection, so a route session's closing rollback can undo an entry
-    the store committed inside it (in production each has its own)."""
-    with patch.object(AUDIT_STORE, "record", wraps=AUDIT_STORE.record) as record:
-        def entries(action: str, actor: str | None = None):
-            found = [c.args[0] for c in record.call_args_list
-                     if c.args[0].action == action and (actor is None or c.args[0].actor == actor)]
-            assert found, f"no {action} entry"
-            return found[-1]
-        yield entries
+    """The newest entry for an action (and actor), read back from gth_audit_log
+    through the store. Since greentechhub-core v0.15 the test sessions release
+    a read-only SAVEPOINT on close, so a route session that stays open around
+    the store's own write no longer undoes it."""
+    async def entry(action: str, actor: str | None = None):
+        found = await AUDIT_STORE.entries(action=action, actor=actor, limit=1)
+        assert found, f"no {action} entry in gth_audit_log"
+        return found[0]
+    return entry
 
 
 async def test_a_web_sign_in_is_recorded(gth_client, recorded):
     await web_login(gth_client, "audit-signin")
-    assert (recorded("auth.signed_in", "audit-signin")).actor == "audit-signin"
+    assert (await recorded("auth.signed_in", "audit-signin")).actor == "audit-signin"
 
 
 async def test_a_web_import_is_recorded(gth_client, recorded):
@@ -48,7 +46,7 @@ async def test_a_web_import_is_recorded(gth_client, recorded):
     await create_stock(gth_client, "AUD", "ASX", "Audit Co")
     resp = await gth_client.post("/import", headers=HX, files={"file": ("t.csv", io.BytesIO(CSV.encode()), "text/csv")})
     assert resp.status_code == 200, resp.text
-    entry = recorded("transactions.imported", "audit-import")
+    entry = await recorded("transactions.imported", "audit-import")
     assert entry.summary == "Imported 1 of 2 rows from t.csv"
     assert entry.details == {"filename": "t.csv", "total_rows": 2, "created": 1, "skipped": 1, "row_errors": 1}
 
@@ -59,7 +57,7 @@ async def test_an_api_import_is_recorded_against_the_token(gth_client, recorded)
     resp = await gth_client.post("/api/transactions/import", headers=headers,
                                  files={"file": ("api.csv", io.BytesIO(CSV.encode()), "text/csv")})
     assert resp.status_code == 200, resp.text
-    assert (recorded("transactions.imported", "audit-api")).details["filename"] == "api.csv"
+    assert (await recorded("transactions.imported", "audit-api")).details["filename"] == "api.csv"
 
 
 async def test_an_email_sync_is_recorded(gth_client, recorded):
@@ -69,7 +67,7 @@ async def test_an_email_sync_is_recorded(gth_client, recorded):
             patch("pyfinbot.web.routes.emails.sync_commsec_emails", new=AsyncMock(return_value=summary)):
         resp = await gth_client.post("/emails/sync", headers=HX)
     assert resp.status_code == 200, resp.text
-    entry = recorded("emails.synced", "audit-email")
+    entry = await recorded("emails.synced", "audit-email")
     assert entry.details == {"total_emails": 3, "created": 2, "skipped": 1, "errors": 1}
 
 
@@ -79,7 +77,7 @@ async def test_a_dividend_sync_of_one_stock_targets_it(gth_client, recorded):
     with patch("pyfinbot.web.routes.dividends.syncDividends", new=AsyncMock(return_value=([1], [], []))):
         resp = await gth_client.post("/dividends/sync", headers=HX, data={"stock_id": str(stock["id"])})
     assert resp.status_code == 200, resp.text
-    entry = recorded("dividends.synced", "audit-div")
+    entry = await recorded("dividends.synced", "audit-div")
     assert (entry.target_type, entry.target_id, entry.details["created"]) == ("stock", str(stock["id"]), 1)
 
 
@@ -88,7 +86,7 @@ async def test_a_market_sync_is_recorded(gth_client, recorded):
     with patch("pyfinbot.web.routes.stocks.syncMarket", new=AsyncMock(return_value=([1, 2], [3], []))):
         resp = await gth_client.post("/stocks/sync/asx", headers=HX)
     assert resp.status_code == 204, resp.text  # a toast only
-    entry = recorded("stocks.market_synced", "audit-market")
+    entry = await recorded("stocks.market_synced", "audit-market")
     assert (entry.target_type, entry.target_id) == ("market", "ASX") and entry.summary == "ASX: 2 created, 1 updated, 0 archived"
 
 

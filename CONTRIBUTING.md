@@ -44,7 +44,10 @@ blocks it).
 With greentechhub-core, greentechhub-fastapi and greentechhub-ui checked out next to this repo,
 `./scripts/use-local-gth.sh` runs this venv against those checkouts instead of the pinned releases. `--status` shows
 which is in use, with each checkout's branch and commit, and `--undo` goes back to the pins. It changes only the
-venv, never `requirements.txt`, so CI keeps testing the pins. Details, invariants and the release order:
+venv, never `requirements.txt`, so CI keeps testing the pins. PyFinBot pins greentechhub-core itself (it imports core and
+needs its extras), so that tag has to match the one greentechhub-fastapi's own dependencies name. CI runs
+`python scripts/check_gth_pins.py` before installing anything, and it says which pin to bump when they disagree.
+Run it locally after changing a pin. Details, invariants and the release order:
 [greentechhub-core's CONTRIBUTING.md](https://github.com/GreenMachine582/greentechhub-core/blob/dev/CONTRIBUTING.md#developing-against-local-gth-repos).
 
 ## Rules

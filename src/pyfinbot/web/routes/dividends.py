@@ -5,7 +5,10 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ...core import audit_events
 from ...core.dividend_sync import syncDividends, user_stock_ids
-from ...core.market_sync import sync_guard
+from greentechhub_core.background import held_lock
+
+from ...core.market_sync import SYNC_LOCK_TTL_SECONDS
+from ...core.settings import settings
 from ...db.session import get_session
 from ...models.stock_models import Stock
 from ..deps import page_identity, page_router_deps
@@ -43,7 +46,7 @@ async def sync(request: Request, session: AsyncSession = Depends(get_session),
             return hx_response("You have no transactions yet, so there are no stocks to sync.", "info")
         scope = f"{len(target_ids)} stock" + ("" if len(target_ids) == 1 else "s")
 
-    with sync_guard(LOCK) as acquired:
+    with held_lock(settings, LOCK, ttl=SYNC_LOCK_TTL_SECONDS) as acquired:
         if not acquired:
             return hx_response("A dividend sync is already running — wait for it to finish.", "warning")
         created, updated, errors = await syncDividends(session, stock_ids=target_ids)
