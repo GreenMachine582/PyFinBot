@@ -38,9 +38,6 @@ Each is one PR here once it ships: bump the pin, adopt, remove the item. Each is
 - [ ] `feat(web): audit activity feed`
   - **Waits on:** greentechhub-ui M6 `gth_timeline`, and the audit log item above.
   - **Then:** the audit entries as a feed (dashboard or its own page).
-- [ ] `feat(web): HTML error pages`
-  - **Why:** pages get FastAPI's default JSON errors (`pyfinbot.py`'s handlers cover `/api` only).
-  - **Waits on:** greentechhub-fastapi M6 `register_error_pages` (ui v0.17's 403/404/500 templates).
 - [ ] `refactor(web): leaner routes`: what's left, one step per gth helper as it ships:
   - `_get_transaction_or_404` → greentechhub-fastapi's `get_owned_or_404` once it takes `options=` (passed to
     `session.get`), so `transaction.stock` can stay eager-loaded. The delete modal and route read it, and a lazy
