@@ -82,5 +82,9 @@ class Settings(GTHBaseSettings):
     # frames are same-origin only.
     GRAFANA_ORIGIN: str = ""
 
+    # How long gth_audit_log keeps an entry: older ones are pruned on startup
+    # (pyfinbot.py prune_audit_log). 0 keeps everything.
+    AUDIT_RETENTION_DAYS: int = 365
+
 
 settings = Settings()

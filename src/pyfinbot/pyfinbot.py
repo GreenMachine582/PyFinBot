@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime, timedelta
 
 import importlib
 import pkgutil
@@ -60,7 +61,18 @@ async def lifespan(app: FastAPI):
     await init_db()
     # Nothing else deletes old gth_login_attempts rows; once a start is enough.
     await LOGIN_THROTTLE.prune()
+    await prune_audit_log()
     yield
+
+
+async def prune_audit_log(now: datetime | None = None) -> int:
+    """Delete gth_audit_log entries older than AUDIT_RETENTION_DAYS (none when
+    it's 0) and return how many went. Run on startup: entries pile up slowly
+    at personal-use scale, so once a start is enough."""
+    if settings.AUDIT_RETENTION_DAYS <= 0:
+        return 0
+    before = (now or datetime.now(UTC)) - timedelta(days=settings.AUDIT_RETENTION_DAYS)
+    return await AUDIT_STORE.prune(before)
 
 
 app = FastAPI(
