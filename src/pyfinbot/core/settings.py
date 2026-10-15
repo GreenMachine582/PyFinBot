@@ -62,6 +62,12 @@ class Settings(GTHBaseSettings):
     # its lock names ("dividend-sync") can't meet another gth service's.
     lock_dir: str = os_path.join(tempfile.gettempdir(), "pyfinbot-locks")
 
+    # The Grafana origin (e.g. "https://grafana.example.com") whose panels the
+    # dashboard embeds in gth_embed_card frames: added to the strict
+    # Content-Security-Policy's frame-src (register_csp in pyfinbot.py). Unset,
+    # frames are same-origin only.
+    GRAFANA_ORIGIN: str = ""
+
 
 settings = Settings()
 

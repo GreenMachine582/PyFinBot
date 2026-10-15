@@ -36,9 +36,6 @@ Each is one PR here once it ships: bump the pin, adopt, remove the item. Each is
   - **Waits on:** greentechhub-core's `fix(testing)` (a store's writes survive a route's rollback): today a route
     session's closing rollback in tests can undo an entry the audit store committed inside it.
   - **Then:** `test_web_audit.py` reads entries back from `gth_audit_log` and drops its `record()` spy.
-- [ ] `feat(web): strict CSP`
-  - **Waits on:** greentechhub-fastapi M6 `register_csp` (ui v0.17's shell is already CSP-ready).
-  - **Then:** turn it on with a `frame-src` for the Grafana origin.
 - [ ] `feat(web): Admin nav group`
   - **Waits on:** greentechhub-fastapi M6 `register_admin`.
   - **Then:** Roles and Audit log under "Admin", shown to admins only.
@@ -69,7 +66,8 @@ Each is one PR here once it ships: bump the pin, adopt, remove the item. Each is
   - Keep `ROLE_BOOTSTRAP` as the recovery path.
   - Optional later: core's planned JWT validation (`X-authentik-jwt`).
 - [ ] Real Grafana panels once embedding is configured (`allow_embedding`, CSP/X-Frame-Options at Caddy; see the
-  brief). The dashboard side is ready: ui v0.17's `gth_embed_card`, with the strict CSP item's `frame-src`.
+  brief). The dashboard side is ready: ui's `gth_embed_card`, and the strict CSP allows the Grafana origin in `frame-src`
+  once `GRAFANA_ORIGIN` is set.
 
 ## Ideas — not scheduled
 
