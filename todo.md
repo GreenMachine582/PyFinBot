@@ -32,9 +32,6 @@ Each is one PR here once it ships: bump the pin, adopt, remove the item. Each is
   - **Waits on:** greentechhub-fastapi M6.6, CSRF checked only when a request is authenticated by the cookie, not
     a bearer token.
   - **Then:** turn it on for the `/api` routers in `pyfinbot.py`.
-- [ ] `feat(web): Admin nav group`
-  - **Waits on:** greentechhub-fastapi M6 `register_admin`.
-  - **Then:** Roles and Audit log under "Admin", shown to admins only.
 - [ ] `feat(api): personal API tokens`
   - **Waits on:** greentechhub-core's API token store and greentechhub-fastapi M6 personal API tokens.
   - **Then:** scripts use a revocable personal token instead of a 24h login JWT (see Known limitations).
