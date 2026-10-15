@@ -12,7 +12,7 @@ class TestDateRangeFilter:
         assert 'name="date_from"' in html and 'name="date_to"' in html
         for preset in ("today", "month", "fy", "last_fy"):
             assert f'data-preset="{preset}"' in html
-        assert '<script src="/gth-assets/js/date-range.js"></script>' in html
+        assert '<script src="/gth-assets/js/date-range.js" nonce="' in html  # under the strict CSP
         assert 'id="txn-from"' not in html  # the hand-built inputs are gone
 
     async def test_echoes_the_current_range(self, gth_client):
