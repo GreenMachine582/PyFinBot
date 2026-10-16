@@ -57,13 +57,13 @@ Each is one PR here once it ships: bump the pin, adopt, remove the item. Each is
 ## Waiting on a decision: user email addresses
 
 `User` has no email address, so the gth features that need one are off: the profile section's email, password
-reset, email verification, and notifications by email (`register_email` with core's `smtp_settings`,
-`register_notifications` for sync results).
+reset, email verification, and notifications by email (`register_email` with core's `smtp_settings`;
+sync results already leave in-app notices through `register_notifications`).
 
 - **Decide first:** add `User.email` (a migration, collected at `/settings` › Profile, verified) or stay
   username-only.
-- In-app notifications (`register_notifications` without email) don't need it. They could report sync results now
-  if wanted.
+- Then email delivery for the sync notices is `register_email` plus core's `notification_preferences({"sync": …})`
+  in `USER_SETTINGS`, so each user picks in-app, email or both.
 
 ## Known limitations (accepted, not bugs)
 

@@ -13,6 +13,7 @@ from greentechhub_core.sqlalchemy import (
     SQLAlchemyApiTokenStore,
     SQLAlchemyAuditStore,
     SQLAlchemyGrantStore,
+    SQLAlchemyNotificationStore,
     SQLAlchemySettingsStore,
 )
 from greentechhub_fastapi import (
@@ -26,12 +27,14 @@ from greentechhub_fastapi import (
     register_error_pages,
     register_health,
     register_logging,
+    register_notifications,
     register_permissions,
     register_settings,
 )
 from greentechhub_fastapi.api_tokens import ApiTokenViews
 from greentechhub_fastapi.auth import bearer_scheme
 from greentechhub_fastapi.auth.csrf import require_cookie_csrf
+from greentechhub_fastapi.notifications import NotificationViews
 from greentechhub_fastapi.exceptions import register_api_error_handlers, register_exception_handlers
 from greentechhub_fastapi.settings import SettingsViews
 from greentechhub_fastapi.templating import mount_static_dirs
@@ -42,7 +45,13 @@ from .core.permissions import ROLES, SETTINGS_MANAGE
 from .core.settings import settings
 from .core.user_settings import USER_SETTINGS
 from .db.session import database_ready, init_db, session_factory
-from .models.settings_models import API_TOKENS_TABLE, AUDIT_LOG_TABLE, ROLE_GRANTS_TABLE, SETTINGS_TABLE
+from .models.settings_models import (
+    API_TOKENS_TABLE,
+    AUDIT_LOG_TABLE,
+    NOTIFICATIONS_TABLE,
+    ROLE_GRANTS_TABLE,
+    SETTINGS_TABLE,
+)
 from .web.templating import ADMIN_VIEWS, AUDIT_VIEWS, templates
 from .web.routes import (
     auth as web_auth,
@@ -138,6 +147,16 @@ register_csrf(app)
 # it; PyFinBot's syncs and imports add theirs (core/audit_events.py).
 AUDIT_STORE = SQLAlchemyAuditStore(AUDIT_LOG_TABLE, async_session_factory=session_factory)
 register_audit(app, settings, store=AUDIT_STORE, views=AUDIT_VIEWS)
+
+# In-app notices (gth_notifications): each sync and import leaves one for the
+# user who ran it (core/audit_events.py), behind the navbar's bell, which
+# settings_context shows once these views are mounted (/notifications). In-app
+# only: there's no register_email, as users have no email addresses yet.
+register_notifications(
+    app, settings,
+    store=SQLAlchemyNotificationStore(NOTIFICATIONS_TABLE, async_session_factory=session_factory),
+    views=NotificationViews(templates=templates),
+)
 
 # Roles: the admin role (core/permissions.py) comes from ROLE_BOOTSTRAP /
 # ROLE_GROUPS or a grant made at /admin/roles (gth_role_grants). Before

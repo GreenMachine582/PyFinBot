@@ -32,5 +32,6 @@ async def sync_dividends(
     target_ids = [stock_id] if stock_id is not None else await user_stock_ids(session, identity.subject)
 
     created, updated, errors = await syncDividends(session, stock_ids=target_ids)
-    await audit_events.dividends_synced(request, target_ids, created, updated, errors)
+    await audit_events.dividends_synced(request, target_ids, created, updated, errors,
+                                        recipient=identity.subject)
     return DividendSyncResult(created=created, updated=updated, errors=errors)

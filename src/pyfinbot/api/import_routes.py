@@ -45,5 +45,6 @@ async def import_transactions(
     user_id = identity.subject
     assert user_id is not None  # a stored user always has its primary key
     summary = await _import_transactions(session, user_id, content, file.filename or "")
-    await audit_events.transactions_imported(request, summary, file.filename or "")
+    await audit_events.transactions_imported(request, summary, file.filename or "",
+                                             recipient=identity.subject)
     return summary

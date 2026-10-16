@@ -50,7 +50,8 @@ async def sync(request: Request, session: AsyncSession = Depends(get_session),
             return hx_response("A dividend sync is already running — wait for it to finish.", "warning")
         created, updated, errors = await syncDividends(session, stock_ids=target_ids)
 
-    await audit_events.dividends_synced(request, target_ids, created, updated, errors)
+    await audit_events.dividends_synced(request, target_ids, created, updated, errors,
+                                        recipient=identity.subject)
     changed = len(created) + len(updated)
     if errors:
         kind = "warning" if changed else "danger"

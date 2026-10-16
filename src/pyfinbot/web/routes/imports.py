@@ -54,7 +54,8 @@ async def upload(request: Request, file: UploadFile | None = File(None),
             headers={"HX-Trigger": greentechhub_ui.toast(exc.message, "danger", title="Import failed")},
         )
 
-    await audit_events.transactions_imported(request, summary, filename or "")
+    await audit_events.transactions_imported(request, summary, filename or "",
+                                             recipient=identity.subject)
     if not summary.total_rows:
         kind, message = "info", "The file has no rows to import."
     elif not summary.skipped:
