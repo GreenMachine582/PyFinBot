@@ -65,7 +65,7 @@ async def sync(request: Request, session: AsyncSession = Depends(get_session),
                 headers={"HX-Trigger": greentechhub_ui.toast(exc.message, "danger", title="Email sync failed")},
             )
 
-    await audit_events.emails_synced(request, summary)
+    await audit_events.emails_synced(request, summary, recipient=identity.subject)
     noun = "transaction" if summary.created == 1 else "transactions"
     if not summary.total_emails:
         kind, message = "info", "No new Commsec emails."

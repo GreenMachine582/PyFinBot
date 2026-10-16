@@ -39,5 +39,5 @@ async def sync_commsec_emails(
     # fetch/mark passed from this module so tests can patch them here.
     summary = await _sync_commsec_emails(session, user_id, account, include_seen=include_seen,
                                          fetch=fetch_commsec_emails, mark=mark_seen)
-    await audit_events.emails_synced(request, summary)
+    await audit_events.emails_synced(request, summary, recipient=identity.subject)
     return summary

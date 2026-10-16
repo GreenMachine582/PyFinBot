@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request
+from greentechhub_core.identity import Identity
 from greentechhub_core.query.types import Sort
 from greentechhub_core.sqlalchemy.query import order_by, paginate
 from greentechhub_fastapi.query import get_owned_or_404
@@ -20,7 +21,7 @@ from ...core.user_settings import DEFAULT_ROWS_PER_PAGE, PAGE_SIZES
 from ...db.session import get_session
 from ...models.stock_models import CODE_MAX, Stock
 from ...models.transaction_models import Transaction
-from ..deps import page_router_deps
+from ..deps import page_identity, page_router_deps
 from ..htmx import CLOSE_MODAL, hx_response
 from ..templating import templates
 
@@ -211,7 +212,8 @@ async def delete_stock(stock_id: int, session: AsyncSession = Depends(get_sessio
 
 
 @router.post("/sync/{market}")
-async def sync_market(request: Request, market: str, session: AsyncSession = Depends(get_session)):
+async def sync_market(request: Request, market: str, session: AsyncSession = Depends(get_session),
+                      identity: Identity = Depends(page_identity)):
     market = market.upper()
     if market not in MARKET_FETCHERS:
         return hx_response(f"Sync for market '{market}' is not supported.", "danger")
@@ -224,7 +226,8 @@ async def sync_market(request: Request, market: str, session: AsyncSession = Dep
         except Exception:  # network/parse failures: log the detail, toast a summary
             logger.exception("%s market sync failed", market)
             return hx_response(f"{market} sync failed — see the server logs.", "danger", title="Sync failed")
-    await audit_events.market_synced(request, market, created, updated, archived)
+    await audit_events.market_synced(request, market, created, updated, archived,
+                                     recipient=identity.subject)
     changed = len(created) + len(updated) + len(archived)
     return hx_response(
         f"{len(created)} created, {len(updated)} updated, {len(archived)} archived",
