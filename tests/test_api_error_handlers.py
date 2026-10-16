@@ -59,9 +59,11 @@ async def test_unknown_api_route_is_the_not_found_envelope(gth_client):
     assert resp.json() == {"code": "not_found", "message": "Not Found", "details": None}
 
 
-async def test_pages_keep_fastapis_defaults(gth_client):
-    resp = await gth_client.get("/nope", headers=HTML)
+async def test_pages_keep_fastapis_defaults_outside_the_api(gth_client):
+    # A browser page gets ui's 404 page (test_web_error_pages.py); htmx and JSON
+    # clients outside /api still get FastAPI's default, not the envelope.
+    resp = await gth_client.get("/nope", headers={**HTML, "HX-Request": "true"})
     assert resp.status_code == 404
-    assert resp.json() == {"detail": "Not Found"}  # not the envelope
+    assert resp.json() == {"detail": "Not Found"}
     resp = await gth_client.get("/transactions", headers=HTML, follow_redirects=False)
     assert resp.status_code == 303 and resp.headers["location"] == "/login"

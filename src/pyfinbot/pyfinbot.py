@@ -16,6 +16,7 @@ from greentechhub_fastapi import (
     register_core,
     register_csp,
     register_csrf,
+    register_error_pages,
     register_health,
     register_logging,
     register_permissions,
@@ -81,6 +82,11 @@ register_logging(app, settings, service="pyfinbot", version=version.VERSION, uvi
 # /api; pages keep FastAPI's defaults.
 register_exception_handlers(app)
 register_api_error_handlers(app, prefix="/api")
+# Browser page requests get greentechhub-ui's 403/404/500 pages instead of
+# FastAPI's JSON; /api and htmx requests keep the JSON above. The 500 page
+# renders from a minimal context (no context processors, which may need the
+# database that just failed) with the request id as its reference.
+register_error_pages(app, settings, templates=templates, api_prefix="/api")
 
 # /health (liveness) and /health/ready (SELECT 1 against the database).
 register_health(app, checks=[database_ready])
