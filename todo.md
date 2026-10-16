@@ -53,8 +53,6 @@ Each is one PR here once it ships: bump the pin, adopt, remove the item. Each is
 - htmx 2 through `shell_globals(htmx=2)`, ahead of ui's breaking switch (ui's CI already runs its e2e suite on it).
 - One sync-result handler for the email, dividend and import routes (refuse when running, count, pick the toast
   tone, swap the badges panel). Stays here until a second service has the same shape.
-- Prune `gth_audit_log` entries older than a retention period (`AUDIT_STORE.prune(before)` on startup or a
-  schedule): entries pile up, though slowly at personal-use scale.
 
 ## Waiting on a decision: user email addresses
 
