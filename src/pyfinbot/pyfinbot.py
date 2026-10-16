@@ -8,8 +8,14 @@ import pkgutil
 import greentechhub_ui
 from fastapi import Depends, FastAPI
 from greentechhub_core.settings.crypto import settings_cipher
-from greentechhub_core.sqlalchemy import SQLAlchemyAuditStore, SQLAlchemyGrantStore, SQLAlchemySettingsStore
+from greentechhub_core.sqlalchemy import (
+    SQLAlchemyApiTokenStore,
+    SQLAlchemyAuditStore,
+    SQLAlchemyGrantStore,
+    SQLAlchemySettingsStore,
+)
 from greentechhub_fastapi import (
+    register_api_tokens,
     register_admin,
     register_audit,
     register_auth,
@@ -22,6 +28,7 @@ from greentechhub_fastapi import (
     register_permissions,
     register_settings,
 )
+from greentechhub_fastapi.api_tokens import ApiTokenViews
 from greentechhub_fastapi.auth import bearer_scheme
 from greentechhub_fastapi.auth.csrf import require_cookie_csrf
 from greentechhub_fastapi.exceptions import register_api_error_handlers, register_exception_handlers
@@ -34,7 +41,7 @@ from .core.permissions import ROLES, SETTINGS_MANAGE
 from .core.settings import settings
 from .core.user_settings import USER_SETTINGS
 from .db.session import database_ready, init_db, session_factory
-from .models.settings_models import AUDIT_LOG_TABLE, ROLE_GRANTS_TABLE, SETTINGS_TABLE
+from .models.settings_models import API_TOKENS_TABLE, AUDIT_LOG_TABLE, ROLE_GRANTS_TABLE, SETTINGS_TABLE
 from .web.templating import ADMIN_VIEWS, AUDIT_VIEWS, templates
 from .web.routes import (
     auth as web_auth,
@@ -134,6 +141,14 @@ register_permissions(
 # existed: the same key, so saved app passwords stay readable.
 CIPHER_CONTEXT = "pyfinbot-settings"
 
+# Personal API tokens (gth_api_tokens, stored only as a hash): a user creates,
+# lists and revokes them at /settings › API tokens (ApiTokenViews below), and
+# with register_auth(bearer=True) a script sends one as `Authorization:
+# Bearer`. A token's scopes are permissions, capped by its owner's current
+# ones; it can't create or revoke tokens itself.
+register_api_tokens(app, settings, store=SQLAlchemyApiTokenStore(
+    API_TOKENS_TABLE, async_session_factory=session_factory))
+
 # Per-user preferences and app settings (greentechhub-core settings in the
 # gth_settings table): /settings (its App section for SETTINGS_MANAGE), the
 # navbar user menu (Settings, Log out), the server-saved theme, a Password
@@ -144,7 +159,8 @@ register_settings(
     settings,
     registry=USER_SETTINGS,
     store=SQLAlchemySettingsStore(SETTINGS_TABLE, async_session_factory=session_factory),
-    views=SettingsViews(templates=templates, change_password=web_auth.change_password, csrf=True),
+    views=SettingsViews(templates=templates, change_password=web_auth.change_password, csrf=True,
+                        api_tokens=ApiTokenViews(templates=templates)),
     manage_permission=SETTINGS_MANAGE,
     logout_url="/logout",
     # Encrypts secret settings (each user's email app password) at rest.

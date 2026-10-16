@@ -25,9 +25,6 @@ infrastructure.
 
 Each is one PR here once it ships: bump the pin, adopt, remove the item. Each is registered in that repo's TODO.
 
-- [ ] `feat(api): personal API tokens`
-  - **Waits on:** greentechhub-core's API token store and greentechhub-fastapi M6 personal API tokens.
-  - **Then:** scripts use a revocable personal token instead of a 24h login JWT (see Known limitations).
 - [ ] `feat(web): audit activity feed`
   - **Waits on:** greentechhub-ui M6 `gth_timeline`, and the audit log item above.
   - **Then:** the audit entries as a feed (dashboard or its own page).
@@ -72,13 +69,10 @@ reset, email verification, and notifications by email (`register_email` with cor
 
 ## Known limitations (accepted, not bugs)
 
-- Stateless JWT, 24h expiry, no refresh/revocation — a leaked token is valid
-  up to 24h with no force-logout, even after its user is deleted (nothing
-  looks the user up). An API token and the session cookie are the same kind
-  of JWT, so either works on pages and the API. Acceptable for personal-use
-  scale.
-  Scripts move to revocable personal tokens (the personal API tokens item);
-  browser sessions would need fastapi's "Sessions & devices" idea.
+- The session cookie and `/api/auth/login`'s token are stateless JWTs (24h, no refresh or revocation): a leaked
+  one is valid up to 24h with no force-logout, even after its user is deleted (nothing looks the user up). Either
+  works on pages and the API. Scripts should use a revocable personal API token instead (/settings › API tokens).
+  Browser sessions would need fastapi's "Sessions & devices" idea. Acceptable at personal-use scale.
 - `SECRET_KEY` auto-generates a random value each process start if unset
   (never a hardcoded/empty fallback) — a deployment that needs tokens to
   survive a restart must set it explicitly.
