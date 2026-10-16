@@ -23,6 +23,7 @@ from greentechhub_fastapi import (
     register_settings,
 )
 from greentechhub_fastapi.auth import bearer_scheme
+from greentechhub_fastapi.auth.csrf import require_cookie_csrf
 from greentechhub_fastapi.exceptions import register_api_error_handlers, register_exception_handlers
 from greentechhub_fastapi.settings import SettingsViews
 from greentechhub_fastapi.templating import mount_static_dirs
@@ -178,6 +179,10 @@ for module_info in pkgutil.iter_modules(api.__path__):
     if hasattr(module, "router"):
         # bearer_scheme only documents the token flow in OpenAPI (Swagger's
         # Authorize button); get_current_identity does the checking.
+        # require_cookie_csrf: a request the session cookie signs in needs the
+        # CSRF token (X-CSRF-Token) on anything but GET/HEAD/OPTIONS; one with
+        # a bearer token, or an anonymous one (POST /api/auth/login), doesn't.
         app.include_router(module.router, prefix="/api",
-                           dependencies=[Depends(bearer_scheme("/api/auth/login"))])
+                           dependencies=[Depends(bearer_scheme("/api/auth/login")),
+                                         Depends(require_cookie_csrf)])
 

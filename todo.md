@@ -25,13 +25,6 @@ infrastructure.
 
 Each is one PR here once it ships: bump the pin, adopt, remove the item. Each is registered in that repo's TODO.
 
-- [ ] `feat(api): CSRF for cookie-authenticated API calls`
-  - **Why:** since the bearer auth switch the API also accepts the session cookie when there's no
-    `Authorization` header, and `require_csrf` isn't on the API (bearer scripts would then need a token).
-    The cookie's `SameSite=Lax` keeps other sites' POSTs from carrying it, so this is defence in depth.
-  - **Waits on:** greentechhub-fastapi M6.6, CSRF checked only when a request is authenticated by the cookie, not
-    a bearer token.
-  - **Then:** turn it on for the `/api` routers in `pyfinbot.py`.
 - [ ] `feat(api): personal API tokens`
   - **Waits on:** greentechhub-core's API token store and greentechhub-fastapi M6 personal API tokens.
   - **Then:** scripts use a revocable personal token instead of a 24h login JWT (see Known limitations).
