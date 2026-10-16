@@ -2,6 +2,7 @@ from datetime import date, datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from greentechhub_core.dates import fiscal_year_label
 from greentechhub_core.identity import Identity
 from greentechhub_core.query.types import Sort
 from greentechhub_core.sqlalchemy.query import order_by, paginate
@@ -114,11 +115,10 @@ async def export_csv(
     download — the table's "Export CSV" link (TableState.export_url)."""
     state = _table_state(request, user_settings)
     transactions = (await session.exec(_transactions_stmt(identity, state))).all()
-    fy_label = templates.env.filters["fy"]
     rows = [CSV_HEADER, *(
         [t.transaction_date.isoformat(), t.stock.market, t.stock.symbol, t.type.value,
          csv_value(t.units), csv_value(t.price), csv_value(t.fees), csv_value(t.total_value), csv_value(t.cost),
-         fy_label(t.fy), t.notes or ""]
+         fiscal_year_label(t.fy), t.notes or ""]
         for t in transactions
     )]
     return csv_download(rows, "pyfinbot-transactions.csv")

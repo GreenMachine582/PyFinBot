@@ -2,7 +2,7 @@
 with test_email_sync.py)."""
 from unittest.mock import patch
 
-from pyfinbot.core.email_sync import NOT_CONFIGURED, GmailNotConfiguredError
+from pyfinbot.core.email_sync import NOT_CONFIGURED, EmailNotConfiguredError
 from greentechhub_core.background import held_lock, lock_name
 
 from pyfinbot.core.settings import settings
@@ -93,7 +93,7 @@ class TestSync:
 
     async def test_not_configured(self, gth_client):
         await web_login(gth_client, "web-emails")
-        with patch(FETCH, side_effect=GmailNotConfiguredError(NOT_CONFIGURED)):
+        with patch(FETCH, side_effect=EmailNotConfiguredError(NOT_CONFIGURED)):
             resp = await gth_client.post("/emails/sync")
         assert resp.status_code == 422
         assert "Set your email address and app password in Settings" in resp.text

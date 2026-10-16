@@ -5,7 +5,7 @@ import email
 from pathlib import Path
 from unittest.mock import patch
 
-from pyfinbot.core.email_sync import GmailNotConfiguredError
+from pyfinbot.core.email_sync import EmailNotConfiguredError
 
 from .conftest import create_stock, register_and_login
 
@@ -32,7 +32,7 @@ class TestSyncCommsecEmails:
         headers = await register_and_login(gth_client, USER_ID)
         with patch(
             "pyfinbot.api.email_routes.fetch_commsec_emails",
-            side_effect=GmailNotConfiguredError("GMAIL_ADDRESS/GMAIL_APP_PASSWORD not configured"),
+            side_effect=EmailNotConfiguredError("GMAIL_ADDRESS/GMAIL_APP_PASSWORD not configured"),
         ):
             resp = await gth_client.post("/api/emails/sync-commsec", headers=headers)
         assert resp.status_code == 503

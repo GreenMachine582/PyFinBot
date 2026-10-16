@@ -15,15 +15,15 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from ..models.stock_models import Stock
 from ..models.transaction_models import NOTES_MAX, Transaction, TypeEnum
 from ..schemas.email_schemas import EmailSyncSummary
+from greentechhub_core.email import message_text, received_at
+
 from .commsec_parser import CommsecParseError, parse_commsec_email
 from .dedupe import is_duplicate_transaction
 from .email_sync import (
     EmailAccount,
-    GmailNotConfiguredError,
+    EmailNotConfiguredError,
     fetch_commsec_emails,
     mark_seen,
-    message_text,
-    received_at,
 )
 
 
@@ -58,7 +58,7 @@ async def sync_commsec_emails(
     mark = mark or mark_seen
     try:
         messages = await asyncio.to_thread(fetch, account, only_unseen=not include_seen)
-    except GmailNotConfiguredError as exc:
+    except EmailNotConfiguredError as exc:
         raise EmailSyncError(503, str(exc))
     except Exception as exc:
         raise EmailSyncError(502, f"IMAP fetch failed: {exc}")

@@ -5,7 +5,7 @@ filter bars and the holdings as-of date."""
 import io
 from unittest.mock import patch
 
-from pyfinbot.core.email_sync import NOT_CONFIGURED, GmailNotConfiguredError
+from pyfinbot.core.email_sync import NOT_CONFIGURED, EmailNotConfiguredError
 
 from .conftest import create_stock, web_login
 
@@ -24,7 +24,7 @@ class TestAlerts:
     async def test_sync_error_is_an_inline_danger_alert_with_a_settings_action(self, gth_client):
         await web_login(gth_client, "gth-alerts")
         with patch("pyfinbot.core.commsec_import.fetch_commsec_emails",
-                   side_effect=GmailNotConfiguredError(NOT_CONFIGURED)):
+                   side_effect=EmailNotConfiguredError(NOT_CONFIGURED)):
             resp = await gth_client.post("/emails/sync", headers=HX)
         assert resp.status_code == 422
         assert "gth-toast-inline gth-toast-danger" in resp.text

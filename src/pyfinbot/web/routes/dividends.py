@@ -1,12 +1,11 @@
 import greentechhub_ui
 from fastapi import APIRouter, Depends, Request
+from greentechhub_core.background import held_lock
 from greentechhub_core.identity import Identity
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ...core import audit_events
 from ...core.dividend_sync import syncDividends, user_stock_ids
-from greentechhub_core.background import held_lock
-
 from ...core.market_sync import SYNC_LOCK_TTL_SECONDS
 from ...core.settings import settings
 from ...db.session import get_session

@@ -8,16 +8,16 @@ from pathlib import Path
 import pytest
 from greentechhub_core.email import IMAPConfig
 
+from greentechhub_core.email import message_text, received_at
+
 from pyfinbot.core.commsec_parser import parse_commsec_email
 from pyfinbot.core.email_sync import (
     COMMSEC_SENDER,
     EmailAccount,
-    GmailNotConfiguredError,
+    EmailNotConfiguredError,
     commsec_criteria,
     fetch_commsec_emails,
     mark_seen,
-    message_text,
-    received_at,
 )
 from pyfinbot.core.user_settings import EMAIL_GROUP, USER_SETTINGS
 
@@ -48,9 +48,9 @@ def test_commsec_criteria():
 def test_an_unset_mailbox_is_not_configured():
     account = EmailAccount()
     assert not account.configured
-    with pytest.raises(GmailNotConfiguredError):
+    with pytest.raises(EmailNotConfiguredError):
         fetch_commsec_emails(account)
-    with pytest.raises(GmailNotConfiguredError):
+    with pytest.raises(EmailNotConfiguredError):
         mark_seen(account, [b"1"])
     assert EmailAccount(imap=IMAPConfig(host="h", username="u", password="p")).configured
 
