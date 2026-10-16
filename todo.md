@@ -25,19 +25,9 @@ infrastructure.
 
 Each is one PR here once it ships: bump the pin, adopt, remove the item. Each is registered in that repo's TODO.
 
-- [ ] `feat(api): CSRF for cookie-authenticated API calls`
-  - **Why:** since the bearer auth switch the API also accepts the session cookie when there's no
-    `Authorization` header, and `require_csrf` isn't on the API (bearer scripts would then need a token).
-    The cookie's `SameSite=Lax` keeps other sites' POSTs from carrying it, so this is defence in depth.
-  - **Waits on:** greentechhub-fastapi M6.6, CSRF checked only when a request is authenticated by the cookie, not
-    a bearer token.
-  - **Then:** turn it on for the `/api` routers in `pyfinbot.py`.
 - [ ] `feat(web): audit activity feed`
   - **Waits on:** greentechhub-ui M6 `gth_timeline`, and the audit log item above.
   - **Then:** the audit entries as a feed (dashboard or its own page).
-- [ ] `feat(web): HTML error pages`
-  - **Why:** pages get FastAPI's default JSON errors (`pyfinbot.py`'s handlers cover `/api` only).
-  - **Waits on:** greentechhub-fastapi M6 `register_error_pages` (ui v0.17's 403/404/500 templates).
 - [ ] `refactor(web): leaner routes`: what's left, one step per gth helper as it ships:
   - `_get_transaction_or_404` → greentechhub-fastapi's `get_owned_or_404` once it takes `options=` (passed to
     `session.get`), so `transaction.stock` can stay eager-loaded. The delete modal and route read it, and a lazy

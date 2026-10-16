@@ -22,6 +22,7 @@ from greentechhub_fastapi import (
     register_core,
     register_csp,
     register_csrf,
+    register_error_pages,
     register_health,
     register_logging,
     register_permissions,
@@ -29,6 +30,7 @@ from greentechhub_fastapi import (
 )
 from greentechhub_fastapi.api_tokens import ApiTokenViews
 from greentechhub_fastapi.auth import bearer_scheme
+from greentechhub_fastapi.auth.csrf import require_cookie_csrf
 from greentechhub_fastapi.exceptions import register_api_error_handlers, register_exception_handlers
 from greentechhub_fastapi.settings import SettingsViews
 from greentechhub_fastapi.templating import mount_static_dirs
@@ -88,6 +90,11 @@ register_logging(app, settings, service="pyfinbot", version=version.VERSION, uvi
 # /api; pages keep FastAPI's defaults.
 register_exception_handlers(app)
 register_api_error_handlers(app, prefix="/api")
+# Browser page requests get greentechhub-ui's 403/404/500 pages instead of
+# FastAPI's JSON; /api and htmx requests keep the JSON above. The 500 page
+# renders from a minimal context (no context processors, which may need the
+# database that just failed) with the request id as its reference.
+register_error_pages(app, settings, templates=templates, api_prefix="/api")
 
 # /health (liveness) and /health/ready (SELECT 1 against the database).
 register_health(app, checks=[database_ready])
@@ -188,6 +195,10 @@ for module_info in pkgutil.iter_modules(api.__path__):
     if hasattr(module, "router"):
         # bearer_scheme only documents the token flow in OpenAPI (Swagger's
         # Authorize button); get_current_identity does the checking.
+        # require_cookie_csrf: a request the session cookie signs in needs the
+        # CSRF token (X-CSRF-Token) on anything but GET/HEAD/OPTIONS; one with
+        # a bearer token, or an anonymous one (POST /api/auth/login), doesn't.
         app.include_router(module.router, prefix="/api",
-                           dependencies=[Depends(bearer_scheme("/api/auth/login"))])
+                           dependencies=[Depends(bearer_scheme("/api/auth/login")),
+                                         Depends(require_cookie_csrf)])
 
