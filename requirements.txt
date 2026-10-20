@@ -10,7 +10,7 @@ greentechhub-fastapi[testing] @ git+https://github.com/GreenMachine582/greentech
 greentechhub-ui @ git+https://github.com/GreenMachine582/greentechhub-ui.git@v0.19.0
 httpx~=0.28.1
 jinja2~=3.1
-mypy~=2.1.0
+mypy~=2.4.0
 numpy~=2.5.4
 openpyxl~=3.1.5
 pandas~=3.0.3
