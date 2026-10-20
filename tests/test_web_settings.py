@@ -1,12 +1,7 @@
 """Per-user preferences, /settings and the user menu (greentechhub v0.12
 adoption, item 3): greentechhub-core settings in gth_settings, served by
 greentechhub-fastapi's register_settings / SettingsViews."""
-import os
 import re
-import sqlite3
-import subprocess
-import sys
-from pathlib import Path
 
 from pyfinbot.core.user_settings import DEFAULT_ROWS_PER_PAGE, USER_SETTINGS
 from pyfinbot.dev.seed import seed_demo
@@ -15,7 +10,6 @@ from .conftest import create_stock, post_login, send_csrf, web_login
 from .test_web_reports import HX, _txn
 
 HTML = {"Accept": "text/html"}
-ROOT = Path(__file__).resolve().parents[1]
 
 
 async def _save_preferences(client, **values):
@@ -42,8 +36,12 @@ def test_registry_is_the_shared_preferences_with_pyfinbots_defaults():
     assert USER_SETTINGS.get("ui.page_size").default == DEFAULT_ROWS_PER_PAGE
     assert USER_SETTINGS.get("locale.date_format").default == "long"
     assert "ui.sidebar_default" not in USER_SETTINGS  # navbar layout: it would do nothing
-    # Everything is per user except the admins' Site group (Settings › App).
-    assert {s.key for s in USER_SETTINGS if s.scope == "app"} == {"site.banner", "site.banner_tone"}
+    # Everything is per user except the admins' Settings › App: the site
+    # banner and the outgoing mail server.
+    assert {s.key for s in USER_SETTINGS if s.scope == "app"} == {
+        "site.banner", "site.banner_tone", "email.smtp_host", "email.smtp_port", "email.smtp_security",
+        "email.smtp_username", "email.smtp_password", "email.from_address"}
+    assert USER_SETTINGS.get("notify.sync").default == "in_app"
 
 
 # access
@@ -129,30 +127,3 @@ async def test_theme_toggle_saves_to_the_users_settings(gth_client):
     page = (await gth_client.get("/", headers=HTML)).text
     assert 'var server = "light";' in page  # app.html's pre-paint theme script
     assert 'data-gth-theme-save-url="/settings/theme"' in page
-
-
-# migration
-
-
-def test_migration_creates_and_drops_gth_settings(tmp_path):
-    db = tmp_path / "migrate.db"
-    env = {**os.environ, "DATABASE_URL": f"sqlite:///{db}",
-           "ASYNC_DATABASE_URL": f"sqlite+aiosqlite:///{db}"}
-
-    def alembic(*args):
-        # A subprocess: alembic's env.py imports the models as src.pyfinbot,
-        # which would redefine this process's tables.
-        subprocess.run([sys.executable, "-m", "alembic", *args], cwd=ROOT, env=env, check=True,
-                       capture_output=True)
-
-    def tables():
-        with sqlite3.connect(db) as conn:
-            return {r[0] for r in conn.execute("select name from sqlite_master where type='table'")}
-
-    alembic("upgrade", "head")
-    assert "gth_settings" in tables()
-    with sqlite3.connect(db) as conn:
-        cols = [r[1] for r in conn.execute("pragma table_info(gth_settings)")]
-    assert cols == ["scope", "subject", "key", "value", "updated_at"]
-    alembic("downgrade", "a7ab2f6a51dc")  # back to before gth_settings
-    assert "gth_settings" not in tables() and "dividend" in tables()

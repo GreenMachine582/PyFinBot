@@ -26,7 +26,7 @@ from greentechhub_fastapi.downloads import BOM
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from .core import report_rows, reports
-from .models.user_models import User
+from .core.users import USER_STORE
 from .schemas.report_schemas import CapitalGainsReport, DividendsReport, HoldingsReport
 
 
@@ -40,7 +40,7 @@ class UnknownUser(LookupError):
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="pyfinbot", description="Export a PyFinBot report as CSV or JSON.")
     common = argparse.ArgumentParser(add_help=False)
-    common.add_argument("--user", required=True, help="the user id whose transactions to report on")
+    common.add_argument("--user", required=True, help="the username whose transactions to report on")
     common.add_argument("--format", choices=("csv", "json"), default="csv", help="output format (default: csv)")
     common.add_argument("-o", "--output", help="write to this file instead of stdout")
 
@@ -58,16 +58,17 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 async def build_report(session: AsyncSession, args: argparse.Namespace) -> Report:
-    """The report `args` asks for. Raises UnknownUser for a user id that
+    """The report `args` asks for. Raises UnknownUser for a username that
     doesn't exist, rather than printing an empty report."""
-    if await session.get(User, args.user) is None:
+    account = await USER_STORE.by_username(args.user)
+    if account is None:
         raise UnknownUser(f"no user {args.user!r}")
     if args.report == "holdings":
-        return await reports.holdings_report(session, args.user, args.as_of or date.today())
+        return await reports.holdings_report(session, account.id, args.as_of or date.today())
     if args.report == "gains":
         fy = args.fy if args.fy is not None else fiscal_year(date.today())
-        return await reports.capital_gains_report(session, args.user, fy)
-    return await reports.dividends_report(session, args.user, args.fy)
+        return await reports.capital_gains_report(session, account.id, fy)
+    return await reports.dividends_report(session, account.id, args.fy)
 
 
 def render(report: Report, fmt: str) -> str:

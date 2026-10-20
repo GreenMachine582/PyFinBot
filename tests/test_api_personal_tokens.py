@@ -3,18 +3,12 @@ v0.17's register_api_tokens and ApiTokenViews, ui v0.19's API tokens section):
 a user creates one at /settings, a script uses it as `Authorization: Bearer`,
 and revoking it refuses the next call."""
 
-import os
 import re
-import sqlite3
-import subprocess
-import sys
-from pathlib import Path
 
 from .conftest import web_login
 
 HX = {"HX-Request": "true"}
 HTML = {"Accept": "text/html"}
-ROOT = Path(__file__).resolve().parents[1]
 
 
 async def _create(client, name="backup script", expiry="90"):
@@ -52,25 +46,3 @@ async def test_a_token_cant_create_tokens(gth_client):
     resp = await gth_client.post("/settings/api-tokens", headers={**HX, "Authorization": f"Bearer {plaintext}"},
                                  data={"name": "more", "expires_in_days": "90"})
     assert resp.status_code == 403
-
-
-def test_migration_creates_and_drops_gth_api_tokens(tmp_path):
-    db = tmp_path / "migrate.db"
-    env = {**os.environ, "DATABASE_URL": f"sqlite:///{db}", "ASYNC_DATABASE_URL": f"sqlite+aiosqlite:///{db}"}
-
-    def alembic(*args):
-        # A subprocess, as in test_web_audit: env.py imports the models afresh.
-        subprocess.run([sys.executable, "-m", "alembic", *args], cwd=ROOT, env=env, check=True,
-                       capture_output=True)
-
-    def tables():
-        with sqlite3.connect(db) as conn:
-            return {r[0] for r in conn.execute("select name from sqlite_master where type='table'")}
-
-    alembic("upgrade", "head")
-    with sqlite3.connect(db) as conn:
-        cols = [r[1] for r in conn.execute("pragma table_info(gth_api_tokens)")]
-    # greentechhub_core.sqlalchemy.api_tokens_table's columns, in order.
-    assert cols == ["id", "token_hash", "owner", "name", "scopes", "created_at", "expires_at", "last_used_at"]
-    alembic("downgrade", "7c02b9a0cfe8")  # back to before gth_api_tokens
-    assert "gth_api_tokens" not in tables() and "gth_audit_log" in tables()

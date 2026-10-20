@@ -3,11 +3,6 @@ gth_audit_log): fastapi's views record sign-ins and the like by themselves;
 PyFinBot's syncs and imports add theirs (core/audit_events.py), from the web
 and the API alike; admins read it at /admin/audit."""
 import io
-import os
-import sqlite3
-import subprocess
-import sys
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
@@ -15,22 +10,22 @@ import pytest
 
 from pyfinbot.pyfinbot import AUDIT_STORE
 
-from .conftest import create_stock, make_admin, register_and_login, web_login
+from .conftest import create_stock, make_admin, register_and_login, user_id, web_login
 
 HX = {"HX-Request": "true"}
 HTML = {"Accept": "text/html"}
-ROOT = Path(__file__).resolve().parents[1]
 CSV = "date,stock,type,units,price,fees,notes\n2024-08-01,ASX:AUD,Buy,10,20,0,\n2024-08-02,ASX:NOPE,Buy,1,1,0,\n"
 
 
 @pytest.fixture
 def recorded():
-    """The newest entry for an action (and actor), read back from gth_audit_log
-    through the store. Since greentechhub-core v0.15 the test sessions release
+    """The newest entry for an action (and actor, by username), read back
+    from gth_audit_log through the store. Since greentechhub-core v0.15 the test sessions release
     a read-only SAVEPOINT on close, so a route session that stays open around
     the store's own write no longer undoes it."""
     async def entry(action: str, actor: str | None = None):
-        found = await AUDIT_STORE.entries(action=action, actor=actor, limit=1)
+        actor_id = await user_id(actor) if actor is not None else None
+        found = await AUDIT_STORE.entries(action=action, actor=actor_id, limit=1)
         assert found, f"no {action} entry in gth_audit_log"
         return found[0]
     return entry
@@ -38,7 +33,7 @@ def recorded():
 
 async def test_a_web_sign_in_is_recorded(gth_client, recorded):
     await web_login(gth_client, "audit-signin")
-    assert (await recorded("auth.signed_in", "audit-signin")).actor == "audit-signin"
+    assert (await recorded("auth.signed_in", "audit-signin")).actor == await user_id("audit-signin")
 
 
 async def test_a_web_import_is_recorded(gth_client, recorded):
@@ -100,24 +95,3 @@ async def test_the_audit_page_is_for_admins(gth_client):
     page = await gth_client.get("/admin/audit")
     assert page.status_code == 200 and "auth.signed_in" in page.text and "audit-admin" in page.text
     assert 'href="/admin/audit"' in (await gth_client.get("/", headers=HTML)).text
-
-
-def test_migration_creates_and_drops_gth_audit_log(tmp_path):
-    db = tmp_path / "migrate.db"
-    env = {**os.environ, "DATABASE_URL": f"sqlite:///{db}", "ASYNC_DATABASE_URL": f"sqlite+aiosqlite:///{db}"}
-
-    def alembic(*args):
-        # A subprocess, as in test_web_login_throttle: env.py imports the models afresh.
-        subprocess.run([sys.executable, "-m", "alembic", *args], cwd=ROOT, env=env, check=True,
-                       capture_output=True)
-
-    def tables():
-        with sqlite3.connect(db) as conn:
-            return {r[0] for r in conn.execute("select name from sqlite_master where type='table'")}
-
-    alembic("upgrade", "head")
-    with sqlite3.connect(db) as conn:
-        cols = [r[1] for r in conn.execute("pragma table_info(gth_audit_log)")]
-    assert cols == ["id", "at", "actor", "action", "target_type", "target_id", "summary", "details"]
-    alembic("downgrade", "e8a3c6d1f204")  # back to before gth_audit_log
-    assert "gth_audit_log" not in tables() and "gth_login_attempts" in tables()

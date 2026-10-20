@@ -4,19 +4,21 @@ gth_client points the app's Database at it (gth_database)."""
 from sqlmodel import select
 
 from pyfinbot.db.session import db, get_session
-from pyfinbot.models.user_models import User
+from pyfinbot.models.stock_models import Stock
 
-USER_ID = "fixture-isolation"
+from .conftest import account_row, insert_account
+
+USERNAME = "fixture-isolation"
 
 
 async def test_a_committed_row_is_seen_within_its_test(gth_session):
-    gth_session.add(User(id=USER_ID, active=True, password_hash="x"))
+    await insert_account(gth_session, USERNAME)
     await gth_session.commit()
-    assert (await gth_session.exec(select(User).where(User.id == USER_ID))).first() is not None
+    assert await account_row(gth_session, USERNAME) is not None
 
 
 async def test_it_is_rolled_back_before_the_next_test(gth_session):
-    assert (await gth_session.exec(select(User).where(User.id == USER_ID))).first() is None
+    assert await account_row(gth_session, USERNAME) is None
 
 
 async def test_the_client_uses_the_test_sessionmaker(gth_client, gth_sessionmaker):
@@ -29,7 +31,7 @@ async def test_closing_get_session_ends_its_session_at_once(gth_client):
     open and the next session's nests inside it."""
     sessions = get_session()
     session = await anext(sessions)
-    await session.exec(select(User))
+    await session.exec(select(Stock))
     assert session.in_transaction()
     await sessions.aclose()
     assert not session.in_transaction()

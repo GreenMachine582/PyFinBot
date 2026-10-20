@@ -26,21 +26,28 @@ from sqlalchemy import CursorResult, delete, func
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from greentechhub_core.security import hash_password
+from greentechhub_core.users import new_account
+
 from ..core.settings import settings
 from ..core.permissions import ADMIN
-from ..core.users import new_user
 from ..models.dividend_models import Dividend
-from ..models.settings_models import ROLE_GRANTS_TABLE
+from ..models.settings_models import ROLE_GRANTS_TABLE, USER_IDENTITIES_TABLE, USERS_TABLE
 from ..models.stock_models import Stock
 from ..models.transaction_models import Transaction, TypeEnum
-from ..models.user_models import User
 
 DEMO_USERS: dict[str, str] = {"demo-admin": "demo-admin-pass", "demo-user": "demo-user-pass"}
-"""Dev-only logins (user id → password)."""
+"""Dev-only logins (username → password)."""
+
+DEMO_PROFILES: dict[str, tuple[str, str]] = {
+    "demo-admin": ("Demo Admin", "demo-admin@example.com"),
+    "demo-user": ("Demo User", "demo-user@example.com"),
+}
+"""Each demo user's display name and (already confirmed) email address."""
 
 DEMO_ADMIN = "demo-admin"
-"""Granted the admin role (a gth_role_grants row), as if assigned at
-/admin/roles, so the admin pages work without a ROLE_BOOTSTRAP."""
+"""Granted the admin role (a gth_role_grants row for its account id), as if
+assigned at /admin/roles, so the admin pages work without a ROLE_BOOTSTRAP."""
 
 MARKET = "ASX"
 DIVIDEND_SOURCE = "demo"
@@ -105,22 +112,31 @@ async def seed_demo(session: AsyncSession, *, reset: bool = False,
     if reset:
         summary.reset = await _reset(session)
     users = await _ensure_users(session, summary)
-    await _ensure_admin_grant(session, summary)
+    await _ensure_admin_grant(session, users[DEMO_ADMIN], summary)
     stocks = await _ensure_stocks(session, summary)
-    for user_id, count in TRANSACTION_COUNTS.items():
-        await _ensure_transactions(session, users[user_id], stocks, count, summary)
+    for username, count in TRANSACTION_COUNTS.items():
+        await _ensure_transactions(session, username, users[username], stocks, count, summary)
     await _ensure_dividends(session, stocks, summary)
     await session.commit()
     return summary
 
 
+async def _demo_ids(session: AsyncSession) -> dict[str, str]:
+    """The demo users' account ids, by username (those that exist)."""
+    rows = await session.execute(select(USERS_TABLE.c.username, USERS_TABLE.c.id).where(
+        USERS_TABLE.c.username.in_(list(DEMO_USERS))))
+    return {username: user_id for username, user_id in rows.all()}
+
+
 async def _reset(session: AsyncSession) -> dict[str, int]:
-    ids = list(DEMO_USERS)
+    ids = list((await _demo_ids(session)).values())
     # Explicit, not relying on the FK cascade: SQLite only enforces it with
     # PRAGMA foreign_keys on.
     txns = await session.execute(
         delete(Transaction).where(col(Transaction.user_id).in_(ids)))
-    users = await session.execute(delete(User).where(col(User.id).in_(ids)))
+    await session.execute(delete(USER_IDENTITIES_TABLE).where(
+        USER_IDENTITIES_TABLE.c.user_id.in_(ids)))
+    users = await session.execute(delete(USERS_TABLE).where(USERS_TABLE.c.id.in_(ids)))
     grants = await session.execute(
         delete(ROLE_GRANTS_TABLE).where(ROLE_GRANTS_TABLE.c.subject.in_(ids)))
     dividends = await session.execute(
@@ -144,25 +160,31 @@ async def _reset(session: AsyncSession) -> dict[str, int]:
             "dividends": cast(CursorResult, dividends).rowcount, "stocks": stocks_removed}
 
 
-async def _ensure_users(session: AsyncSession, summary: SeedSummary) -> dict[str, User]:
-    users = {}
-    for user_id, password in DEMO_USERS.items():
-        user = await session.get(User, user_id)
-        if user is None:
-            user = new_user(user_id, password)
-            session.add(user)
-            summary.users_created += 1
-        users[user_id] = user
+async def _ensure_users(session: AsyncSession, summary: SeedSummary) -> dict[str, str]:
+    """The demo accounts (core's gth_users rows, written in this session so
+    the seed stays one transaction), created if missing: username → id."""
+    ids = await _demo_ids(session)
+    for username, password in DEMO_USERS.items():
+        if username in ids:
+            continue
+        display_name, email = DEMO_PROFILES[username]
+        account = new_account(username, now=datetime.now(timezone.utc), email=email,
+                              email_verified=True, display_name=display_name,
+                              password_hash=hash_password(password))
+        await session.execute(USERS_TABLE.insert().values(
+            {column.name: getattr(account, column.name) for column in USERS_TABLE.columns}))
+        ids[username] = account.id
+        summary.users_created += 1
     await session.flush()
-    return users
+    return ids
 
 
-async def _ensure_admin_grant(session: AsyncSession, summary: SeedSummary) -> None:
+async def _ensure_admin_grant(session: AsyncSession, admin_id: str, summary: SeedSummary) -> None:
     table = ROLE_GRANTS_TABLE
     found = (await session.exec(select(table.c.role).where(
-        table.c.subject == DEMO_ADMIN, table.c.role == ADMIN.name))).first()
+        table.c.subject == admin_id, table.c.role == ADMIN.name))).first()
     if found is None:
-        await session.execute(table.insert().values(subject=DEMO_ADMIN, role=ADMIN.name))
+        await session.execute(table.insert().values(subject=admin_id, role=ADMIN.name))
         summary.grants_created += 1
 
 
@@ -187,19 +209,18 @@ def _price(rng: random.Random, demo: DemoStock) -> Decimal:
     return (demo.base_price * Decimal(str(rng.uniform(0.85, 1.15)))).quantize(Decimal("0.01"))
 
 
-async def _ensure_transactions(session: AsyncSession, user: User, stocks: dict[str, Stock],
-                               count: int, summary: SeedSummary) -> None:
+async def _ensure_transactions(session: AsyncSession, username: str, user_id: str,
+                               stocks: dict[str, Stock], count: int, summary: SeedSummary) -> None:
     existing = (await session.exec(select(func.count()).select_from(Transaction).where(
-        Transaction.user_id == user.id))).one()
+        Transaction.user_id == user_id))).one()
     if existing:
         return  # this demo user already has their history
-    rng = random.Random(f"{RANDOM_SEED}:{user.id}")
+    # Seeded by username, not the generated id, so every run makes the same rows.
+    rng = random.Random(f"{RANDOM_SEED}:{username}")
     span = (PERIOD_END - PERIOD_START).days
     dates = sorted(PERIOD_START + timedelta(days=rng.randrange(span + 1)) for _ in range(count))
     held: dict[str, Decimal] = {d.symbol: Decimal(0) for d in DEMO_STOCKS}
     rows: list[Transaction] = []
-    user_id = user.id
-    assert user_id is not None  # a primary key, set when the user was created
 
     def add(demo: DemoStock, on: date, kind: TypeEnum, units: Decimal, note: Optional[str] = None) -> None:
         stock_id = stocks[demo.symbol].id

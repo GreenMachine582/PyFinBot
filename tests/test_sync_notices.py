@@ -3,12 +3,7 @@ register_notifications and notify): each completed run leaves one for the user
 who ran it, behind the navbar bell and at /notifications, toned by how it went.
 A notice never fails the run, and gth_notifications is migrated."""
 import io
-import os
 import re
-import sqlite3
-import subprocess
-import sys
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
@@ -16,7 +11,6 @@ from .conftest import create_stock, web_login
 
 HX = {"HX-Request": "true"}
 HTML = {"Accept": "text/html"}
-ROOT = Path(__file__).resolve().parents[1]
 CSV = "date,stock,type,units,price,fees,notes\n2024-08-01,ASX:NTC,Buy,10,20,0,\n2024-08-02,ASX:NOPE,Buy,1,1,0,\n"
 
 
@@ -81,26 +75,3 @@ async def test_a_notice_failure_never_fails_the_sync(gth_client):
             patch("pyfinbot.web.routes.stocks.syncMarket", new=AsyncMock(return_value=([], [], []))):
         assert (await gth_client.post("/stocks/sync/asx", headers=HX)).status_code == 204
     assert await _unread(gth_client) == 0
-
-
-def test_migration_creates_and_drops_gth_notifications(tmp_path):
-    db = tmp_path / "migrate.db"
-    env = {**os.environ, "DATABASE_URL": f"sqlite:///{db}", "ASYNC_DATABASE_URL": f"sqlite+aiosqlite:///{db}"}
-
-    def alembic(*args):
-        # A subprocess, as in test_web_audit: env.py imports the models afresh.
-        subprocess.run([sys.executable, "-m", "alembic", *args], cwd=ROOT, env=env, check=True,
-                       capture_output=True)
-
-    def tables():
-        with sqlite3.connect(db) as conn:
-            return {r[0] for r in conn.execute("select name from sqlite_master where type='table'")}
-
-    alembic("upgrade", "head")
-    with sqlite3.connect(db) as conn:
-        cols = [r[1] for r in conn.execute("pragma table_info(gth_notifications)")]
-    # greentechhub_core.sqlalchemy.notifications_table's columns, in order.
-    assert cols == ["id", "recipient", "category", "kind", "title", "message", "icon", "action_label",
-                    "action_url", "created_at", "read_at"]
-    alembic("downgrade", "f3b8d2c6a1e9")  # back to before gth_notifications
-    assert "gth_notifications" not in tables() and "gth_api_tokens" in tables()

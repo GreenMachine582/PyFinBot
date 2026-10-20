@@ -8,6 +8,7 @@ import pkgutil
 
 import greentechhub_ui
 from fastapi import Depends, FastAPI
+from greentechhub_core.email import SettingsEmailSender
 from greentechhub_core.settings.crypto import settings_cipher
 from greentechhub_core.sqlalchemy import (
     SQLAlchemyApiTokenStore,
@@ -24,12 +25,15 @@ from greentechhub_fastapi import (
     register_core,
     register_csp,
     register_csrf,
+    register_email,
     register_error_pages,
     register_health,
     register_logging,
     register_notifications,
     register_permissions,
+    register_scim,
     register_settings,
+    register_users,
 )
 from greentechhub_fastapi.api_tokens import ApiTokenViews
 from greentechhub_fastapi.auth import bearer_scheme
@@ -38,12 +42,14 @@ from greentechhub_fastapi.notifications import NotificationViews
 from greentechhub_fastapi.exceptions import register_api_error_handlers, register_exception_handlers
 from greentechhub_fastapi.settings import SettingsViews
 from greentechhub_fastapi.templating import mount_static_dirs
+from greentechhub_fastapi.users import account_address, account_profile
 
 from . import version, api
 from .core.login_throttle import LOGIN_THROTTLE
 from .core.permissions import ROLES, SETTINGS_MANAGE
 from .core.settings import settings
 from .core.user_settings import USER_SETTINGS
+from .core.users import USER_STORE
 from .db.session import database_ready, init_db, session_factory
 from .models.settings_models import (
     API_TOKENS_TABLE,
@@ -53,6 +59,7 @@ from .models.settings_models import (
     SETTINGS_TABLE,
 )
 from .web.templating import ADMIN_VIEWS, AUDIT_VIEWS, templates
+from .web.routes.account_email import RESET_VIEWS, VERIFY_VIEWS
 from .web.routes import (
     auth as web_auth,
     dashboard as web_dashboard,
@@ -131,6 +138,20 @@ register_core(app, settings)
 # bearer=True: the API also takes `Authorization: Bearer` tokens (issue_token
 # in api/auth_routes.py), through the same get_current_user as pages.
 register_auth(app, settings, bearer=True)
+# User accounts (core/users.py, gth_users): every caller register_auth signs
+# in is resolved to their account, whose id is the subject every route keys
+# on. Under forward_auth an Authentik user's account is created and linked on
+# first sign-in, their email and display name kept in step with Authentik
+# (and locked at /settings › Profile); an inactive account is signed out on
+# its next request, sessions and API tokens alike.
+IDP_LABEL = "Authentik"
+register_users(app, USER_STORE, idp_label=IDP_LABEL)
+# SCIM 2.0 at /scim/v2 for Authentik's SCIM provider (users only), once
+# SCIM_TOKEN is set: account changes made in Authentik arrive as they happen,
+# deactivation signs the person out at once. Its externalId is the Authentik
+# uid, the same link a forward-auth sign-in uses.
+if settings.SCIM_TOKEN:
+    register_scim(app, token=settings.SCIM_TOKEN)
 # A strict Content-Security-Policy with a fresh nonce per request: greentechhub-
 # ui's shell puts it on every <script> (templates get it as csp_nonce through
 # ui_context), so only our own scripts run. After register_core, so the nonce
@@ -148,10 +169,11 @@ register_csrf(app)
 AUDIT_STORE = SQLAlchemyAuditStore(AUDIT_LOG_TABLE, async_session_factory=session_factory)
 register_audit(app, settings, store=AUDIT_STORE, views=AUDIT_VIEWS)
 
-# In-app notices (gth_notifications): each sync and import leaves one for the
-# user who ran it (core/audit_events.py), behind the navbar's bell, which
-# settings_context shows once these views are mounted (/notifications). In-app
-# only: there's no register_email, as users have no email addresses yet.
+# Notices (gth_notifications): each sync and import leaves one for the user
+# who ran it (core/audit_events.py), behind the navbar's bell, which
+# settings_context shows once these views are mounted (/notifications); each
+# user can also have them emailed (/settings › Notifications, register_email
+# below).
 register_notifications(
     app, settings,
     store=SQLAlchemyNotificationStore(NOTIFICATIONS_TABLE, async_session_factory=session_factory),
@@ -185,18 +207,32 @@ register_api_tokens(app, settings, store=SQLAlchemyApiTokenStore(
 # navbar user menu (Settings, Log out), the server-saved theme, a Password
 # section (web_auth.change_password), and user_settings for the
 # date/money/number filters and table page sizes.
-register_settings(
+# The Profile section (display name and email, on the account) asks a changed
+# email to confirm it (VERIFY_VIEWS); for an Authentik sign-in both fields
+# are Authentik's, shown locked.
+load_profile, save_profile = account_profile(USER_STORE, idp_label=IDP_LABEL)
+SETTINGS_SERVICE = register_settings(
     app,
     settings,
     registry=USER_SETTINGS,
     store=SQLAlchemySettingsStore(SETTINGS_TABLE, async_session_factory=session_factory),
     views=SettingsViews(templates=templates, change_password=web_auth.change_password, csrf=True,
+                        load_profile=load_profile, save_profile=save_profile,
+                        verification=VERIFY_VIEWS,
                         api_tokens=ApiTokenViews(templates=templates)),
     manage_permission=SETTINGS_MANAGE,
     logout_url="/logout",
     # Encrypts secret settings (each user's email app password) at rest.
     cipher=settings_cipher(settings, context=CIPHER_CONTEXT),
 )
+
+# Email out: password reset and email confirmation links, and the notices a
+# user asked to have emailed. The mail server is core's smtp_settings, set at
+# Settings › App › Outgoing email (read on every send, the password stored
+# encrypted); until it's set, sending fails quietly and is logged. Notices go
+# to the account's confirmed address only; BASE_URL makes links absolute.
+register_email(app, settings, sender=SettingsEmailSender(SETTINGS_SERVICE),
+               address_for=account_address(USER_STORE), base_url=settings.BASE_URL or None)
 
 # greentechhub-ui static assets its templates reference.
 mount_static_dirs(app, greentechhub_ui.static_dirs())
@@ -206,6 +242,9 @@ mount_static_dirs(app, greentechhub_ui.static_dirs())
 web_auth_router = web_auth.build_router()
 if web_auth_router is not None:
     app.include_router(web_auth_router)
+    # "Forgot password?" and the email confirmation links (local accounts only).
+    app.include_router(RESET_VIEWS.router())
+    app.include_router(VERIFY_VIEWS.router())
 app.include_router(web_dashboard.router)
 # The admin pages (web/templating.py ADMIN_VIEWS, under the nav's "Admin"
 # group): /admin/roles assigns roles (USERS_MANAGE); /admin/audit, already

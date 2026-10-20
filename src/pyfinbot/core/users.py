@@ -1,36 +1,34 @@
-"""Password users: the one place a User is created, its password set, and a
-sign-in checked (bcrypt via greentechhub_core.security). Used by the web
-sign-in and Settings › Password, the API's token login and user routes,
-scripts/create_user.py and the demo seed."""
+"""User accounts: greentechhub-core's users module over the gth_users and
+gth_user_identities tables. USER_STORE is the one store every account
+lookup goes through: the web sign-in and Settings (fastapi's store-backed
+views), the API's token login and user routes, scripts/create_user.py and
+the demo seed.
 
-from datetime import datetime, timezone
-from typing import Optional
+An account's id (32 hex characters) is what Transaction.user_id, settings,
+role grants, the audit actor, notifications and API tokens all key on;
+its username is only the login name. register_users (pyfinbot.py) makes
+register_auth resolve every caller to their account, so a forward-auth
+sign-in from Authentik is provisioned and linked on first use, and an
+account set inactive is signed out on its next request."""
 
-from greentechhub_core.security import hash_password, verify_password
-from sqlmodel.ext.asyncio.session import AsyncSession
+from greentechhub_core.sqlalchemy import SQLAlchemyUserStore
+from greentechhub_core.users import UserAccount, set_password
 
-from ..models.user_models import User
+from ..db.session import session_factory
+from ..models.settings_models import USER_IDENTITIES_TABLE, USERS_TABLE
 
-
-def new_user(user_id: str, password: str) -> User:
-    """An active User with `password` hashed; not added to a session."""
-    return User(id=user_id, active=True, password_hash=hash_password(password))
-
-
-def set_password(user: User, password: str) -> None:
-    """Store `password`'s hash on `user` and touch write_datetime; the
-    caller adds and commits."""
-    user.password_hash = hash_password(password)
-    user.write_datetime = datetime.now(timezone.utc)
+USER_STORE = SQLAlchemyUserStore(USERS_TABLE, USER_IDENTITIES_TABLE,
+                                 async_session_factory=session_factory)
 
 
-def password_matches(user: Optional[User], password: str) -> bool:
-    """Whether `user` exists, has a password and it's `password`."""
-    return bool(user and user.password_hash and verify_password(password, user.password_hash))
-
-
-async def check_password(session: AsyncSession, user_id: str, password: str) -> Optional[User]:
-    """The User if `password` is theirs, else None (unknown id, no password
-    set, or wrong password: all the same to the caller)."""
-    user = await session.get(User, user_id)
-    return user if password_matches(user, password) else None
+async def create_account(username: str, password: str, *, email: str | None = None,
+                         display_name: str | None = None) -> UserAccount:
+    """A new active account that signs in with `password`. Raises core's
+    UserExists for a taken username or email, ValueError for a blank
+    password or a username/email core refuses."""
+    if not password:
+        raise ValueError("a password is required")
+    account = await USER_STORE.create(username, email=email, display_name=display_name)
+    updated = await set_password(USER_STORE, account.id, password)
+    assert updated is not None  # just created
+    return updated

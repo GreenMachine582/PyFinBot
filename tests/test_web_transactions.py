@@ -3,7 +3,7 @@ import re
 
 from httpx import AsyncClient
 
-from .conftest import create_stock, hx_triggers, web_login
+from .conftest import create_stock, hx_triggers, user_id, web_login
 
 HX = {"HX-Request": "true"}
 
@@ -85,7 +85,7 @@ class TestCreate:
         assert txn["total_value"] == 255.0
         assert txn["cost"] == -264.95
         assert txn["notes"] == "first buy"
-        assert txn["user_id"] == "web-txn"
+        assert txn["user_id"] == await user_id("web-txn")
 
     async def test_missing_fields_rerender_with_422(self, gth_client):
         await web_login(gth_client, "web-txn")

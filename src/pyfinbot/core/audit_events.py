@@ -9,8 +9,10 @@ request: fastapi logs a store error and carries on.
 
 Each also leaves an in-app notice (greentechhub-fastapi's notify, the
 navbar bell) for `recipient`, the user who ran it, so a sync's result is
-still there after its toast fades. Category "sync", in-app only (PyFinBot
-has no email addresses). It never fails the request either."""
+still there after its toast fades. Category "sync": each user picks
+in-app, email, both or off at /settings › Notifications (core's
+notification_preferences in core/user_settings.py); email goes to their
+confirmed address. It never fails the request either."""
 from __future__ import annotations
 
 import logging

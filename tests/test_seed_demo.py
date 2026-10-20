@@ -17,9 +17,8 @@ from pyfinbot.dev.seed import (
 from pyfinbot.models.dividend_models import Dividend
 from pyfinbot.models.stock_models import Stock
 from pyfinbot.models.transaction_models import Transaction, TypeEnum
-from pyfinbot.models.user_models import User
 
-from .conftest import post_login
+from .conftest import account_row, insert_account, post_login
 
 HX = {"HX-Request": "true"}
 
@@ -28,7 +27,8 @@ async def _all(session, model, *where):
     return list((await session.exec(select(model).where(*where))).all())
 
 
-async def _demo_transactions(session, user_id):
+async def _demo_transactions(session, username):
+    user_id = (await account_row(session, username)).id
     stmt = (select(Transaction).where(Transaction.user_id == user_id)
             .order_by(Transaction.transaction_date, Transaction.id))
     return list((await session.exec(stmt)).all())
@@ -38,9 +38,10 @@ async def test_first_run_creates_the_demo_data(gth_session):
     summary = await seed_demo(gth_session, environment="development")
     assert summary.users_created == 2 and summary.stocks_created == len(DEMO_STOCKS) == 8
 
-    for user_id, password in DEMO_USERS.items():
-        user = await gth_session.get(User, user_id)
+    for username, password in DEMO_USERS.items():
+        user = await account_row(gth_session, username)
         assert user is not None and user.active and verify_password(password, user.password_hash)
+        assert user.email_verified and user.display_name
 
     stocks = await _all(gth_session, Stock, Stock.market == "ASX")
     assert len(stocks) == 8
@@ -86,8 +87,8 @@ async def test_second_run_adds_nothing(gth_session):
 async def test_reset_removes_only_the_seeds_rows(gth_session):
     await seed_demo(gth_session, environment="development")
     bhp = await Stock.search(gth_session, market="ASX", symbol="BHP")
-    gth_session.add(User(id="real-user", active=True))
-    gth_session.add(Transaction(user_id="real-user", stock_id=bhp.id, type=TypeEnum.BUY,
+    real_user = await insert_account(gth_session, "real-user")
+    gth_session.add(Transaction(user_id=real_user, stock_id=bhp.id, type=TypeEnum.BUY,
                             units=Decimal(5), price=Decimal(40)))
     await gth_session.commit()
 
@@ -95,7 +96,7 @@ async def test_reset_removes_only_the_seeds_rows(gth_session):
     assert summary.reset["users"] == 2 and summary.reset["dividends"] == 36
     assert summary.reset["stocks"] == 7  # BHP stays: real-user still trades it
     assert summary.users_created == 2 and summary.stocks_created == 7
-    assert len(await _all(gth_session, Transaction, Transaction.user_id == "real-user")) == 1
+    assert len(await _all(gth_session, Transaction, Transaction.user_id == real_user)) == 1
     assert (await Stock.search(gth_session, market="ASX", symbol="BHP")).id == bhp.id
 
 
@@ -103,7 +104,7 @@ async def test_reset_removes_only_the_seeds_rows(gth_session):
 async def test_refuses_outside_development(gth_session, environment):
     with pytest.raises(DemoSeedRefused):
         await seed_demo(gth_session, environment=environment)
-    assert await gth_session.get(User, "demo-admin") is None
+    assert await account_row(gth_session, "demo-admin") is None
 
 
 def test_cli_refuses_in_production(monkeypatch, capsys):

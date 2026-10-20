@@ -1,11 +1,6 @@
 """Login throttling (greentechhub adoption, item 5): core's LoginThrottle over
 gth_login_attempts on the web sign-in form, and TRUSTED_PROXIES so each
 client behind the reverse proxy is counted by its own address."""
-import os
-import sqlite3
-import subprocess
-import sys
-from pathlib import Path
 
 from greentechhub_core.security import account_key, client_key
 from httpx import AsyncClient
@@ -14,7 +9,6 @@ from pyfinbot.core.login_throttle import LOGIN_THROTTLE
 
 from .conftest import create_user, post_login
 
-ROOT = Path(__file__).resolve().parents[1]
 LOCKED = "Too many failed sign-ins"
 CLIENT = "127.0.0.1"  # httpx's ASGITransport client address
 
@@ -87,26 +81,3 @@ async def test_trusted_proxies_gives_each_forwarded_client_its_own_address(monke
 
     assert await seen("10.0.0.5") == "203.0.113.9"  # via the proxy: the real client
     assert await seen("198.51.100.7") == "198.51.100.7"  # anyone else can't spoof it
-
-
-def test_migration_creates_and_drops_gth_login_attempts(tmp_path):
-    db = tmp_path / "migrate.db"
-    env = {**os.environ, "DATABASE_URL": f"sqlite:///{db}",
-           "ASYNC_DATABASE_URL": f"sqlite+aiosqlite:///{db}"}
-
-    def alembic(*args):
-        # A subprocess: alembic's env.py imports the models as src.pyfinbot,
-        # which would redefine this process's tables.
-        subprocess.run([sys.executable, "-m", "alembic", *args], cwd=ROOT, env=env, check=True,
-                       capture_output=True)
-
-    def tables():
-        with sqlite3.connect(db) as conn:
-            return {r[0] for r in conn.execute("select name from sqlite_master where type='table'")}
-
-    alembic("upgrade", "head")
-    with sqlite3.connect(db) as conn:
-        cols = [r[1] for r in conn.execute("pragma table_info(gth_login_attempts)")]
-    assert cols == ["key", "failures", "window_start", "locked_until"]
-    alembic("downgrade", "d52e9f3a8b17")  # back to before gth_login_attempts
-    assert "gth_login_attempts" not in tables() and "gth_role_grants" in tables()

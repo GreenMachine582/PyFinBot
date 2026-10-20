@@ -1,7 +1,7 @@
 """Integration tests for /api/transactions routes."""
 import pytest
 
-from .conftest import create_stock, register_and_login
+from .conftest import create_stock, register_and_login, user_id
 
 USER_ID = "user-abc"
 OTHER_USER_ID = "user-other"
@@ -46,7 +46,7 @@ class TestCreateTransaction:
         headers = await register_and_login(gth_client, USER_ID)
         stock = await create_stock(gth_client)
         data = await _create_transaction(gth_client, stock["id"], headers)
-        assert data["user_id"] == USER_ID
+        assert data["user_id"] == await user_id(USER_ID)
 
     async def test_user_id_in_body_is_ignored(self, gth_client):
         headers = await register_and_login(gth_client, USER_ID)
@@ -56,7 +56,7 @@ class TestCreateTransaction:
         resp = await gth_client.post("/api/transactions/", json=payload, headers=headers)
         assert resp.status_code == 201
         # user_id is no longer part of the request schema; the token's user wins.
-        assert resp.json()["user_id"] == USER_ID
+        assert resp.json()["user_id"] == await user_id(USER_ID)
 
     async def test_no_token_returns_401(self, gth_client):
         stock = await create_stock(gth_client)
@@ -96,7 +96,8 @@ class TestListTransactions:
         resp = await gth_client.get("/api/transactions/", headers=headers)
         assert resp.status_code == 200
         items = resp.json()["items"]
-        assert all(t["user_id"] == USER_ID for t in items)
+        mine = await user_id(USER_ID)
+        assert all(t["user_id"] == mine for t in items)
 
     async def test_paginated_response_shape(self, gth_client):
         headers = await register_and_login(gth_client, USER_ID)

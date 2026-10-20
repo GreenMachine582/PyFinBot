@@ -53,7 +53,7 @@ async def test_api_auth_errors_keep_the_bearer_challenge(gth_client):
 async def test_api_validation_and_routing_errors(gth_client):
     admin = await register_and_login(gth_client, "obs-admin")
     await make_admin(gth_client, "obs-admin")
-    invalid = await gth_client.post("/api/users/", json={"id": "no-password"}, headers=admin)
+    invalid = await gth_client.post("/api/users/", json={"username": "no-password"}, headers=admin)
     body = _envelope(invalid, 422, "validation_error")
     assert isinstance(body["details"], list) and body["details"][0]["loc"][-1] == "password"
 

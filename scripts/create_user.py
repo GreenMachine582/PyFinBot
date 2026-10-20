@@ -1,6 +1,6 @@
 """Create a PyFinBot user (e.g. the first admin). Run from the project root:
 
-    python scripts/create_user.py <user_id>
+    python scripts/create_user.py <username> [--email <address>]
 
 See src/pyfinbot/admin/create_user.py.
 """

@@ -11,12 +11,20 @@ Plus PyFinBot's own "Email sync" group: the user's mailbox for Commsec sync,
 its app password a write-only, encrypted secret setting. And core's site
 banner (Settings › App, for settings.manage), which greentechhub-fastapi's
 settings_context shows above the navbar on every page.
+
+Email out: core's smtp_settings (Settings › App › Outgoing email, for
+settings.manage; the password a secret) is the mail server register_email
+sends through, and core's notification_preferences gives each user a
+"Syncs and imports" choice of in-app, email, both or off for the notices
+core/audit_events.py leaves (email only reaches a confirmed address).
 """
 
 from dataclasses import replace
 
-from greentechhub_core.email import imap_settings
+from greentechhub_core.email import imap_settings, smtp_settings
+from greentechhub_core.notifications import notification_preferences
 from greentechhub_core.settings import Setting, SettingScope, SettingsRegistry, SettingType
+from .audit_events import NOTICE_CATEGORY
 from .email_sync import COMMSEC_SENDER
 from .permissions import SETTINGS_MANAGE
 from greentechhub_core.settings.builtins import (
@@ -57,5 +65,7 @@ USER_SETTINGS = SettingsRegistry([
       for s in USER_PREFERENCES
       if s.key != SIDEBAR_DEFAULT.key),
     *EMAIL_SETTINGS,
+    *notification_preferences({NOTICE_CATEGORY: "Syncs and imports"}),
+    *smtp_settings(edit_permission=SETTINGS_MANAGE, group="Outgoing email"),
     *site_banner_settings(edit_permission=SETTINGS_MANAGE),
 ])

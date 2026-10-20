@@ -8,7 +8,7 @@ from greentechhub_core.background import held_lock, lock_name
 from pyfinbot.core.settings import settings
 from pyfinbot.web.routes.emails import EMAIL_SYNC_LOCK
 
-from .conftest import create_stock, hx_triggers, web_login
+from .conftest import create_stock, hx_triggers, user_id, web_login
 from .test_email_sync import _fake_messages
 
 HX = {"HX-Request": "true"}
@@ -109,7 +109,7 @@ class TestSync:
 
     async def test_refused_while_running(self, gth_client):
         await web_login(gth_client, "web-emails")
-        with (held_lock(settings, lock_name(EMAIL_SYNC_LOCK, "web-emails"), ttl=60) as held,
+        with (held_lock(settings, lock_name(EMAIL_SYNC_LOCK, await user_id("web-emails")), ttl=60) as held,
               patch(FETCH) as mock_fetch):
             assert held
             resp = await gth_client.post("/emails/sync")

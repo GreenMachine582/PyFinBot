@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 from pyfinbot.core import report_series, reports
 
-from .conftest import create_stock, web_login
+from .conftest import create_stock, user_id, web_login
 from .test_reports import _seed_dividend
 from .test_web_reports import _seed, _txn
 
@@ -33,8 +33,8 @@ class TestSeries:
         await web_login(gth_client, "series-cost")
         await _seed(gth_client, gth_session)
         today = date(2025, 6, 30)
-        series = await report_series.cost_base_by_month(gth_session, "series-cost", today)
-        holdings = await reports.holdings_report(gth_session, "series-cost", today)
+        series = await report_series.cost_base_by_month(gth_session, await user_id("series-cost"), today)
+        holdings = await reports.holdings_report(gth_session, await user_id("series-cost"), today)
         assert len(series) == 12 and series[-1][0] == "Jun 25"
         assert series[-1][1] == sum(Decimal(str(h.units_held)) * Decimal(str(h.avg_cost_basis))
                                     for h in holdings.holdings)
@@ -43,8 +43,8 @@ class TestSeries:
     async def test_gains_by_fy_matches_the_report(self, gth_client, gth_session):
         await web_login(gth_client, "series-gains")
         await _seed(gth_client, gth_session)
-        series = await report_series.gains_by_fy(gth_session, "series-gains", [2024, 2023])
-        gains_2024 = await reports.capital_gains_report(gth_session, "series-gains", 2024)
+        series = await report_series.gains_by_fy(gth_session, await user_id("series-gains"), [2024, 2023])
+        gains_2024 = await reports.capital_gains_report(gth_session, await user_id("series-gains"), 2024)
         assert [label for label, _ in series] == ["2023–24", "2024–25"]
         assert series[1][1] == Decimal(str(gains_2024.total_gain_loss)) and series[0][1] == 0
 

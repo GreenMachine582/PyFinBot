@@ -38,11 +38,17 @@ Each is one PR here once it ships: bump the pin, adopt, remove the item. Each is
 ## Waiting on infrastructure
 
 - [ ] Switch to `AUTH_ADAPTER=forward_auth` once Authentik is live. The code side is ready:
-  `register_core`/`register_auth`, and core's `trusted_proxies`.
+  `register_core`/`register_auth`, core's `trusted_proxies`, and `register_users` (accounts are provisioned and
+  linked by Authentik `uid` on first sign-in, with email and display name kept in step).
   - Set `AUTH_ADAPTER=forward_auth`, `TRUSTED_PROXIES` to the outpost's address, and `ROLE_GROUPS` (e.g.
     `admins=admin`).
+  - In Authentik:
+    - Add a SCIM provider (users only) pointed at `/scim/v2`, with `SCIM_TOKEN` set to the same token. Its
+      `externalId` mapping must be the user's `uid`.
+    - Add Google, GitHub and Apple as sources if wanted.
+    - For Apple's private-relay addresses, register the sending domain with Apple.
   - The local sign-in routes switch themselves off (`web/routes/auth.py` `build_router`).
-  - Keep `ROLE_BOOTSTRAP` as the recovery path.
+  - Keep `ROLE_BOOTSTRAP` (by username) as the recovery path.
   - Optional later: core's planned JWT validation (`X-authentik-jwt`).
 - [ ] Real Grafana panels once embedding is configured (`allow_embedding`, CSP/X-Frame-Options at Caddy; see the
   brief). The dashboard side is ready: ui's `gth_embed_card`, and the strict CSP allows the Grafana origin in `frame-src`
@@ -54,23 +60,13 @@ Each is one PR here once it ships: bump the pin, adopt, remove the item. Each is
 - One sync-result handler for the email, dividend and import routes (refuse when running, count, pick the toast
   tone, swap the badges panel). Stays here until a second service has the same shape.
 
-## Waiting on a decision: user email addresses
-
-`User` has no email address, so the gth features that need one are off: the profile section's email, password
-reset, email verification, and notifications by email (`register_email` with core's `smtp_settings`;
-sync results already leave in-app notices through `register_notifications`).
-
-- **Decide first:** add `User.email` (a migration, collected at `/settings` › Profile, verified) or stay
-  username-only.
-- Then email delivery for the sync notices is `register_email` plus core's `notification_preferences({"sync": …})`
-  in `USER_SETTINGS`, so each user picks in-app, email or both.
-
 ## Known limitations (accepted, not bugs)
 
-- The session cookie and `/api/auth/login`'s token are stateless JWTs (24h, no refresh or revocation): a leaked
-  one is valid up to 24h with no force-logout, even after its user is deleted (nothing looks the user up). Either
-  works on pages and the API. Scripts should use a revocable personal API token instead (/settings › API tokens).
-  Browser sessions would need fastapi's "Sessions & devices" idea. Acceptable at personal-use scale.
+- The session cookie and `/api/auth/login`'s token are stateless JWTs (24h, no refresh or per-token revocation).
+  Deactivating the account stops all of them at once, since every request reads the account, but a leaked token for
+  an active account stays valid until it expires. Either works on pages and the API. Scripts should use a revocable
+  personal API token instead (/settings › API tokens). Revoking one browser session would need fastapi's "Sessions &
+  devices" idea. Acceptable at personal-use scale.
 - `SECRET_KEY` auto-generates a random value each process start if unset
   (never a hardcoded/empty fallback) — a deployment that needs tokens to
   survive a restart must set it explicitly.

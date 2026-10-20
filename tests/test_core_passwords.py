@@ -8,9 +8,7 @@ import bcrypt
 from greentechhub_core.security import hash_password, verify_password
 
 import pyfinbot
-from pyfinbot.models.user_models import User
-
-from .conftest import post_login
+from .conftest import insert_account, post_login
 
 HTML = {"Accept": "text/html"}
 
@@ -35,14 +33,14 @@ def test_a_hash_from_before_the_switch_still_verifies():
     assert hash_password("x").startswith("$2b$12$") and stored.startswith("$2b$12$")
 
 
-async def _store_user(user_id: str, password_hash: str) -> None:
+async def _store_user(username: str, password_hash: str) -> None:
     from greentechhub_fastapi.auth import resolve_dependency
 
     from pyfinbot.db.session import get_session
     from pyfinbot.pyfinbot import app
 
     async with resolve_dependency(app, get_session) as session:
-        session.add(User(id=user_id, active=True, password_hash=password_hash))
+        await insert_account(session, username, password_hash=password_hash)
         await session.commit()
 
 

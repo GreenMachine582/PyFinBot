@@ -13,7 +13,6 @@ from sqlmodel import SQLModel, Field, Relationship
 if TYPE_CHECKING:
     # only for type checkers; avoids runtime import cycles
     from .stock_models import Stock
-    from .user_models import User
 
 
 #: The longest notes a transaction keeps: the forms, schemas and API reject
@@ -35,8 +34,8 @@ class TypeEnum(str, Enum):
 
 class Transaction(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: str = Field(foreign_key="user.id", ondelete="CASCADE", index=True,
-                         description="FK to user; cascades on delete")
+    user_id: str = Field(foreign_key="gth_users.id", ondelete="CASCADE", index=True, max_length=32,
+                         description="FK to the user account (gth_users); cascades on delete")
     stock_id: int = Field(foreign_key="stock.id", description="FK to stock; no cascade")
 
     transaction_date: date = Field(default_factory=date.today, description="Transaction date")
@@ -60,7 +59,6 @@ class Transaction(SQLModel, table=True):
 
     # relationships
     stock: Stock = Relationship(back_populates="transactions")
-    user: User = Relationship(back_populates="transactions")
 
     def model_post_init(self, __context):
         """Compute derived fields after (de)serialisation."""
