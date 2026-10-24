@@ -18,22 +18,24 @@ Web UI scope and architecture: see `web-implementation-brief.md`.
 
 ## Ready now — released in the gth repos
 
-Nothing ready: every released gth feature is adopted. The items below wait on a gth release or
-infrastructure.
+Each is one PR on the current pins (core v0.16, fastapi v0.18, ui v0.20): adopt, remove the item.
+
+- [ ] `feat(web): audit activity feed`: greentechhub-ui's `gth_timeline` (v0.20) over the audit entries, on the
+  dashboard or its own page. `gth_timeline_page` answers its "Load older" button.
+- [ ] `refactor(web): lenient query parsers`: greentechhub-fastapi's `query.optional_date` / `optional_int` /
+  `optional_choice` (v0.18) replace `_parse_date` / `_parse_int` / `_parse_method` in `web/routes/reports.py` and
+  `_parse_date` in `web/routes/transactions.py`.
+- [ ] `refactor: gth upload reader`: greentechhub-fastapi's `uploads.read_upload(file, limit=)` (v0.18) replaces
+  `core/transaction_import.read_upload`. The import page catches `UploadTooLargeError` to keep its form error; the
+  API gets the 413 `payload_too_large` envelope.
+- [ ] `refactor(cli): csv_text`: greentechhub-core's `exports.csv_text` / `csv_value` (v0.16) replace the hand-built
+  `csv.writer` in `cli.py`'s report export, matching the web download (`csv_download`). Decide on `bom=False` for
+  stdout.
 
 ## Waiting on a gth release
 
-Each is one PR here once it ships: bump the pin, adopt, remove the item. Each is registered in that repo's TODO.
-
-- [ ] `feat(web): audit activity feed`
-  - **Waits on:** greentechhub-ui M6 `gth_timeline`, and the audit log item above.
-  - **Then:** the audit entries as a feed (dashboard or its own page).
-- [ ] `refactor(web): leaner routes`: what's left, one step per gth helper as it ships:
-  - `_get_transaction_or_404` → greentechhub-fastapi's `get_owned_or_404` once it takes `options=` (passed to
-    `session.get`), so `transaction.stock` can stay eager-loaded. The delete modal and route read it, and a lazy
-    load fails under async. `_get_stock_or_404` already moved;
-  - greentechhub-ui's `pluralise` filter replaces `_plural` (`web/routes/imports.py`) and the inline plurals in
-    the email and dividend sync handlers.
+Nothing waiting. When an item needs a gth feature that isn't released yet, it goes here and is registered in
+that repo's TODO; once it ships: bump the pin, adopt, remove the item.
 
 ## Waiting on infrastructure
 
