@@ -2,12 +2,9 @@
 gth_client and client_as on PyFinBot's app (gth_app) and Database (gth_db),
 with the app's dependency_overrides restored after each test rather than
 cleared, so register_auth's adapter survives."""
-from sqlmodel import select
-
-from pyfinbot.models.user_models import User
 from pyfinbot.pyfinbot import app
 
-from .conftest import web_login
+from .conftest import account_row, web_login
 
 
 async def test_client_as_signs_in_through_the_web_form(client_as):
@@ -18,7 +15,7 @@ async def test_client_as_signs_in_through_the_web_form(client_as):
 
 async def test_a_user_made_for_the_client_is_in_the_test_database(gth_create_user, gth_client, gth_session):
     await gth_create_user("http-bob", "hunter2!")
-    assert (await gth_session.exec(select(User).where(User.id == "http-bob"))).first() is not None
+    assert await account_row(gth_session, "http-bob") is not None
 
 
 async def test_a_test_may_override_a_dependency(gth_client):

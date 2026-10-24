@@ -2,10 +2,13 @@
 that POST /api/users/ needs users.manage (no open registration):
 
     python scripts/create_user.py alice        # prompts for the password twice
+    python scripts/create_user.py alice --email alice@example.com
 
-Then make them the first admin with ROLE_BOOTSTRAP=alice=admin; after that,
-admins create users through the API and assign roles at /admin/roles.
-Works in any ENVIRONMENT.
+Then make them the first admin with ROLE_BOOTSTRAP=alice=admin (bootstrap
+entries match the username); after that, admins create users through the
+API and assign roles at /admin/roles. Works in any ENVIRONMENT. Behind
+Authentik (AUTH_ADAPTER=forward_auth) accounts are created on first sign-in
+instead, and this is only for the local break-glass login.
 """
 
 import argparse
@@ -14,55 +17,44 @@ import getpass
 import sys
 from typing import Optional, Sequence
 
-from sqlmodel.ext.asyncio.session import AsyncSession
+from greentechhub_core.users import UserAccount, UserExists
 
-from ..core.users import new_user
-from ..models.user_models import User
+from ..core.users import create_account
 
-
-class UserExists(ValueError):
-    pass
+__all__ = ["UserExists", "create_user", "main"]
 
 
-async def create_user(session: AsyncSession, user_id: str, password: str) -> User:
-    """Create an active user with a bcrypt-hashed password and commit.
-    Raises UserExists for a taken id, ValueError for a blank id/password."""
-    user_id = user_id.strip()
-    if not user_id or not password:
-        raise ValueError("a user id and a password are required")
-    if await session.get(User, user_id):
-        raise UserExists(f"user {user_id!r} already exists")
-    user = new_user(user_id, password)
-    session.add(user)
-    await session.commit()
-    await session.refresh(user)
-    return user
+async def create_user(username: str, password: str, *, email: Optional[str] = None,
+                      display_name: Optional[str] = None) -> UserAccount:
+    """Create an active account with a bcrypt-hashed password. Raises
+    UserExists for a taken username or email, ValueError for a blank
+    username/password or a malformed email."""
+    return await create_account(username, password, email=email, display_name=display_name)
 
 
-async def _run(user_id: str, password: str) -> None:
-    from ..db.session import get_session_factory, init_db
+async def _run(username: str, password: str, email: Optional[str]) -> UserAccount:
+    from ..db.session import init_db
 
     await init_db()
-    session_maker = get_session_factory()
-    async with session_maker() as session:
-        await create_user(session, user_id, password)
+    return await create_user(username, password, email=email)
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Create a PyFinBot user.")
-    parser.add_argument("user_id", help="the login id")
+    parser.add_argument("username", help="the login name")
+    parser.add_argument("--email", default=None, help="their email address (optional)")
     args = parser.parse_args(argv)
     password = getpass.getpass("Password: ")
     if password != getpass.getpass("Repeat password: "):
         print("The passwords don't match.", file=sys.stderr)
         return 1
     try:
-        asyncio.run(_run(args.user_id, password))
+        account = asyncio.run(_run(args.username, password, args.email))
     except ValueError as exc:
         print(f"Not created: {exc}.", file=sys.stderr)
         return 1
-    print(f"Created {args.user_id!r}. To make them an admin, set ROLE_BOOTSTRAP={args.user_id}=admin "
-          "(or assign the role at /admin/roles as another admin).")
+    print(f"Created {account.username!r} (id {account.id}). To make them an admin, set "
+          f"ROLE_BOOTSTRAP={account.username}=admin (or assign the role at /admin/roles as another admin).")
     return 0
 
 

@@ -16,9 +16,7 @@ from pyfinbot.admin.create_user import UserExists, create_user
 from pyfinbot.core.permissions import ADMIN, AUDIT_VIEW, ROLES, SETTINGS_MANAGE, USERS_MANAGE
 from pyfinbot.dev.seed import DEMO_ADMIN, seed_demo
 from pyfinbot.models.settings_models import ROLE_GRANTS_TABLE
-from pyfinbot.models.user_models import User
-
-from .conftest import make_admin, register_and_login, web_login
+from .conftest import account_row, make_admin, register_and_login, user_id, web_login
 
 HTML = {"Accept": "text/html"}
 HX = {"HX-Request": "true"}
@@ -54,8 +52,9 @@ async def test_admin_reaches_settings_app_and_roles(gth_client):
     assert roles.status_code == 200 and "perm-admin" in roles.text
 
     await register_and_login(gth_client, "perm-new")  # an existing user to promote
-    resp = await gth_client.post("/admin/roles", headers=HX, data={"subject": "perm-new", "roles": "admin"})
-    assert resp.status_code == 200 and "perm-new" in resp.text
+    new_id = await user_id("perm-new")
+    resp = await gth_client.post("/admin/roles", headers=HX, data={"subject": new_id, "roles": "admin"})
+    assert resp.status_code == 200 and new_id in resp.text
 
 
 async def test_normal_user_has_no_admin_pages(gth_client):
@@ -93,29 +92,52 @@ async def test_site_banner_set_by_an_admin_shows_for_everyone(gth_client):
 
 async def test_users_api_needs_users_manage(gth_client):
     assert (await gth_client.get("/api/users/")).status_code == 401
-    assert (await gth_client.post("/api/users/", json={"id": "x", "password": "y"})).status_code == 401
+    assert (await gth_client.post("/api/users/", json={"username": "x", "password": "y"})).status_code == 401
     plain = await register_and_login(gth_client, "api-plain")
     assert (await gth_client.get("/api/users/", headers=plain)).status_code == 403
-    assert (await gth_client.post("/api/users/", json={"id": "x", "password": "y"},
+    assert (await gth_client.post("/api/users/", json={"username": "x", "password": "y"},
                               headers=plain)).status_code == 403
     admin = await register_and_login(gth_client, "api-admin")
     await make_admin(gth_client, "api-admin")
     assert (await gth_client.get("/api/users/", headers=admin)).status_code == 200
-    created = await gth_client.post("/api/users/", json={"id": "api-made", "password": "pw"}, headers=admin)
+    created = await gth_client.post("/api/users/", json={"username": "api-made", "password": "pw"},
+                                    headers=admin)
     assert created.status_code == 201
-    assert (await gth_client.get("/api/users/api-made", headers=admin)).status_code == 403  # still self-only
+    made = created.json()["id"]
+    assert (await gth_client.get(f"/api/users/{made}", headers=admin)).status_code == 403  # still self-only
 
 
 # the first user
 
 
-async def test_create_user_hashes_and_refuses_duplicates(gth_session):
-    user = await create_user(gth_session, " first-admin ", "s3cret!")
-    assert user.id == "first-admin" and user.active and verify_password("s3cret!", user.password_hash)
+async def test_create_user_hashes_and_refuses_duplicates(gth_client):
+    user = await create_user(" First-Admin ", "s3cret!", email="admin@example.com")
+    assert user.username == "first-admin" and user.active and verify_password("s3cret!", user.password_hash)
+    assert user.email == "admin@example.com" and not user.email_verified
     with pytest.raises(UserExists):
-        await create_user(gth_session, "first-admin", "other")
+        await create_user("first-admin", "other")
     with pytest.raises(ValueError):
-        await create_user(gth_session, "  ", "pw")
+        await create_user("  ", "pw")
+    with pytest.raises(ValueError):
+        await create_user("second", "")
+
+
+async def test_role_bootstrap_matches_the_username(gth_client):
+    """ROLE_BOOTSTRAP=alice=admin still makes the first admin, though the
+    account's subject is a generated id."""
+    from greentechhub_fastapi.permissions import RESOLVER_STATE_KEY
+
+    from pyfinbot.pyfinbot import app
+
+    user = await create_user("boot-admin", "s3cret!")
+    resolver = getattr(app.state, RESOLVER_STATE_KEY)
+    original = resolver._bootstrap
+    resolver._bootstrap = {**original, "boot-admin": frozenset({ADMIN.name})}
+    try:
+        identity = Identity(subject=user.id, username=user.username, email=None, groups=[], claims={})
+        assert ADMIN.name in await resolver.roles_for(identity)
+    finally:
+        resolver._bootstrap = original
 
 
 def test_create_user_cli_refuses_mismatched_passwords(monkeypatch, capsys):
@@ -130,8 +152,8 @@ def test_create_user_cli_refuses_mismatched_passwords(monkeypatch, capsys):
 def test_create_user_cli_prints_the_bootstrap_hint(monkeypatch, capsys):
     monkeypatch.setattr(getpass, "getpass", lambda prompt="": "pw")
 
-    async def fake_run(user_id, password):
-        return None
+    async def fake_run(username, password, email):
+        return SimpleNamespace(username=username, id="0" * 32)
 
     monkeypatch.setattr(create_user_module, "_run", fake_run)
     assert create_user_module.main(["alice"]) == 0
@@ -144,9 +166,10 @@ async def test_seed_grants_demo_admin_and_reset_removes_it(gth_session):
         return set(rows.all())
 
     summary = await seed_demo(gth_session, environment="development")
-    assert summary.grants_created == 1 and (DEMO_ADMIN, "admin") in await grants()
+    admin_id = (await account_row(gth_session, DEMO_ADMIN)).id
+    assert summary.grants_created == 1 and (admin_id, "admin") in await grants()
     again = await seed_demo(gth_session, environment="development")
     assert again.grants_created == 0
     reset = await seed_demo(gth_session, reset=True, environment="development")
     assert reset.reset["grants"] == 1 and reset.grants_created == 1
-    assert await gth_session.get(User, DEMO_ADMIN) is not None
+    assert await account_row(gth_session, DEMO_ADMIN) is not None

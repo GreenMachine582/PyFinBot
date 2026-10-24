@@ -9,7 +9,7 @@ import time
 
 import pytest
 
-from .conftest import register_and_login, web_login
+from .conftest import register_and_login, user_id, web_login
 
 # The module, not core/__init__'s `settings` object of the same name.
 settings_module = importlib.import_module("pyfinbot.core.settings")
@@ -31,7 +31,7 @@ async def test_a_login_token_authorises_the_api(gth_client):
 async def test_a_login_token_lasts_24_hours(gth_client):
     headers = await register_and_login(gth_client, "bearer-bob")
     claims = _claims(headers["Authorization"].removeprefix("Bearer "))
-    assert claims["sub"] == "bearer-bob"
+    assert claims["sub"] == await user_id("bearer-bob")
     assert abs(claims["exp"] - (time.time() + 24 * 3600)) < 120
 
 
@@ -46,8 +46,9 @@ async def test_a_bad_token_never_falls_back_to_the_cookie(gth_client):
 async def test_routes_scope_to_the_tokens_subject(gth_client):
     alice = await register_and_login(gth_client, "bearer-dan")
     await register_and_login(gth_client, "bearer-erin")
-    assert (await gth_client.get("/api/users/bearer-dan", headers=alice)).status_code == 200
-    assert (await gth_client.get("/api/users/bearer-erin", headers=alice)).status_code == 403
+    dan, erin = await user_id("bearer-dan"), await user_id("bearer-erin")
+    assert (await gth_client.get(f"/api/users/{dan}", headers=alice)).status_code == 200
+    assert (await gth_client.get(f"/api/users/{erin}", headers=alice)).status_code == 403
 
 
 async def test_openapi_documents_the_token_flow(gth_client):

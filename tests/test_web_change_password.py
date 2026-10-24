@@ -5,18 +5,15 @@ from html import unescape
 
 from greentechhub_core.security import verify_password
 
-from pyfinbot.models.user_models import User
-
-from .conftest import post_login, web_login
+from .conftest import account_row, post_login, web_login
 from .test_web_reports import HX
 
 GOOD = {"current_password": "hunter2!", "new_password": "brand-new-pass",
         "new_password_confirm": "brand-new-pass"}
 
 
-async def _hash(session, user_id: str) -> str:
-    session.expire_all()
-    return (await session.get(User, user_id)).password_hash
+async def _hash(session, username: str) -> str:
+    return (await account_row(session, username)).password_hash
 
 
 async def test_the_settings_page_has_a_password_section(gth_client):

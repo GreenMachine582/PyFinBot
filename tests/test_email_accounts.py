@@ -15,7 +15,7 @@ from pyfinbot.core.email_sync import EmailAccount
 from pyfinbot.models.settings_models import SETTINGS_TABLE
 from pyfinbot.web.routes.emails import EMAIL_SYNC_LOCK
 
-from .conftest import create_stock, hx_triggers, register_and_login, web_login
+from .conftest import create_stock, hx_triggers, register_and_login, user_id, web_login
 from .test_email_sync import _fake_messages
 
 HX = {"HX-Request": "true"}
@@ -53,7 +53,7 @@ async def test_password_is_encrypted_at_rest_and_never_rendered(gth_client, gth_
     await web_login(gth_client, "acct-crypt")
     await _save_account(gth_client, "crypt@example.com")
     rows = (await gth_connection.execute(select(SETTINGS_TABLE.c.key, SETTINGS_TABLE.c.value).where(
-        SETTINGS_TABLE.c.subject == "acct-crypt"))).all()
+        SETTINGS_TABLE.c.subject == await user_id("acct-crypt")))).all()
     stored = dict(rows)["email.app_password"]
     assert PASSWORD not in stored and stored.startswith("gAAAA")  # a Fernet token
     for path in ("/settings", "/emails", "/"):
@@ -64,13 +64,13 @@ async def test_blank_keeps_and_clear_removes_the_password(gth_client):
     await web_login(gth_client, "acct-keep")
     await _save_account(gth_client, "keep@example.com")
     await _save_account(gth_client, "keep@example.com", password="")  # the form re-posted, field blank
-    account = await load_email_account(_service(), "acct-keep")
+    account = await load_email_account(_service(), await user_id("acct-keep"))
     assert account.imap is not None and account.imap.password == PASSWORD
 
     await gth_client.post("/settings/preferences", headers=HX, data={
         "email.address": "keep@example.com", "email.app_password": "",
         "email.app_password.__clear": "true"})
-    account = await load_email_account(_service(), "acct-keep")
+    account = await load_email_account(_service(), await user_id("acct-keep"))
     assert account.imap is None and not account.configured
     assert "isn't set up yet" in (await gth_client.get("/emails")).text
 

@@ -1,6 +1,6 @@
 """Integration tests for /api/auth/login and JWT-protected route access."""
 
-from .conftest import create_user, register_and_login
+from .conftest import create_user, register_and_login, user_id
 
 
 async def _register(client, user_id="user-123", password="hunter2!"):
@@ -46,6 +46,7 @@ class TestProtectedRouteAccess:
     async def test_valid_token_grants_access(self, gth_client):
         await _register(gth_client)
         headers = await register_and_login(gth_client, "user-456")
-        resp = await gth_client.get("/api/users/user-456", headers=headers)
+        me = await user_id("user-456")
+        resp = await gth_client.get(f"/api/users/{me}", headers=headers)
         assert resp.status_code == 200
-        assert resp.json()["id"] == "user-456"
+        assert resp.json()["username"] == "user-456"

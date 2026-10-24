@@ -39,6 +39,10 @@ tracking.
 * 🔐 Multi-user Support: JWT-authenticated accounts — each user only sees their own transactions and reports.
 * 🛡️ Roles: an admin role (manage users and roles at `/admin/roles`, app-wide settings such as the site banner at
   `/settings` › App), from `ROLE_BOOTSTRAP` or assigned in the app. There's no open registration.
+* 👤 Accounts (greentechhub-core's user accounts): a username, a display name and an email address, edited at
+  `/settings` › Profile. A changed address is confirmed by an emailed link. "Forgot password?" emails a reset link,
+  and sync and import notices can be emailed too (`/settings` › Notifications). Behind Authentik, an account is
+  created on first sign-in, and Authentik owns the name and address.
 * ⚙️ Per-user Settings: each person picks their theme, timezone, date, number and time formats, rows per page and
   more at `/settings` (the navbar's user menu also has Log out); dates, amounts and tables follow them.
 * 📦 Modular Architecture: Built to be extended with additional features like tax reports, visualisations, or API integration.
@@ -116,13 +120,18 @@ Once running, interactive API docs are available at `http://localhost:8000/docs`
 There's no open registration: admins create users (the users API needs `users.manage`). Create the first user from
 the shell, then make them an admin with `ROLE_BOOTSTRAP`:
 ```bash
-python scripts/create_user.py alice    # prompts for the password; runs migrations first
+python scripts/create_user.py alice --email alice@example.com   # prompts for the password; runs migrations first
 ```
 ```dotenv
 ROLE_BOOTSTRAP=alice=admin
 ```
-After a restart `alice` can create users through the API and assign roles at `/admin/roles`. Roles assigned there are
-stored in the database; `ROLE_BOOTSTRAP` stays as the recovery path if every admin grant is removed.
+`ROLE_BOOTSTRAP` names users by username. Each account's own key is a generated id: it's what transactions,
+settings and role grants reference, and what `/api/users/{id}` takes (`GET /api/auth/me` shows yours). After a
+restart `alice` can create users through the API and assign roles at `/admin/roles`. Roles assigned there are stored
+in the database; `ROLE_BOOTSTRAP` stays as the recovery path if every admin grant is removed.
+
+For emails (reset links, address confirmation, notices), set the mail server at `/settings` › App › Outgoing email,
+and `BASE_URL` so the links are absolute.
 
 ### Demo data (development)
 For realistic data to click through, seed the database (it applies migrations first):
@@ -147,7 +156,8 @@ python scripts/cli.py gains     --user alice -o gains.csv         # to a file (C
 ```
 
 ## API Overview
-All routes are mounted under `/api`. See `/docs` for full request/response schemas. Every route except `POST /api/auth/login` requires a `Bearer` token: log in to get one (valid for 24 hours), then pass `Authorization: Bearer <token>` on subsequent requests. A bad or expired token is refused (401), never retried with a cookie; with no header, a signed-in browser's session cookie works too. Creating and listing users (`POST`/`GET /api/users/`) also needs the `users.manage` permission (the admin role); a user can still read, update and delete their own account. See [First admin](#first-admin) for the first user.
+All routes are mounted under `/api`. See `/docs` for full request/response schemas. Every route except `POST /api/auth/login` requires a `Bearer` token: log in to get one (valid for 24 hours), then pass `Authorization: Bearer <token>` on subsequent requests. A bad or expired token is refused (401), never retried with a cookie; with no header, a signed-in browser's session cookie works too. Creating and listing users (`POST`/`GET /api/users/`) also needs the `users.manage` permission (the admin role); a user can still read and update their own account, and deleting it deactivates it (its transactions stay, and
+its tokens stop working at once). See [First admin](#first-admin) for the first user.
 
 | Router | Prefix | Purpose |
 |---|---|---|

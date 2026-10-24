@@ -86,5 +86,18 @@ class Settings(GTHBaseSettings):
     # (pyfinbot.py prune_audit_log). 0 keeps everything.
     AUDIT_RETENTION_DAYS: int = 365
 
+    # The address people reach PyFinBot at (e.g. "https://pyfinbot.example"),
+    # which makes the links in emails absolute: password reset, email
+    # confirmation and notices (register_email in pyfinbot.py). Unset, those
+    # emails carry relative links, so set it wherever email is set up.
+    BASE_URL: str = ""
+
+    # The bearer token Authentik's SCIM provider sends to /scim/v2 (a long
+    # random secret, e.g. `python -c "import secrets; print(secrets.token_urlsafe(48))"`).
+    # Set, register_scim mounts the endpoint so Authentik pushes account
+    # changes (renames, new addresses, deactivations) the moment they happen;
+    # unset, there's no /scim/v2 and changes arrive at the next sign-in.
+    SCIM_TOKEN: str = ""
+
 
 settings = Settings()
