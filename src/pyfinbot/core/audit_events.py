@@ -21,6 +21,7 @@ from typing import Any, Sequence
 from fastapi import Request
 from greentechhub_fastapi.audit import audit
 from greentechhub_fastapi.notifications import notify
+from greentechhub_ui import pluralise
 
 logger = logging.getLogger(__name__)
 
@@ -47,14 +48,10 @@ async def _notify(request: Request, recipient: str | None, title: str, message: 
         logger.exception("could not leave a %r notice for %s", title, recipient)
 
 
-def _plural(n: int, noun: str) -> str:
-    return f"{n} {noun}" + ("" if n == 1 else "s")
-
-
 async def transactions_imported(request: Request, summary: Any, filename: str,
                                 recipient: str | None = None) -> None:
     """A spreadsheet import (core/transaction_import.py's summary)."""
-    line = f"Imported {summary.created} of {_plural(summary.total_rows, 'row')} from {filename or 'a file'}"
+    line = f"Imported {summary.created} of {pluralise(summary.total_rows, 'row')} from {filename or 'a file'}"
     await audit(
         request, "transactions.imported",
         summary=line,
@@ -67,7 +64,7 @@ async def transactions_imported(request: Request, summary: Any, filename: str,
 
 async def emails_synced(request: Request, summary: Any, recipient: str | None = None) -> None:
     """A Commsec email sync (core/commsec_import.py's summary)."""
-    line = f"Imported {summary.created} of {_plural(summary.total_emails, 'email')}"
+    line = f"Imported {summary.created} of {pluralise(summary.total_emails, 'email')}"
     await audit(
         request, "emails.synced",
         summary=line,
@@ -82,7 +79,7 @@ async def dividends_synced(request: Request, stock_ids: Sequence[int], created: 
                            updated: Sequence[Any], errors: Sequence[Any],
                            recipient: str | None = None) -> None:
     """A dividend sync over `stock_ids` (one picked stock is the target)."""
-    line = (f"{len(created)} new, {len(updated)} updated over {_plural(len(stock_ids), 'stock')}"
+    line = (f"{len(created)} new, {len(updated)} updated over {pluralise(len(stock_ids), 'stock')}"
             + (f"; {len(errors)} failed" if errors else ""))
     await audit(
         request, "dividends.synced",

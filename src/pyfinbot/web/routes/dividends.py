@@ -43,7 +43,7 @@ async def sync(request: Request, session: AsyncSession = Depends(get_session),
         target_ids = await user_stock_ids(session, identity.subject)
         if not target_ids:
             return hx_response("You have no transactions yet, so there are no stocks to sync.", "info")
-        scope = f"{len(target_ids)} stock" + ("" if len(target_ids) == 1 else "s")
+        scope = greentechhub_ui.pluralise(len(target_ids), "stock")
 
     with held_lock(settings, LOCK, ttl=SYNC_LOCK_TTL_SECONDS) as acquired:
         if not acquired:

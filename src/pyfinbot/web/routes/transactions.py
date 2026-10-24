@@ -1,15 +1,16 @@
 from datetime import date, datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request, status
 from greentechhub_core.dates import fiscal_year_label
 from greentechhub_core.identity import Identity
 from greentechhub_core.query.types import Sort
 from greentechhub_core.sqlalchemy.query import order_by, paginate
 from greentechhub_fastapi.downloads import csv_download, csv_value
 from greentechhub_fastapi.forms import field_errors
+from greentechhub_fastapi.query import get_owned_or_404
 from greentechhub_fastapi.settings import get_effective_settings
-from greentechhub_ui import TableState
+from greentechhub_ui import TableState, pluralise
 from greentechhub_ui.htmx import wants_fragment
 from pydantic import ValidationError
 from sqlalchemy import delete
@@ -17,7 +18,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ...api.transaction_routes import ALLOWED_FIELDS, fetchTransaction
+from ...api.transaction_routes import ALLOWED_FIELDS
 from ...core.user_settings import DEFAULT_ROWS_PER_PAGE, PAGE_SIZES
 from ...db.session import get_session
 from ...models.stock_models import Stock
@@ -35,13 +36,10 @@ CHANGED = "transactionsChanged"
 FORM_FIELDS = ("stock_id", "stock_id_search", "transaction_date", "type", "units", "price", "fees", "notes")
 
 
-async def _get_transaction_or_404(session: AsyncSession, transaction_id: int, identity: Identity) -> Transaction:
-    # Scoped by user in the query itself, so another user's id is
-    # indistinguishable from a missing one (404, not 403).
-    transaction = await fetchTransaction(session, transaction_id, user_id=identity.subject)
-    if not transaction:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
-    return transaction
+# For get_owned_or_404: the routes below read transaction.stock, which can't
+# be lazy-loaded under an AsyncSession. Another user's id is a 404, same as a
+# missing one.
+_WITH_STOCK = [selectinload(Transaction.stock)]  # type: ignore[arg-type]  # SQLModel types a Relationship as its model
 
 
 def _parse_date(value: str) -> date | None:
@@ -169,7 +167,8 @@ async def new_transaction_form(request: Request, identity: Identity = Depends(pa
 async def edit_transaction_form(request: Request, transaction_id: int,
                                 identity: Identity = Depends(page_identity),
                                 session: AsyncSession = Depends(get_session)):
-    transaction = await _get_transaction_or_404(session, transaction_id, identity)
+    transaction = await get_owned_or_404(session, Transaction, transaction_id, owner=identity.subject,
+                                         options=_WITH_STOCK)
     values = {
         "stock_id": transaction.stock_id,
         "transaction_date": transaction.transaction_date.isoformat(),
@@ -253,7 +252,8 @@ async def create_transaction(request: Request, identity: Identity = Depends(page
 async def update_transaction(request: Request, transaction_id: int,
                              identity: Identity = Depends(page_identity),
                              session: AsyncSession = Depends(get_session)):
-    transaction = await _get_transaction_or_404(session, transaction_id, identity)
+    transaction = await get_owned_or_404(session, Transaction, transaction_id, owner=identity.subject,
+                                         options=_WITH_STOCK)
     form = await request.form()
     values = {field: form.get(field, "") for field in FORM_FIELDS}
     transaction_in, stock, errors = await _validate(session, values)
@@ -286,22 +286,23 @@ async def bulk_delete_transactions(request: Request, identity: Identity = Depend
         await session.commit()
     if not deleted:
         return hx_response("No transactions to delete.", "info", events=(CHANGED,))
-    noun = "transaction" if deleted == 1 else "transactions"
-    return hx_response(f"Deleted {deleted} {noun}", title="Transactions deleted", events=(CHANGED,))
+    return hx_response(f"Deleted {pluralise(deleted, 'transaction')}", title="Transactions deleted", events=(CHANGED,))
 
 
 @router.get("/{transaction_id:int}/delete")
 async def delete_transaction_confirm(request: Request, transaction_id: int,
                                      identity: Identity = Depends(page_identity),
                                      session: AsyncSession = Depends(get_session)):
-    transaction = await _get_transaction_or_404(session, transaction_id, identity)
+    transaction = await get_owned_or_404(session, Transaction, transaction_id, owner=identity.subject,
+                                         options=_WITH_STOCK)
     return templates.TemplateResponse(request, "_transaction_delete_modal.html", {"transaction": transaction})
 
 
 @router.delete("/{transaction_id:int}")
 async def delete_transaction(transaction_id: int, identity: Identity = Depends(page_identity),
                              session: AsyncSession = Depends(get_session)):
-    transaction = await _get_transaction_or_404(session, transaction_id, identity)
+    transaction = await get_owned_or_404(session, Transaction, transaction_id, owner=identity.subject,
+                                         options=_WITH_STOCK)
     label = _label(transaction, transaction.stock)
     await session.delete(transaction)
     await session.commit()
