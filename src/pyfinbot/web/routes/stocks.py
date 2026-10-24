@@ -8,7 +8,7 @@ from greentechhub_core.query.types import Sort
 from greentechhub_core.sqlalchemy.query import order_by, paginate
 from greentechhub_fastapi.query import get_owned_or_404
 from greentechhub_fastapi.settings import get_effective_settings
-from greentechhub_ui import TableState
+from greentechhub_ui import TableState, pluralise
 from greentechhub_ui.htmx import wants_fragment
 from sqlalchemy import func, or_
 from sqlmodel import col, select
@@ -173,8 +173,7 @@ async def _bulk_set_active(request: Request, session: AsyncSession, active: bool
     if not changed:
         action = "unarchive" if active else "archive"
         return hx_response(f"No stocks to {action}.", "info", events=(CHANGED,))
-    noun = "stock" if changed == 1 else "stocks"
-    return hx_response(f"{verb} {changed} {noun}", title=f"Stocks {verb.lower()}", events=(CHANGED,))
+    return hx_response(f"{verb} {pluralise(changed, 'stock')}", title=f"Stocks {verb.lower()}", events=(CHANGED,))
 
 
 @router.post("/bulk-archive")
@@ -203,8 +202,7 @@ async def delete_stock(stock_id: int, session: AsyncSession = Depends(get_sessio
         select(func.count()).select_from(Transaction).where(Transaction.stock_id == stock.id)
     )).one()
     if in_use:
-        noun = "transaction" if in_use == 1 else "transactions"
-        return hx_response(f"{label} has {in_use} {noun} — archive it instead.", "danger", title="Can't delete")
+        return hx_response(f"{label} has {pluralise(in_use, 'transaction')} — archive it instead.", "danger", title="Can't delete")
 
     await session.delete(stock)
     await session.commit()

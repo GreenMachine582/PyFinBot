@@ -66,13 +66,13 @@ async def sync(request: Request, session: AsyncSession = Depends(get_session),
             )
 
     await audit_events.emails_synced(request, summary, recipient=identity.subject)
-    noun = "transaction" if summary.created == 1 else "transactions"
+    imported = greentechhub_ui.pluralise(summary.created, "transaction")
     if not summary.total_emails:
         kind, message = "info", "No new Commsec emails."
     elif not summary.skipped:
-        kind, message = "success", f"Imported {summary.created} {noun}."
+        kind, message = "success", f"Imported {imported}."
     else:
-        kind, message = "warning", f"Imported {summary.created} {noun}; {summary.skipped} skipped."
+        kind, message = "warning", f"Imported {imported}; {summary.skipped} skipped."
     trigger = greentechhub_ui.toast(message, kind, title=TITLE,
                                     events=(TRANSACTIONS_CHANGED,) if summary.created else ())
     return templates.TemplateResponse(request, "_sync_result.html", {

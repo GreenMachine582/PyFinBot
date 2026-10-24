@@ -33,10 +33,6 @@ async def import_page(request: Request, identity: Identity = Depends(page_identi
     })
 
 
-def _plural(n: int) -> str:
-    return f"{n} transaction" if n == 1 else f"{n} transactions"
-
-
 @router.post("")
 async def upload(request: Request, file: UploadFile | None = File(None),
                  session: AsyncSession = Depends(get_session), identity: Identity = Depends(page_identity)):
@@ -59,9 +55,9 @@ async def upload(request: Request, file: UploadFile | None = File(None),
     if not summary.total_rows:
         kind, message = "info", "The file has no rows to import."
     elif not summary.skipped:
-        kind, message = "success", f"Imported {_plural(summary.created)}."
+        kind, message = "success", f"Imported {greentechhub_ui.pluralise(summary.created, 'transaction')}."
     elif summary.created:
-        kind, message = "warning", f"Imported {_plural(summary.created)}; {summary.skipped} skipped."
+        kind, message = "warning", f"Imported {greentechhub_ui.pluralise(summary.created, 'transaction')}; {summary.skipped} skipped."
     else:
         kind, message = "warning", f"Nothing imported; {summary.skipped} skipped."
     trigger = greentechhub_ui.toast(message, kind, title=TITLE,

@@ -1,7 +1,8 @@
-"""Leaner routes on the gth helpers (core v0.15, fastapi v0.17): stocks load
-through fastapi's get_owned_or_404, the sync locks are core's held_lock with
-lock_name for per-user names, and retired settings warn through core's
-GTHBaseSettings.retired."""
+"""Leaner routes on the gth helpers (core v0.15+, fastapi v0.18, ui v0.20):
+stocks and transactions load through fastapi's get_owned_or_404 (transactions
+with their stock eager-loaded through options=), counts read through ui's
+pluralise, the sync locks are core's held_lock with lock_name for per-user
+names, and retired settings warn through core's GTHBaseSettings.retired."""
 
 import importlib
 import re
@@ -23,6 +24,14 @@ async def test_a_missing_stock_is_a_404(gth_client):
     assert (await gth_client.get(f"/stocks/{stock['id']}/edit")).status_code == 200
     missing = await gth_client.get("/stocks/999999/edit")
     assert missing.status_code == 404 and "Stock not found" in missing.text
+
+
+async def test_a_missing_transaction_is_a_404(gth_client):
+    await web_login(gth_client, "lean-transactions")
+    for resp in (await gth_client.get("/transactions/999999/edit"),
+                 await gth_client.get("/transactions/999999/delete"),
+                 await gth_client.delete("/transactions/999999")):
+        assert resp.status_code == 404 and "Transaction not found" in resp.text
 
 
 def test_email_sync_lock_names_are_per_user_and_filename_safe():
