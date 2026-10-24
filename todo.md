@@ -20,9 +20,6 @@ Web UI scope and architecture: see `web-implementation-brief.md`.
 
 Each is one PR on the current pins (core v0.16, fastapi v0.18, ui v0.20): adopt, remove the item.
 
-- [ ] `refactor(web): lenient query parsers`: greentechhub-fastapi's `query.optional_date` / `optional_int` /
-  `optional_choice` (v0.18) replace `_parse_date` / `_parse_int` / `_parse_method` in `web/routes/reports.py` and
-  `_parse_date` in `web/routes/transactions.py`.
 - [ ] `refactor: gth upload reader`: greentechhub-fastapi's `uploads.read_upload(file, limit=)` (v0.18) replaces
   `core/transaction_import.read_upload`. The import page catches `UploadTooLargeError` to keep its form error; the
   API gets the 413 `payload_too_large` envelope.
