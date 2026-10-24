@@ -20,8 +20,6 @@ Web UI scope and architecture: see `web-implementation-brief.md`.
 
 Each is one PR on the current pins (core v0.16, fastapi v0.18, ui v0.20): adopt, remove the item.
 
-- [ ] `feat(web): audit activity feed`: greentechhub-ui's `gth_timeline` (v0.20) over the audit entries, on the
-  dashboard or its own page. `gth_timeline_page` answers its "Load older" button.
 - [ ] `refactor(web): lenient query parsers`: greentechhub-fastapi's `query.optional_date` / `optional_int` /
   `optional_choice` (v0.18) replace `_parse_date` / `_parse_int` / `_parse_method` in `web/routes/reports.py` and
   `_parse_date` in `web/routes/transactions.py`.

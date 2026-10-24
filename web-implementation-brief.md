@@ -76,7 +76,7 @@ def register_auth(app: FastAPI, settings: GTHBaseSettings) -> None:
 | Page | Notes |
 |---|---|
 | Login | No shared template exists yet (`greentechhub-ui` has no `auth/login.html` — confirmed against current source). PyFinBot builds the page and posts to its own new session-cookie login route (§5), extending `greentechhub_ui`'s base `app.html` shell for branding/nav only |
-| Dashboard | `gth-stat-card` summary tiles (holdings value, YTD gain/loss, total dividends received) + Grafana iframe placeholder (§8) |
+| Dashboard | `gth-stat-card` summary tiles (holdings value, YTD gain/loss, total dividends received), largest holdings, a "Recent activity" `gth_timeline` of the user's own audit entries ("Load older" from `/activity`) + Grafana iframe placeholder (§8) |
 | Stocks | `gth-table` (filter/sort on symbol, market, name, active status); `gth-modal` create/edit form; market sync action |
 | Transactions | `gth-table` (filter by stock, type, date range, FY) + `gth-pagination`; `gth-modal` create/edit form; stock field is a searchable dropdown against `Stock.search`, not a raw ID input |
 | Import | File upload (CSV/Excel), HTMX-submitted; result table with per-row validation errors; `gth-toast` on completion |

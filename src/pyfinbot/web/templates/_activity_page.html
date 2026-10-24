@@ -1,0 +1,4 @@
+{#- The dashboard's activity feed, one older page (GET /activity): what its
+    "Load older" button swaps in for itself. -#}
+{% from "timeline.html" import gth_timeline_page %}
+{{ gth_timeline_page(activity, next_url=activity_next_url, kinds=activity_kinds) }}

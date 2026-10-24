@@ -4,6 +4,7 @@
 {% from "charts.html" import gth_sparkline %}
 {% from "table.html" import gth_table %}
 {% from "empty_state.html" import gth_empty_state %}
+{% from "timeline.html" import gth_timeline %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 
@@ -44,6 +45,12 @@
   <a class="btn btn-primary" href="/transactions">Add a transaction</a>
   <a class="btn btn-outline-secondary" href="/import">Import a spreadsheet</a>
 {% endcall %}
+{% endif %}
+
+{% if activity is not none %}
+<h2 class="h5 mt-4">Recent activity</h2>
+{{ gth_timeline(activity, next_url=activity_next_url, kinds=activity_kinds,
+                empty_message="No activity yet — imports and syncs show up here.") }}
 {% endif %}
 
 {% endblock %}
