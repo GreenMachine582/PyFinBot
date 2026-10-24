@@ -8,7 +8,7 @@ from greentechhub_core.query.types import Sort
 from greentechhub_core.sqlalchemy.query import order_by, paginate
 from greentechhub_fastapi.downloads import csv_download, csv_value
 from greentechhub_fastapi.forms import field_errors
-from greentechhub_fastapi.query import get_owned_or_404
+from greentechhub_fastapi.query import get_owned_or_404, optional_choice, optional_date, optional_int
 from greentechhub_fastapi.settings import get_effective_settings
 from greentechhub_ui import TableState, pluralise
 from greentechhub_ui.htmx import wants_fragment
@@ -42,13 +42,6 @@ FORM_FIELDS = ("stock_id", "stock_id_search", "transaction_date", "type", "units
 _WITH_STOCK = [selectinload(Transaction.stock)]  # type: ignore[arg-type]  # SQLModel types a Relationship as its model
 
 
-def _parse_date(value: str) -> date | None:
-    try:
-        return date.fromisoformat(value) if value else None
-    except ValueError:
-        return None
-
-
 def _table_state(request: Request, user_settings: dict[str, Any]) -> TableState:
     return TableState.from_query(
         request.query_params,
@@ -79,14 +72,14 @@ def _transactions_stmt(identity: Identity, state: TableState) -> Any:
     if stock := filters.get("stock"):
         like = f"%{stock}%"
         stmt = stmt.join(Stock).where(col(Stock.symbol).ilike(like) | col(Stock.name).ilike(like))
-    if (type_ := filters.get("type")) in {t.value for t in TypeEnum}:
-        stmt = stmt.where(Transaction.type == TypeEnum(type_))
-    if start := _parse_date(filters.get("date_from", "")):
+    if (type_ := optional_choice(filters.get("type"), TypeEnum, None)) is not None:
+        stmt = stmt.where(Transaction.type == type_)
+    if start := optional_date(filters.get("date_from")):
         stmt = stmt.where(Transaction.transaction_date >= start)
-    if end := _parse_date(filters.get("date_to", "")):
+    if end := optional_date(filters.get("date_to")):
         stmt = stmt.where(Transaction.transaction_date <= end)
-    if (fy := filters.get("fy", "")).isdigit():
-        stmt = stmt.where(Transaction.fy == int(fy))
+    if (fy := optional_int(filters.get("fy"))) is not None:
+        stmt = stmt.where(Transaction.fy == fy)
     # The table's sort, then tie-breakers in the same direction so paging is stable.
     sorts = [Sort(field=f, direction=state.direction) for f in (state.sort, "transaction_date", "id") if f]
     return stmt.order_by(*order_by(sorts, ALLOWED_FIELDS))

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from greentechhub_core.dates import fiscal_year, fiscal_year_bounds
 from greentechhub_core.identity import Identity
 from greentechhub_fastapi.downloads import csv_download
+from greentechhub_fastapi.query import optional_choice, optional_date, optional_int
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -25,24 +26,6 @@ TABS = [
 METHODS = [(CostMethod.AVERAGE.value, "Average"), (CostMethod.FIFO.value, "FIFO")]
 
 
-def _parse_method(value: str | None) -> CostMethod:
-    try:
-        return CostMethod(value) if value else CostMethod.AVERAGE
-    except ValueError:
-        return CostMethod.AVERAGE
-
-
-def _parse_date(value: str | None) -> date:
-    try:
-        return date.fromisoformat(value) if value else date.today()
-    except ValueError:
-        return date.today()
-
-
-def _parse_int(value: str | None) -> int | None:
-    return int(value) if value and value.lstrip("-").isdigit() else None
-
-
 async def _user_fys(session: AsyncSession, identity: Identity) -> list[int]:
     """The FYs the user has transactions in, newest first."""
     fys = (await session.exec(select(Transaction.fy).where(Transaction.user_id == identity.subject).distinct())).all()
@@ -53,7 +36,7 @@ async def _gains_fy(session: AsyncSession, identity: Identity, value: str | None
     """The requested FY, else the user's latest (else the current one), plus
     the FY options for the picker."""
     fys = await _user_fys(session, identity)
-    fy = _parse_int(value)
+    fy = optional_int(value)
     if fy is None:
         fy = fys[0] if fys else fiscal_year(date.today())
     return fy, fys
@@ -68,7 +51,9 @@ async def reports_page(request: Request, tab: str = "holdings"):
 @router.get("/holdings")
 async def holdings(request: Request, as_of: str | None = None, method: str | None = None,
                    identity: Identity = Depends(page_identity), session: AsyncSession = Depends(get_session)):
-    report = await reports.holdings_report(session, identity.subject, _parse_date(as_of), _parse_method(method))
+    snapshot = optional_date(as_of, date.today())
+    cost_method = optional_choice(method, CostMethod, CostMethod.AVERAGE)
+    report = await reports.holdings_report(session, identity.subject, snapshot, cost_method)
     return templates.TemplateResponse(request, "_report_holdings.html", {
         "report": report, "methods": METHODS,
         "cost_base": sum(h.units_held * h.avg_cost_basis for h in report.holdings),
@@ -80,7 +65,7 @@ async def holdings(request: Request, as_of: str | None = None, method: str | Non
 async def gains(request: Request, fy: str | None = None, method: str | None = None,
                 identity: Identity = Depends(page_identity), session: AsyncSession = Depends(get_session)):
     year, fys = await _gains_fy(session, identity, fy)
-    cost_method = _parse_method(method)
+    cost_method = optional_choice(method, CostMethod, CostMethod.AVERAGE)
     report = await reports.capital_gains_report(session, identity.subject, year, cost_method)
     # Net gain/loss by FY for the bar chart: only worth drawing over 2+ years.
     by_fy = await report_series.gains_by_fy(session, identity.subject, fys, cost_method) if len(fys) > 1 else []
@@ -93,7 +78,7 @@ async def gains(request: Request, fy: str | None = None, method: str | None = No
 @router.get("/dividends")
 async def dividends(request: Request, fy: str | None = None,
                     identity: Identity = Depends(page_identity), session: AsyncSession = Depends(get_session)):
-    report = await reports.dividends_report(session, identity.subject, _parse_int(fy))
+    report = await reports.dividends_report(session, identity.subject, optional_int(fy))
     # Received by month for the line chart: the FY's 12 months, or all time
     # from the first ex-date to the last.
     by_month: report_series.Series = []
@@ -113,12 +98,12 @@ async def dividends(request: Request, fy: str | None = None,
 async def export_csv(kind: str, as_of: str | None = None, fy: str | None = None, method: str | None = None,
                      identity: Identity = Depends(page_identity), session: AsyncSession = Depends(get_session)):
     """The same report a pane shows, for the same filter, as a CSV download."""
-    cost_method = _parse_method(method)
+    cost_method = optional_choice(method, CostMethod, CostMethod.AVERAGE)
     # The method only goes in the filename when it isn't the default, so
     # average exports keep their old names.
     method_suffix = "" if cost_method == CostMethod.AVERAGE else f"-{cost_method.value}"
     if kind == "holdings":
-        snapshot = _parse_date(as_of)
+        snapshot = optional_date(as_of, date.today())
         rows = report_rows.holdings_rows(await reports.holdings_report(session, identity.subject, snapshot, cost_method))
         suffix = snapshot.isoformat() + method_suffix
     elif kind == "gains":
@@ -126,7 +111,7 @@ async def export_csv(kind: str, as_of: str | None = None, fy: str | None = None,
         rows = report_rows.gains_rows(await reports.capital_gains_report(session, identity.subject, year, cost_method))
         suffix = f"fy{year}{method_suffix}"
     elif kind == "dividends":
-        year_or_all = _parse_int(fy)
+        year_or_all = optional_int(fy)
         rows = report_rows.dividends_rows(await reports.dividends_report(session, identity.subject, year_or_all))
         suffix = f"fy{year_or_all}" if year_or_all is not None else "all"
     else:
