@@ -128,8 +128,8 @@ register_error_pages(app, settings, templates=templates, api_prefix="/api")
 register_health(app, checks=[database_ready])
 
 # request-id/timing/security-header/CORS/trusted-proxy middleware, and
-# session-cookie auth (AUTH_ADAPTER=local for now — see
-# web-implementation-brief.md for the later forward_auth/Authentik swap).
+# session-cookie auth (AUTH_ADAPTER=local for now — see TODO.md for the
+# later forward_auth/Authentik swap).
 # register_core before register_auth: forward_auth's trust gate depends on
 # register_core's ProxyHeadersMiddleware having already run (see
 # greentechhub-fastapi's docs/auth.md) — not load-bearing for AUTH_ADAPTER=
