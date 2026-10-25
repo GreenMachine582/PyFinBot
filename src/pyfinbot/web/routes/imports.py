@@ -1,6 +1,7 @@
 import greentechhub_ui
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 from greentechhub_core.identity import Identity
+from greentechhub_fastapi.uploads import UploadTooLargeError, read_upload
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ...core import audit_events
@@ -11,7 +12,6 @@ from ...core.transaction_import import (
     REQUIRED_COLUMNS,
     ImportFileError,
     import_transactions,
-    read_upload,
 )
 from ...db.session import get_session
 from ..deps import page_identity, page_router_deps
@@ -41,9 +41,9 @@ async def upload(request: Request, file: UploadFile | None = File(None),
     # below rather than FastAPI's JSON 422 swapped into the page.
     filename = file.filename if file else ""
     try:
-        content = await read_upload(file) if file else b""  # at most 5 MB
+        content = await read_upload(file, limit=MAX_UPLOAD_BYTES) if file else b""  # at most 5 MB
         summary = await import_transactions(session, identity.subject, content, filename or "")
-    except ImportFileError as exc:
+    except (ImportFileError, UploadTooLargeError) as exc:
         return templates.TemplateResponse(
             request, "_import_result.html", {"error": exc.message, "filename": filename},
             status_code=422,  # swapped in like a gth-form error
