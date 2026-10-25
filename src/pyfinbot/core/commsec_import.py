@@ -39,6 +39,11 @@ class EmailSyncError(ApplicationError):
         super().__init__(message, status_code=status_code)
 
 
+SyncProgress = Callable[[str, int, int], None]
+"""progress(phase, done, total): phase "reading" (the mailbox; total 0 while
+unknown) then "importing" (one call per email)."""
+
+
 async def sync_commsec_emails(
     session: AsyncSession,
     user_id: str,
@@ -47,15 +52,19 @@ async def sync_commsec_emails(
     include_seen: bool = False,
     fetch: Optional[Callable[..., List[Tuple[bytes, Message]]]] = None,
     mark: Optional[Callable[[EmailAccount, List[bytes]], None]] = None,
+    progress: Optional[SyncProgress] = None,
 ) -> EmailSyncSummary:
     """Import every parseable Commsec confirmation in `account` (that user's
     own mailbox) as `user_id`'s transaction and commit, then mark the
     processed emails \\Seen. Emails that can't be imported are skipped and
     reported; raises EmailSyncError when the sync as a whole fails.
     fetch/mark default to core.email_sync's IMAP functions, looked up per
-    call so tests can patch them here."""
+    call so tests can patch them here. `progress`, if given, is told how far
+    the sync has got (see SyncProgress)."""
     fetch = fetch or fetch_commsec_emails
     mark = mark or mark_seen
+    report = progress or (lambda phase, done, total: None)
+    report("reading", 0, 0)
     try:
         messages = await asyncio.to_thread(fetch, account, only_unseen=not include_seen)
     except EmailNotConfiguredError as exc:
@@ -68,7 +77,8 @@ async def sync_commsec_emails(
     errors: list[str] = []
     processed_uids: list[bytes] = []
 
-    for uid, msg in messages:
+    for done, (uid, msg) in enumerate(messages):
+        report("importing", done, len(messages))
         uid_label = uid.decode(errors="replace")
         try:
             body = message_text(msg)
@@ -114,6 +124,7 @@ async def sync_commsec_emails(
             await session.rollback()
             errors.append(f"UID {uid_label}: {exc}")
             skipped += 1
+    report("importing", len(messages), len(messages))
 
     try:
         await session.commit()

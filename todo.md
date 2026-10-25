@@ -21,8 +21,15 @@ infrastructure.
 
 ## Waiting on a gth release
 
-Nothing waiting. When an item needs a gth feature that isn't released yet, it goes here and is registered in
-that repo's TODO; once it ships: bump the pin, adopt, remove the item.
+When an item needs a gth feature that isn't released yet, it goes here and is registered in that repo's TODO;
+once it ships: bump the pin, adopt, remove the item.
+
+- [ ] Email sync reading progress (after the core release with greentechhub-core#88, `ImapReader.fetch`'s
+  `progress`). Give `fetch_commsec_emails` a `progress=None` passed to the reader, and have
+  `sync_commsec_emails` pass `lambda done, total: progress("reading", done, total)` to `fetch` only when it was
+  given a `progress`, so test fakes without that argument keep working. Test that a fake reader's calls arrive
+  as `("reading", 0, 2), ("reading", 1, 2), ("reading", 2, 2)`. Until then "reading" is reported once as
+  `(0, 0)`, total unknown.
 
 ## Waiting on infrastructure
 
