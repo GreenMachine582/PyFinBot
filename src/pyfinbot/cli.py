@@ -15,14 +15,12 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import csv
-import io
 import sys
 from datetime import date
 from typing import Optional, Sequence, TextIO
 
 from greentechhub_core.dates import fiscal_year
-from greentechhub_fastapi.downloads import BOM
+from greentechhub_core.exports import BOM, csv_text
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from .core import report_rows, reports
@@ -81,9 +79,7 @@ def render(report: Report, fmt: str) -> str:
         rows = report_rows.gains_rows(report)
     else:
         rows = report_rows.dividends_rows(report)
-    buf = io.StringIO()
-    csv.writer(buf).writerows(rows)
-    return buf.getvalue()
+    return csv_text(rows, bom=False)  # the BOM goes on a file only (run), not piped stdout
 
 
 async def run(argv: Optional[Sequence[str]] = None, stdout: Optional[TextIO] = None,
