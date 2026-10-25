@@ -88,22 +88,6 @@ class TestSyncCommsecEmails:
         assert items[0]["type"] == "Sell"
         assert float(items[0]["units"]) == 579
 
-    async def test_unknown_stock_reported_as_error(self, gth_client):
-        headers = await register_and_login(gth_client, USER_ID)
-        # RMD is never registered as a Stock
-
-        with patch(
-            "pyfinbot.api.email_routes.fetch_commsec_emails",
-            return_value=_fake_messages("bought_rmd.txt"),
-        ), patch("pyfinbot.api.email_routes.mark_seen") as mock_mark_seen:
-            resp = await gth_client.post("/api/emails/sync-commsec", headers=headers)
-
-        data = resp.json()
-        assert data["created"] == 0
-        assert data["skipped"] == 1
-        assert len(data["errors"]) == 1
-        mock_mark_seen.assert_not_called()
-
     async def test_duplicate_email_skipped_on_resync(self, gth_client):
         headers = await register_and_login(gth_client, USER_ID)
         await create_stock(gth_client, "RMD", name="ResMed Inc")

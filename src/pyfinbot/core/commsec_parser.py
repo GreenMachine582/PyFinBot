@@ -46,13 +46,15 @@ _SUBJECT_RE = re.compile(
     r"CommSec\s*-\s*(Bought|Sold)\s+([\d,]+)\s+units?\s+of\s+([A-Z]{1,6})",
     re.IGNORECASE,
 )
+# HTML-only emails come out of message_text with spaces around inline
+# elements: "( SKS )" and "amount , including", so both patterns allow them.
 _BODY_TRADE_RE = re.compile(
-    r"You've (bought|sold) ([\d,]+) units? in (.+?) \(([A-Z]{1,6})\) at a price of "
+    r"You've (bought|sold) ([\d,]+) units? in (.+?) \(\s*([A-Z]{1,6})\s*\) at a price of "
     r"\$([\d,]+\.\d+) per unit \(not including brokerage\), on trading account (\S.*?)\.",
     re.IGNORECASE,
 )
 _SETTLEMENT_RE = re.compile(
-    r"total settlement amount, including brokerage, is \$([\d,]+\.\d+).*?"
+    r"total settlement amount\s*, including brokerage, is \$([\d,]+\.\d+).*?"
     r"on (\d{1,2} [A-Za-z]{3} \d{4})",
     re.IGNORECASE | re.DOTALL,
 )

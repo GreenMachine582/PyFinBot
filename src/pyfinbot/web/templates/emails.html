@@ -7,10 +7,15 @@
 
 {% call gth_page_header("Commsec emails", subtitle="Turn Commsec buy/sell confirmation emails into transactions.") %}
   {{ gth_busy_button("Sync Commsec emails", "Syncing…",
-      {"hx-post": "/emails/sync", "hx-target": "#sync-result"},
+      {"hx-post": "/emails/sync", "hx-target": "#sync-result", "hx-include": "#include-seen"},
       icon="envelope-arrow-down", btn_class="btn-primary",
       start_toast="Checking the mailbox — this can take a minute…") }}
 {% endcall %}
+
+<div class="form-check mb-3">
+  <input class="form-check-input" type="checkbox" name="include_seen" value="1" id="include-seen">
+  <label class="form-check-label" for="include-seen">Include emails already marked read</label>
+</div>
 
 {% if problem %}
 {{ gth_alert(problem, kind="danger", action={"label": "Open Settings", "url": settings_url}) }}
@@ -27,9 +32,9 @@
 
 <p class="text-secondary">
   Reads unread emails from <code>{{ sender }}</code>, imports each confirmation as a transaction on your
-  account, then marks it read. Emails for stocks PyFinBot doesn't track yet are skipped. Add the stock, or
-  sync the ASX list on the <a href="/stocks">Stocks</a> page. Duplicates are always skipped, so syncing
-  again is safe.
+  account, then marks it read. A stock PyFinBot doesn't track yet (an ETF, say) is added under the
+  email's company name. To retry emails a sync skipped, tick "Include emails already marked read".
+  Duplicates are always skipped, so syncing again is safe.
 </p>
 
 <div id="sync-result" aria-live="polite"></div>

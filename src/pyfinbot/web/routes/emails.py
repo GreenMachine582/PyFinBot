@@ -46,14 +46,16 @@ async def emails_page(request: Request, identity: Identity = Depends(page_identi
 @router.post("/sync")
 async def sync(request: Request, session: AsyncSession = Depends(get_session),
                identity: Identity = Depends(page_identity)):
-    """Runs the sync and swaps the result panel in, with a summary toast."""
+    """Runs the sync and swaps the result panel in, with a summary toast.
+    The "include_seen" checkbox also reprocesses emails already marked read."""
+    include_seen = bool((await request.form()).get("include_seen"))
     with held_lock(settings, lock_name(EMAIL_SYNC_LOCK, identity.subject),
                    ttl=SYNC_LOCK_TTL_SECONDS) as acquired:
         if not acquired:
             return hx_response("An email sync is already running — wait for it to finish.", "warning")
         try:
             account = await load_email_account(get_settings_service(request), identity.subject)
-            summary = await sync_commsec_emails(session, identity.subject, account)
+            summary = await sync_commsec_emails(session, identity.subject, account, include_seen=include_seen)
         except EmailSyncError as exc:
             return templates.TemplateResponse(
                 request, "_sync_result.html", {

@@ -73,11 +73,11 @@ class TestSync:
 
     async def test_skipped_emails_are_listed(self, gth_client):
         await web_login(gth_client, "web-emails")
-        await create_stock(gth_client, "RMD", name="ResMed Inc")  # WOW isn't tracked
-        with patch(FETCH, return_value=_fake_messages("bought_rmd.txt", "sold_wow.txt")), patch(MARK):
+        await create_stock(gth_client, "RMD", name="ResMed Inc")
+        with patch(FETCH, return_value=_fake_messages("bought_rmd.txt", "bought_rmd.txt")), patch(MARK):
             resp = await gth_client.post("/emails/sync")
         assert "1 imported" in resp.text and "1 skipped" in resp.text
-        assert "Stock &#39;ASX:WOW&#39; not found" in resp.text
+        assert "UID 2: Duplicate transaction" in resp.text
         triggers = hx_triggers(resp)
         assert triggers["showToast"]["kind"] == "warning"
         assert triggers["showToast"]["message"] == "Imported 1 transaction; 1 skipped."

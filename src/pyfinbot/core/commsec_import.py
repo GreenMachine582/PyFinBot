@@ -80,11 +80,13 @@ async def sync_commsec_emails(
 
         stock = await Stock.search(session, market="ASX", symbol=parsed.symbol)
         if not stock:
-            errors.append(f"UID {uid_label}: Stock 'ASX:{parsed.symbol}' not found")
-            skipped += 1
-            continue
+            # Not in the ASX company list (an ETF like VGE), or the list
+            # isn't synced yet: add it under the email's company name.
+            stock = Stock(market="ASX", symbol=parsed.symbol, name=parsed.company_name)
+            session.add(stock)
+            await session.flush()
 
-        assert stock.id is not None  # loaded from the database
+        assert stock.id is not None  # loaded from, or flushed to, the database
         txn = Transaction(
             user_id=user_id,
             stock_id=stock.id,
