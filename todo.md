@@ -14,8 +14,6 @@ bumps its pins in `requirements.txt`. Develop across the repos with local GTH
 mode (`scripts/use-local-gth.sh`, see CONTRIBUTING.md); CI always tests the
 pins.
 
-Web UI scope and architecture: see `web-implementation-brief.md`.
-
 ## Ready now — released in the gth repos
 
 Nothing ready: every released gth feature is adopted. The items below wait on a gth release or
@@ -41,9 +39,16 @@ that repo's TODO; once it ships: bump the pin, adopt, remove the item.
   - The local sign-in routes switch themselves off (`web/routes/auth.py` `build_router`).
   - Keep `ROLE_BOOTSTRAP` (by username) as the recovery path.
   - Optional later: core's planned JWT validation (`X-authentik-jwt`).
-- [ ] Real Grafana panels once embedding is configured (`allow_embedding`, CSP/X-Frame-Options at Caddy; see the
-  brief). The dashboard side is ready: ui's `gth_embed_card`, and the strict CSP allows the Grafana origin in `frame-src`
-  once `GRAFANA_ORIGIN` is set.
+- [ ] Grafana panel on the dashboard (Homelab's `homelab-observe`, `http://grafana.homelab.local:3000`). The
+  plumbing is in: `GRAFANA_ORIGIN` and the strict CSP's `frame-src`. `dashboard.html` has no slot yet.
+  - Render ui's `gth_embed_card` with a panel URL (panel id + `kiosk`) only when `GRAFANA_ORIGIN` is set.
+  - Grafana: `allow_embedding = true`; Caddy: X-Frame-Options/CSP that let PyFinBot frame it.
+  - Viewer auth so the iframe doesn't prompt: an anonymous viewer limited to LAN/Tailscale now, or a shared
+    Authentik session once that's live.
+  - PyFinBot's host must reach `homelab-observe`.
+- [ ] Deploy to Homelab's `homelab-svc-02` (user-facing workloads) once the node is live. Drop `--reload` from the
+  `Dockerfile` CMD first; it's a dev flag in the production image. Set `SECRET_KEY` explicitly and serve over HTTPS
+  (see Known limitations).
 
 ## Ideas — not scheduled
 
