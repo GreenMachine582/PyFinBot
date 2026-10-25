@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import io
 from decimal import Decimal
-from typing import Protocol
 
 import pandas as pd
 from greentechhub_core.types import ApplicationError
@@ -33,8 +32,9 @@ from .dedupe import is_duplicate_transaction
 ACCEPTED_EXTENSIONS = (".csv", ".xls", ".xlsx", ".xlsm")
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
-"""The largest import file accepted (5 MB) — enforced by read_upload on the
-server; the web page's drop zone checks it in the browser too."""
+"""The largest import file accepted (5 MB) — enforced on the server by
+greentechhub-fastapi's uploads.read_upload (a 413 UploadTooLargeError); the
+web page's drop zone checks it in the browser too."""
 REQUIRED_COLUMNS = ("date", "stock", "type", "units", "price")
 
 # Column aliases: canonical name -> accepted alternatives
@@ -60,20 +60,6 @@ class ImportFileError(ApplicationError):
 
     def __init__(self, status_code: int, message: str):
         super().__init__(message, status_code=status_code)
-
-
-class _Readable(Protocol):
-    async def read(self, size: int = -1) -> bytes: ...
-
-
-async def read_upload(file: _Readable, limit: int = MAX_UPLOAD_BYTES) -> bytes:
-    """The uploaded file's bytes, reading at most limit + 1 so an oversized
-    upload is never buffered whole. Raises ImportFileError (413) when it's
-    larger than `limit`."""
-    content = await file.read(limit + 1)
-    if len(content) > limit:
-        raise ImportFileError(413, f"File is larger than {limit // (1024 * 1024)} MB.")
-    return content
 
 
 def _normalise_columns(df: pd.DataFrame) -> pd.DataFrame:

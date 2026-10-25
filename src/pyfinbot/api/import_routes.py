@@ -9,10 +9,11 @@ from fastapi import APIRouter, Depends, File, Request, UploadFile, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 from greentechhub_core.identity import Identity
 from greentechhub_fastapi.dependencies import get_current_identity
+from greentechhub_fastapi.uploads import read_upload
 
 from ..core import audit_events
 from ..core.transaction_import import import_transactions as _import_transactions
-from ..core.transaction_import import read_upload
+from ..core.transaction_import import MAX_UPLOAD_BYTES
 from ..db.session import get_session
 from ..schemas.import_schemas import ImportSummary
 
@@ -39,9 +40,10 @@ async def import_transactions(
 
     Returns a summary of rows created, skipped, and any per-row errors.
     """
-    # An ImportFileError (413 over 5 MB, 400 empty, …) is answered by the API's
-    # error handlers as an import_failed envelope.
-    content = await read_upload(file)
+    # The API's error handlers answer both: a file over 5 MB is fastapi's 413
+    # payload_too_large; one that can't be imported (400 empty, 422 unparseable,
+    # …) is an ImportFileError, import_failed.
+    content = await read_upload(file, limit=MAX_UPLOAD_BYTES)
     user_id = identity.subject
     assert user_id is not None  # a stored user always has its primary key
     summary = await _import_transactions(session, user_id, content, file.filename or "")

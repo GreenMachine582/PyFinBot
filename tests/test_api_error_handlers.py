@@ -34,7 +34,7 @@ async def test_a_runtime_status_comes_from_the_status_code_hint(gth_client):
                              files={"file": ("big.csv", big, "text/csv")})
     assert resp.status_code == 413
     body = resp.json()
-    assert body["code"] == "import_failed" and "5 MB" in body["message"]
+    assert body["code"] == "payload_too_large" and "5 MB" in body["message"]
 
 
 async def test_a_502_sync_failure_keeps_its_status(gth_client):

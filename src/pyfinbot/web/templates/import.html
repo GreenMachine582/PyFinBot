@@ -16,7 +16,7 @@
       {% call gth_form("/import", form_attrs={"hx-post": "/import", "hx-encoding": "multipart/form-data",
           "hx-target": "#import-result", "hx-disabled-elt": "find button[type=submit]"}) %}
         {#- The drop zone shows the accepted types and the 5 MB limit, checks both in the browser, and shows
-            upload progress; the server checks again (core.transaction_import.read_upload). -#}
+            upload progress; the server checks again (greentechhub-fastapi's uploads.read_upload). -#}
         {{ gth_file_drop("file", "File", accept=accept, max_size=max_size, input_attrs={"required": "required"},
             help_text="Rows that duplicate an existing transaction are skipped, so re-uploading is safe.") }}
         <div class="d-flex justify-content-end">

@@ -20,9 +20,6 @@ Web UI scope and architecture: see `web-implementation-brief.md`.
 
 Each is one PR on the current pins (core v0.16, fastapi v0.18, ui v0.20): adopt, remove the item.
 
-- [ ] `refactor: gth upload reader`: greentechhub-fastapi's `uploads.read_upload(file, limit=)` (v0.18) replaces
-  `core/transaction_import.read_upload`. The import page catches `UploadTooLargeError` to keep its form error; the
-  API gets the 413 `payload_too_large` envelope.
 - [ ] `refactor(cli): csv_text`: greentechhub-core's `exports.csv_text` / `csv_value` (v0.16) replace the hand-built
   `csv.writer` in `cli.py`'s report export, matching the web download (`csv_download`). Decide on `bom=False` for
   stdout.
