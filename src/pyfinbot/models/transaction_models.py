@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-from datetime import datetime, date, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
-from enum import Enum
-from typing import Optional, TYPE_CHECKING
+from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from greentechhub_core.dates import fiscal_year
 from sqlalchemy import Numeric
-from sqlmodel import SQLModel, Field, Relationship
-
+from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     # only for type checkers; avoids runtime import cycles
@@ -19,7 +18,7 @@ if TYPE_CHECKING:
 #: more, and the CSV / Commsec importers truncate to it.
 NOTES_MAX = 500
 
-class TypeEnum(str, Enum):
+class TypeEnum(StrEnum):
     BUY = "Buy"
     SELL = "Sell"
 
@@ -33,7 +32,7 @@ class TypeEnum(str, Enum):
 
 
 class Transaction(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     user_id: str = Field(foreign_key="gth_users.id", ondelete="CASCADE", index=True, max_length=32,
                          description="FK to the user account (gth_users); cascades on delete")
     stock_id: int = Field(foreign_key="stock.id", description="FK to stock; no cascade")
@@ -48,14 +47,14 @@ class Transaction(SQLModel, table=True):
     cost: Decimal = Field(default=Decimal("0"), sa_type=Numeric(18, 6),
                           description="Net cash movement (+sell -fees | -buy +fees)")
     # No DB limit; NOTES_MAX is enforced by the schemas and the importers truncate to it.
-    notes: Optional[str] = Field(default=None, description=f"Transaction notes (at most {NOTES_MAX} characters)")
+    notes: str | None = Field(default=None, description=f"Transaction notes (at most {NOTES_MAX} characters)")
 
     # FY (AU: FY ends Jun 30 → July = new FY)
     fy: int = Field(default=0, description="Fiscal year")
 
     # Timestamps (UTC)
-    create_datetime: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    write_datetime: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    create_datetime: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    write_datetime: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # relationships
     stock: Stock = Relationship(back_populates="transactions")

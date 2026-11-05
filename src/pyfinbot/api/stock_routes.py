@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional, Union
-
 from fastapi import APIRouter, Depends, Request, status
 from fastapi_pagination import Page
 from greentechhub_core.query.envelope import to_envelope
@@ -14,10 +12,10 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..core import audit_events
-from ..core.market_sync import syncMarket, MARKET_FETCHERS, market_sync_guard
+from ..core.market_sync import MARKET_FETCHERS, market_sync_guard, syncMarket
+from ..db.session import get_session
 from ..models.stock_models import Stock
 from ..schemas.stock_schemas import StockCreate, StockRead, StockUpdate, SyncResult
-from ..db.session import get_session
 
 router = APIRouter(prefix="/stocks", tags=["Stocks"])
 
@@ -33,7 +31,7 @@ ALLOWED_FIELDS = {
 DEFAULT_SORT = (Sort(field="market"), Sort(field="symbol"))
 
 
-async def _searchForStock(session: AsyncSession, stock_id: int | str) -> Optional[Stock]:
+async def _searchForStock(session: AsyncSession, stock_id: int | str) -> Stock | None:
     """Search for a stock by ID or market:symbol format."""
     if isinstance(stock_id, int) or (isinstance(stock_id, str) and stock_id.isdigit()):
         return await session.get(Stock, int(stock_id))
@@ -80,7 +78,7 @@ async def list_stocks(
 
 
 @router.get("/{stock_id}", response_model=StockRead)
-async def get_stock(stock_id: Union[int, str], session: AsyncSession = Depends(get_session)):
+async def get_stock(stock_id: int | str, session: AsyncSession = Depends(get_session)):
     stock = await _searchForStock(session, stock_id)
     if not stock:
         raise NotFoundError("Stock not found")
@@ -89,7 +87,7 @@ async def get_stock(stock_id: Union[int, str], session: AsyncSession = Depends(g
 
 @router.put("/{stock_id}", response_model=StockRead)
 async def update_stock(
-    stock_id: Union[int, str],
+    stock_id: int | str,
     stock_update: StockUpdate,
     session: AsyncSession = Depends(get_session)
 ):
@@ -115,7 +113,7 @@ async def update_stock(
 
 
 @router.delete("/{stock_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_stock(stock_id: Union[int, str], session: AsyncSession = Depends(get_session)):
+async def delete_stock(stock_id: int | str, session: AsyncSession = Depends(get_session)):
     stock = await _searchForStock(session, stock_id)
     if not stock:
         raise NotFoundError("Stock not found")

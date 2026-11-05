@@ -3,11 +3,9 @@ import tempfile
 from os import path as os_path
 from typing import ClassVar
 
-
 from dotenv import load_dotenv
 from greentechhub_core.config import GTHBaseSettings
 from pydantic_settings import SettingsConfigDict
-
 
 load_dotenv(dotenv_path=os_path.join(os_path.dirname(__file__), "..", "..", "..", ".env"))
 

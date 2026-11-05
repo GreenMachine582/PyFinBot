@@ -6,9 +6,9 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from greentechhub_core.email import message_text, received_at
 
 from pyfinbot.core.commsec_parser import CommsecParseError, parse_commsec_email
-from greentechhub_core.email import message_text, received_at
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "commsec_emails"
 

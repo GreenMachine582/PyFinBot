@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request, status
@@ -127,41 +127,70 @@ async def transactions_page(
     context = {"table": state, "transactions": transactions}
     if wants_fragment(request.headers):
         return templates.TemplateResponse(request, "_transaction_table.html", context)
-    fys = (await session.exec(
-        select(Transaction.fy).where(Transaction.user_id == identity.subject).distinct().order_by(col(Transaction.fy).desc())
-    )).all()
-    return templates.TemplateResponse(request, "transactions.html", {
-        **context, "fys": fys, "types": [t.value for t in TypeEnum],
-    })
+    fys = (
+        await session.exec(
+            select(Transaction.fy)
+            .where(Transaction.user_id == identity.subject)
+            .distinct()
+            .order_by(col(Transaction.fy).desc())
+        )
+    ).all()
+    return templates.TemplateResponse(
+        request,
+        "transactions.html",
+        {
+            **context,
+            "fys": fys,
+            "types": [t.value for t in TypeEnum],
+        },
+    )
 
 
-async def _render_form(request: Request, session: AsyncSession, transaction: Transaction | None, values: dict,
-                       errors: dict, *, template: str, status_code: int = status.HTTP_200_OK):
+async def _render_form(
+    request: Request,
+    session: AsyncSession,
+    transaction: Transaction | None,
+    values: dict,
+    errors: dict,
+    *,
+    template: str,
+    status_code: int = status.HTTP_200_OK,
+):
     # The combobox shows the picked stock's label; with no (valid) pick it
     # falls back to whatever search text was typed.
     stock_id = str(values.get("stock_id") or "")
     selected_stock = await session.get(Stock, int(stock_id)) if stock_id.isdigit() else None
-    return templates.TemplateResponse(request, template, {
-        "transaction": transaction,
-        "values": values,
-        "errors": errors,
-        "selected_stock": selected_stock,
-    }, status_code=status_code)
+    return templates.TemplateResponse(
+        request,
+        template,
+        {
+            "transaction": transaction,
+            "values": values,
+            "errors": errors,
+            "selected_stock": selected_stock,
+        },
+        status_code=status_code,
+    )
 
 
 @router.get("/new")
-async def new_transaction_form(request: Request, identity: Identity = Depends(page_identity),
-                               session: AsyncSession = Depends(get_session)):
+async def new_transaction_form(
+    request: Request, identity: Identity = Depends(page_identity), session: AsyncSession = Depends(get_session)
+):
     values = {"transaction_date": date.today().isoformat(), "type": TypeEnum.BUY.value, "fees": "0"}
     return await _render_form(request, session, None, values, {}, template="_transaction_form_modal.html")
 
 
 @router.get("/{transaction_id:int}/edit")
-async def edit_transaction_form(request: Request, transaction_id: int,
-                                identity: Identity = Depends(page_identity),
-                                session: AsyncSession = Depends(get_session)):
-    transaction = await get_owned_or_404(session, Transaction, transaction_id, owner=identity.subject,
-                                         options=_WITH_STOCK)
+async def edit_transaction_form(
+    request: Request,
+    transaction_id: int,
+    identity: Identity = Depends(page_identity),
+    session: AsyncSession = Depends(get_session),
+):
+    transaction = await get_owned_or_404(
+        session, Transaction, transaction_id, owner=identity.subject, options=_WITH_STOCK
+    )
     values = {
         "stock_id": transaction.stock_id,
         "transaction_date": transaction.transaction_date.isoformat(),
@@ -225,14 +254,16 @@ def _label(transaction: Transaction | TransactionCreate, stock: Stock) -> str:
 
 
 @router.post("")
-async def create_transaction(request: Request, identity: Identity = Depends(page_identity),
-                             session: AsyncSession = Depends(get_session)):
+async def create_transaction(
+    request: Request, identity: Identity = Depends(page_identity), session: AsyncSession = Depends(get_session)
+):
     form = await request.form()
     values = {field: form.get(field, "") for field in FORM_FIELDS}
     transaction_in, stock, errors = await _validate(session, values)
     if transaction_in is None or stock is None:
-        return await _render_form(request, session, None, values, errors, template="_transaction_form.html",
-                                  status_code=422)
+        return await _render_form(
+            request, session, None, values, errors, template="_transaction_form.html", status_code=422
+        )
 
     transaction = Transaction(**transaction_in.model_dump(), user_id=identity.subject)
     label = _label(transaction, stock)
@@ -242,22 +273,27 @@ async def create_transaction(request: Request, identity: Identity = Depends(page
 
 
 @router.post("/{transaction_id:int}")
-async def update_transaction(request: Request, transaction_id: int,
-                             identity: Identity = Depends(page_identity),
-                             session: AsyncSession = Depends(get_session)):
-    transaction = await get_owned_or_404(session, Transaction, transaction_id, owner=identity.subject,
-                                         options=_WITH_STOCK)
+async def update_transaction(
+    request: Request,
+    transaction_id: int,
+    identity: Identity = Depends(page_identity),
+    session: AsyncSession = Depends(get_session),
+):
+    transaction = await get_owned_or_404(
+        session, Transaction, transaction_id, owner=identity.subject, options=_WITH_STOCK
+    )
     form = await request.form()
     values = {field: form.get(field, "") for field in FORM_FIELDS}
     transaction_in, stock, errors = await _validate(session, values)
     if transaction_in is None or stock is None:
-        return await _render_form(request, session, transaction, values, errors, template="_transaction_form.html",
-                                  status_code=422)
+        return await _render_form(
+            request, session, transaction, values, errors, template="_transaction_form.html", status_code=422
+        )
 
     for key, value in transaction_in.model_dump().items():
         setattr(transaction, key, value)
     transaction.recompute()
-    transaction.write_datetime = datetime.now(timezone.utc)
+    transaction.write_datetime = datetime.now(UTC)
     label = _label(transaction, stock)
     session.add(transaction)
     await session.commit()
@@ -265,16 +301,18 @@ async def update_transaction(request: Request, transaction_id: int,
 
 
 @router.post("/bulk-delete")
-async def bulk_delete_transactions(request: Request, identity: Identity = Depends(page_identity),
-                                   session: AsyncSession = Depends(get_session)):
+async def bulk_delete_transactions(
+    request: Request, identity: Identity = Depends(page_identity), session: AsyncSession = Depends(get_session)
+):
     """Delete the checked rows (gth_data_table's bulk bar posts them as
     repeated `ids`). Scoped to the signed-in user in the query itself, so
     another user's ids are silently ignored, as the single delete 404s them."""
     ids = [int(v) for v in (await request.form()).getlist("ids") if isinstance(v, str) and v.isdigit()]
     deleted = 0
     if ids:
-        result = await session.exec(delete(Transaction).where(
-            col(Transaction.user_id) == identity.subject, col(Transaction.id).in_(ids)))
+        result = await session.exec(
+            delete(Transaction).where(col(Transaction.user_id) == identity.subject, col(Transaction.id).in_(ids))
+        )
         deleted = result.rowcount
         await session.commit()
     if not deleted:
@@ -283,19 +321,25 @@ async def bulk_delete_transactions(request: Request, identity: Identity = Depend
 
 
 @router.get("/{transaction_id:int}/delete")
-async def delete_transaction_confirm(request: Request, transaction_id: int,
-                                     identity: Identity = Depends(page_identity),
-                                     session: AsyncSession = Depends(get_session)):
-    transaction = await get_owned_or_404(session, Transaction, transaction_id, owner=identity.subject,
-                                         options=_WITH_STOCK)
+async def delete_transaction_confirm(
+    request: Request,
+    transaction_id: int,
+    identity: Identity = Depends(page_identity),
+    session: AsyncSession = Depends(get_session),
+):
+    transaction = await get_owned_or_404(
+        session, Transaction, transaction_id, owner=identity.subject, options=_WITH_STOCK
+    )
     return templates.TemplateResponse(request, "_transaction_delete_modal.html", {"transaction": transaction})
 
 
 @router.delete("/{transaction_id:int}")
-async def delete_transaction(transaction_id: int, identity: Identity = Depends(page_identity),
-                             session: AsyncSession = Depends(get_session)):
-    transaction = await get_owned_or_404(session, Transaction, transaction_id, owner=identity.subject,
-                                         options=_WITH_STOCK)
+async def delete_transaction(
+    transaction_id: int, identity: Identity = Depends(page_identity), session: AsyncSession = Depends(get_session)
+):
+    transaction = await get_owned_or_404(
+        session, Transaction, transaction_id, owner=identity.subject, options=_WITH_STOCK
+    )
     label = _label(transaction, transaction.stock)
     await session.delete(transaction)
     await session.commit()

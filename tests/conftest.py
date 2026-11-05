@@ -4,8 +4,8 @@ import pytest
 from greentechhub_fastapi import testing as gth_testing
 from greentechhub_fastapi.testing import hx_triggers, post_login  # noqa: F401  # re-exported for tests
 from httpx import AsyncClient
-from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import SQLModel
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from pyfinbot import models  # noqa: F401  # registers model tables on SQLModel.metadata
 

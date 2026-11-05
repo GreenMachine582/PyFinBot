@@ -1,11 +1,10 @@
 """Integration tests for the /dividends web page (yfinance mocked)."""
 from datetime import date
-from types import SimpleNamespace
 from decimal import Decimal
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pandas as pd
-
 from greentechhub_core.background import held_lock
 
 from pyfinbot.core.settings import settings

@@ -52,12 +52,15 @@ class TestApiNotes:
         stock = await create_stock(gth_client, "PLA", "ASX", "Polish API")
         body = {"stock_id": stock["id"], "type": "Buy", "units": 1, "price": 1, "fees": 0,
                 "transaction_date": "2024-08-01"}
-        resp = await gth_client.post("/api/transactions/", headers=headers, json={**body, "notes": "x" * (NOTES_MAX + 1)})
+        resp = await gth_client.post(
+            "/api/transactions/", headers=headers, json={**body, "notes": "x" * (NOTES_MAX + 1)}
+        )
         assert resp.status_code == 422 and resp.json()["code"] == "validation_error"
 
         created = (await gth_client.post("/api/transactions/", headers=headers, json={**body, "notes": "ok"})).json()
-        resp = await gth_client.put(f"/api/transactions/{created['id']}", headers=headers,
-                                json={"notes": "x" * (NOTES_MAX + 1)})
+        resp = await gth_client.put(
+            f"/api/transactions/{created['id']}", headers=headers, json={"notes": "x" * (NOTES_MAX + 1)}
+        )
         assert resp.status_code == 422
 
 
@@ -66,8 +69,9 @@ class TestImportsTruncate:
         headers = await register_and_login(gth_client, "polish-csv")
         await create_stock(gth_client, "PLC", "ASX", "Polish CSV")
         csv = "date,stock,type,units,price,fees,notes\n" + f"2024-08-01,ASX:PLC,Buy,10,1,0,{'n' * 600}\n"
-        resp = await gth_client.post("/api/transactions/import", headers=headers,
-                                 files={"file": ("t.csv", io.BytesIO(csv.encode()), "text/csv")})
+        resp = await gth_client.post(
+            "/api/transactions/import", headers=headers, files={"file": ("t.csv", io.BytesIO(csv.encode()), "text/csv")}
+        )
         assert resp.status_code == 200 and resp.json()["created"] == 1
         assert (await _api_items(gth_client, headers))[0]["notes"] == "n" * NOTES_MAX
 
@@ -79,9 +83,11 @@ class TestImportsTruncate:
         def long_account(*args, **kwargs):
             return dataclasses.replace(real_parse(*args, **kwargs), trading_account="9" * 600)
 
-        with patch("pyfinbot.api.email_routes.fetch_commsec_emails", return_value=_fake_messages("bought_rmd.txt")), \
-                patch("pyfinbot.api.email_routes.mark_seen"), \
-                patch("pyfinbot.core.commsec_import.parse_commsec_email", side_effect=long_account):
+        with (
+            patch("pyfinbot.api.email_routes.fetch_commsec_emails", return_value=_fake_messages("bought_rmd.txt")),
+            patch("pyfinbot.api.email_routes.mark_seen"),
+            patch("pyfinbot.core.commsec_import.parse_commsec_email", side_effect=long_account),
+        ):
             resp = await gth_client.post("/api/emails/sync-commsec", headers=headers)
         assert resp.status_code == 200 and resp.json()["created"] == 1
         notes = (await _api_items(gth_client, headers))[0]["notes"]
@@ -97,8 +103,9 @@ class TestStockCodes:
 
     async def test_over_long_codes_are_field_errors(self, gth_client):
         await web_login(gth_client, "polish-stock-long")
-        resp = await gth_client.post("/stocks", headers=HX, data={"market": "ASX", "symbol": "S" * (CODE_MAX + 1),
-                                                              "name": "Too Long"})
+        resp = await gth_client.post(
+            "/stocks", headers=HX, data={"market": "ASX", "symbol": "S" * (CODE_MAX + 1), "name": "Too Long"}
+        )
         assert resp.status_code == 422
         assert f"At most {CODE_MAX} characters." in resp.text
         api = await gth_client.post("/api/stocks/", json={"market": "M" * (CODE_MAX + 1), "symbol": "OK", "name": "X"})

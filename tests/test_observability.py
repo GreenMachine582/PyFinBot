@@ -102,9 +102,9 @@ async def test_readiness_fails_when_the_database_check_does(gth_client, monkeypa
 
 
 def test_logs_are_json_tagged_with_the_service():
-    import pyfinbot.pyfinbot  # noqa: F401  # configures logging at import
-
     from greentechhub_core.logging import JSONFormatter
+
+    import pyfinbot.pyfinbot  # noqa: F401  # configures logging at import
 
     # pytest adds its own capture handlers to the root logger; find core's.
     formatters = [h.formatter for h in logging.getLogger().handlers if isinstance(h.formatter, JSONFormatter)]

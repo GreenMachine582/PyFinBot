@@ -13,10 +13,10 @@ Buy fees aren't part of the cost under either; sell fees reduce proceeds.
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
-from typing import Iterable, Optional
 
 from greentechhub_core.dates import fiscal_year, fiscal_year_bounds
 from sqlmodel import col, select
@@ -72,7 +72,7 @@ def _fifo(transactions: Iterable[Transaction]) -> tuple[list[_Parcel], list[tupl
     return list(parcels), costed
 
 
-async def holdings_report(session: AsyncSession, user_id: Optional[str], as_of: date,
+async def holdings_report(session: AsyncSession, user_id: str | None, as_of: date,
                           method: CostMethod = CostMethod.AVERAGE) -> HoldingsReport:
     """
     All stocks with a positive unit balance as of `as_of`.
@@ -163,7 +163,7 @@ async def holdings_report(session: AsyncSession, user_id: Optional[str], as_of: 
     return HoldingsReport(as_of=as_of, method=method, holdings=holdings)
 
 
-async def capital_gains_report(session: AsyncSession, user_id: Optional[str], fy: int,
+async def capital_gains_report(session: AsyncSession, user_id: str | None, fy: int,
                                method: CostMethod = CostMethod.AVERAGE) -> CapitalGainsReport:
     """
     Realised capital gain/loss for a fiscal year.
@@ -254,8 +254,8 @@ async def capital_gains_report(session: AsyncSession, user_id: Optional[str], fy
     )
 
 
-async def dividends_report(session: AsyncSession, user_id: Optional[str],
-                           fy: Optional[int] = None) -> DividendsReport:
+async def dividends_report(session: AsyncSession, user_id: str | None,
+                           fy: int | None = None) -> DividendsReport:
     """
     For each Dividend belonging to a stock the user has ever transacted,
     compute units held on the ex_date and the resulting amount received.

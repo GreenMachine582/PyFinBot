@@ -24,9 +24,6 @@ from dataclasses import replace
 from greentechhub_core.email import imap_settings, smtp_settings
 from greentechhub_core.notifications import notification_preferences
 from greentechhub_core.settings import Setting, SettingScope, SettingsRegistry, SettingType
-from .audit_events import NOTICE_CATEGORY
-from .email_sync import COMMSEC_SENDER
-from .permissions import SETTINGS_MANAGE
 from greentechhub_core.settings.builtins import (
     DATE_FORMAT,
     PAGE_SIZE,
@@ -34,6 +31,10 @@ from greentechhub_core.settings.builtins import (
     USER_PREFERENCES,
     site_banner_settings,
 )
+
+from .audit_events import NOTICE_CATEGORY
+from .email_sync import COMMSEC_SENDER
+from .permissions import SETTINGS_MANAGE
 
 DEFAULT_ROWS_PER_PAGE = 50  # also the web tables' page_size (TableState)
 PAGE_SIZES = (10, 25, DEFAULT_ROWS_PER_PAGE)  # the tables' rows-per-page choices

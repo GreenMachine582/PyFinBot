@@ -9,10 +9,10 @@ Emails page).
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query, Request, status
-from greentechhub_fastapi.settings import get_settings_service
-from sqlmodel.ext.asyncio.session import AsyncSession
 from greentechhub_core.identity import Identity
 from greentechhub_fastapi.dependencies import get_current_identity
+from greentechhub_fastapi.settings import get_settings_service
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..core import audit_events
 from ..core.commsec_import import sync_commsec_emails as _sync_commsec_emails

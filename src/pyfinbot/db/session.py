@@ -1,6 +1,7 @@
+from collections.abc import AsyncGenerator
 from contextlib import aclosing
 from pathlib import Path
-from typing import Any, AsyncGenerator, Optional
+from typing import Any
 
 from greentechhub_core.health import HealthResult
 from greentechhub_core.sqlalchemy import Database
@@ -49,7 +50,7 @@ def get_session_factory() -> Any:
     return db.sessionmaker()
 
 
-def set_session_factory_override(factory: Optional[Any]) -> None:
+def set_session_factory_override(factory: Any | None) -> None:
     """Point sessions at another sessionmaker (tests bind one to their
     per-test connection), or back to the real one with None."""
     db.override(factory)

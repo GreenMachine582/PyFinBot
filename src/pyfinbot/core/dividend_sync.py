@@ -5,9 +5,9 @@ fetcher + upsert pattern as core/market_sync.py.
 from __future__ import annotations
 
 import asyncio
-from datetime import date, datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, date, datetime
 from decimal import Decimal
-from typing import Callable, Dict, List, Optional, Tuple
 
 import yfinance as yf
 from sqlmodel import col, select
@@ -22,7 +22,7 @@ MARKET_TO_YF_SUFFIX = {
 }
 
 
-def fetchDividendsForSymbol(symbol: str, market: str) -> Dict[date, Decimal]:
+def fetchDividendsForSymbol(symbol: str, market: str) -> dict[date, Decimal]:
     """
     Fetch full dividend history for one stock via yfinance.
     Returns { ex_date -> amount_per_share }.
@@ -35,7 +35,7 @@ def fetchDividendsForSymbol(symbol: str, market: str) -> Dict[date, Decimal]:
     return {ts.date(): Decimal(str(amt)) for ts, amt in series.items()}
 
 
-async def user_stock_ids(session: AsyncSession, user_id: Optional[str]) -> List[int]:
+async def user_stock_ids(session: AsyncSession, user_id: str | None) -> list[int]:
     """Every stock `user_id` has ever transacted — the default sync scope."""
     result = await session.exec(
         select(Transaction.stock_id)
@@ -47,9 +47,9 @@ async def user_stock_ids(session: AsyncSession, user_id: Optional[str]) -> List[
 
 async def syncDividends(
     session: AsyncSession,
-    stock_ids: Optional[List[int]] = None,
-    fetch_for_symbol: Callable[[str, str], Dict[date, Decimal]] = fetchDividendsForSymbol,
-) -> Tuple[List[str], List[str], List[str]]:
+    stock_ids: list[int] | None = None,
+    fetch_for_symbol: Callable[[str, str], dict[date, Decimal]] = fetchDividendsForSymbol,
+) -> tuple[list[str], list[str], list[str]]:
     """
     Upsert Dividend rows for the given stock_ids (all Stock rows if None).
     Returns (created, updated, errors) — each a list of "MARKET:SYMBOL@ex_date"
@@ -62,7 +62,7 @@ async def syncDividends(
     stocks = result.all()
 
     created, updated, errors = [], [], []
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     for stock in stocks:
         try:
@@ -74,7 +74,7 @@ async def syncDividends(
         existing_result = await session.exec(
             select(Dividend).where(Dividend.stock_id == stock.id)
         )
-        existing: Dict[date, Dividend] = {d.ex_date: d for d in existing_result.all()}
+        existing: dict[date, Dividend] = {d.ex_date: d for d in existing_result.all()}
 
         for ex_date, amount in history.items():
             if ex_date in existing:

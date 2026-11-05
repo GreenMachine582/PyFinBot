@@ -16,8 +16,9 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
+from collections.abc import Sequence
 from datetime import date
-from typing import Optional, Sequence, TextIO
+from typing import TextIO
 
 from greentechhub_core.dates import fiscal_year
 from greentechhub_core.exports import BOM, csv_text
@@ -26,7 +27,6 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from .core import report_rows, reports
 from .core.users import USER_STORE
 from .schemas.report_schemas import CapitalGainsReport, DividendsReport, HoldingsReport
-
 
 Report = HoldingsReport | CapitalGainsReport | DividendsReport
 
@@ -82,8 +82,8 @@ def render(report: Report, fmt: str) -> str:
     return csv_text(rows, bom=False)  # the BOM goes on a file only (run), not piped stdout
 
 
-async def run(argv: Optional[Sequence[str]] = None, stdout: Optional[TextIO] = None,
-              stderr: Optional[TextIO] = None) -> int:
+async def run(argv: Sequence[str] | None = None, stdout: TextIO | None = None,
+              stderr: TextIO | None = None) -> int:
     args = build_parser().parse_args(argv)
     from .db.session import get_session_factory
 
@@ -103,7 +103,7 @@ async def run(argv: Optional[Sequence[str]] = None, stdout: Optional[TextIO] = N
     return 0
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:  # pragma: no cover - asyncio.run around run()
+def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover - asyncio.run around run()
     return asyncio.run(run(argv))
 
 

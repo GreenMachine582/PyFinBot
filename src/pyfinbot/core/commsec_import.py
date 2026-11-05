@@ -6,17 +6,16 @@ POST /api/emails/sync-commsec and the web Emails page.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from email.message import Message
-from typing import Callable, List, Optional, Tuple
 
+from greentechhub_core.email import message_text, received_at
 from greentechhub_core.types import ApplicationError
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..models.stock_models import Stock
 from ..models.transaction_models import NOTES_MAX, Transaction, TypeEnum
 from ..schemas.email_schemas import EmailSyncSummary
-from greentechhub_core.email import message_text, received_at
-
 from .commsec_parser import CommsecParseError, parse_commsec_email
 from .dedupe import is_duplicate_transaction
 from .email_sync import (
@@ -50,9 +49,9 @@ async def sync_commsec_emails(
     account: EmailAccount,
     *,
     include_seen: bool = False,
-    fetch: Optional[Callable[..., List[Tuple[bytes, Message]]]] = None,
-    mark: Optional[Callable[[EmailAccount, List[bytes]], None]] = None,
-    progress: Optional[SyncProgress] = None,
+    fetch: Callable[..., list[tuple[bytes, Message]]] | None = None,
+    mark: Callable[[EmailAccount, list[bytes]], None] | None = None,
+    progress: SyncProgress | None = None,
 ) -> EmailSyncSummary:
     """Import every parseable Commsec confirmation in `account` (that user's
     own mailbox) as `user_id`'s transaction and commit, then mark the

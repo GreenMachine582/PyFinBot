@@ -1,3 +1,6 @@
+from collections import deque
+from decimal import Decimal
+
 # To get net units held by a user for a stock as of a particular date:
 """
 SELECT
@@ -12,7 +15,8 @@ GROUP BY s.symbol;
 
 # To determine the capital gain or loss for a given financial year (FY), you'll want to:
 # 1. Filter all Sell transactions within the desired FY.
-# 2. For each sell, determine the cost basis of the units sold — commonly using FIFO (First-In-First-Out) unless another method is preferred.
+# 2. For each sell, determine the cost basis of the units sold — commonly using FIFO
+#    (First-In-First-Out) unless another method is preferred.
 # 3. Subtract the cost basis from the proceeds (value - fee) to get capital gain or loss.
 """
 SELECT
@@ -34,11 +38,9 @@ WHERE t.user_id = :user_id
 ORDER BY t.date ASC, t.id ASC;
 """
 
-from collections import deque
-from decimal import Decimal
-from typing import List, Dict
 
-def calculate_capital_gain_loss(transactions: List[Dict]) -> List[Dict]:
+
+def calculate_capital_gain_loss(transactions: list[dict]) -> list[dict]:
     """Apply FIFO matching to calculate gain/loss for each sell transaction."""
     results = []
     buys = deque()
