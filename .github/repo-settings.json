@@ -1,0 +1,10 @@
+{
+  "delete_branch_on_merge": true,
+  "allow_merge_commit": true,
+  "allow_squash_merge": false,
+  "allow_rebase_merge": false,
+  "allow_update_branch": true,
+  "allow_auto_merge": true,
+  "merge_commit_title": "MERGE_MESSAGE",
+  "merge_commit_message": "PR_TITLE"
+}
