@@ -4,12 +4,10 @@ calling user has ever transacted. Manual trigger only, no scheduler.
 """
 from __future__ import annotations
 
-from typing import Optional
-
 from fastapi import APIRouter, Depends, Query, Request, status
-from sqlmodel.ext.asyncio.session import AsyncSession
 from greentechhub_core.identity import Identity
 from greentechhub_fastapi.dependencies import get_current_identity
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..core import audit_events
 from ..core.dividend_sync import syncDividends, user_stock_ids
@@ -22,7 +20,7 @@ router = APIRouter(prefix="/dividends", tags=["Dividends"])
 @router.post("/sync", response_model=DividendSyncResult, status_code=status.HTTP_200_OK)
 async def sync_dividends(
     request: Request,
-    stock_id: Optional[int] = Query(
+    stock_id: int | None = Query(
         default=None,
         description="Sync a single stock only; omit to sync every stock the caller has ever transacted",
     ),

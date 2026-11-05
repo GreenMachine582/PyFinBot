@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, date
-from typing import Optional, Union
+from datetime import date, datetime
 
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ..models.transaction_models import NOTES_MAX, TypeEnum
 
@@ -33,27 +32,27 @@ class StockRef(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     market: str
     symbol: str
-    name: Optional[str] = None
+    name: str | None = None
 
 
 class TransactionBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     stock_id: int | str
-    transaction_date: Optional[date] = Field(default_factory=date.today)
+    transaction_date: date | None = Field(default_factory=date.today)
     type: TypeEnum
     units: float
     price: float
-    fees: Optional[float] = 0.0
-    notes: Optional[str] = None
+    fees: float | None = 0.0
+    notes: str | None = None
 
     _parse_transaction_date = field_validator("transaction_date", mode="before")(parse_transaction_date)
 
 
 class TransactionCreate(TransactionBase):
-    stock_id: Union[int, str]  # int or market:symbol key
+    stock_id: int | str  # int or market:symbol key
     # Limited on the way in only, so TransactionRead still reads older, longer notes.
-    notes: Optional[str] = Field(default=None, max_length=NOTES_MAX)
+    notes: str | None = Field(default=None, max_length=NOTES_MAX)
 
 
 class TransactionRead(TransactionBase):
@@ -72,12 +71,12 @@ class TransactionRead(TransactionBase):
 
 class TransactionUpdate(BaseModel):
     """Partial update — only fields actually sent are applied (exclude_unset)."""
-    stock_id: Optional[Union[int, str]] = None  # int or market:symbol key
-    transaction_date: Optional[date] = None
-    type: Optional[TypeEnum] = None
-    units: Optional[float] = None
-    price: Optional[float] = None
-    fees: Optional[float] = None
-    notes: Optional[str] = Field(default=None, max_length=NOTES_MAX)
+    stock_id: int | str | None = None  # int or market:symbol key
+    transaction_date: date | None = None
+    type: TypeEnum | None = None
+    units: float | None = None
+    price: float | None = None
+    fees: float | None = None
+    notes: str | None = Field(default=None, max_length=NOTES_MAX)
 
     _parse_transaction_date = field_validator("transaction_date", mode="before")(parse_transaction_date)

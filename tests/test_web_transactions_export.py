@@ -114,5 +114,5 @@ async def test_export_is_utf8_with_a_bom_so_excel_reads_the_fy_dash(gth_client: 
     body = (await gth_client.get("/transactions.csv")).content
     bom = chr(0xFEFF).encode("utf-8")  # EF BB BF
     assert body.startswith(bom)
-    assert "2024–25".encode("utf-8") in body
+    assert "2024–25".encode() in body
     assert body.count(bom) == 1  # once, at the start

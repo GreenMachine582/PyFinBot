@@ -6,9 +6,7 @@ from email.message import EmailMessage
 from pathlib import Path
 
 import pytest
-from greentechhub_core.email import IMAPConfig
-
-from greentechhub_core.email import message_text, received_at
+from greentechhub_core.email import IMAPConfig, message_text, received_at
 
 from pyfinbot.core.commsec_parser import parse_commsec_email
 from pyfinbot.core.email_sync import (

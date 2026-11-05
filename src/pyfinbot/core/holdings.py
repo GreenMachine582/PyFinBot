@@ -2,9 +2,9 @@
 so it can be reused for dividend-total calculations without duplicating it."""
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import date
 from decimal import Decimal
-from typing import Iterable
 
 from ..models.transaction_models import Transaction, TypeEnum
 

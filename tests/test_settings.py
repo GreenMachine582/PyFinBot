@@ -58,8 +58,9 @@ class TestProductionCorsWarning:
 
 class TestCorsMiddlewareRegistration:
     def test_cors_middleware_registered_with_dev_default(self):
-        from pyfinbot.pyfinbot import app
         from fastapi.middleware.cors import CORSMiddleware
+
+        from pyfinbot.pyfinbot import app
 
         cors_entries = [m for m in app.user_middleware if m.cls is CORSMiddleware]
         assert len(cors_entries) == 1

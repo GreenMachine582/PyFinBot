@@ -1,4 +1,6 @@
 """Unit tests for market sync logic (mocked fetcher, no HTTP calls)."""
+from datetime import UTC
+
 from sqlmodel import select
 
 from pyfinbot.core.market_sync import syncMarket
@@ -46,9 +48,9 @@ class TestSyncMarketUpdate:
         assert result.one().name == "New Name"
 
     async def test_reactivates_archived_stock(self, gth_session):
-        from datetime import datetime, timezone
+        from datetime import datetime
         gth_session.add(Stock(symbol="BHP", market="ASX", name="BHP Group",
-                          is_active=False, archived_at=datetime.now(timezone.utc)))
+                          is_active=False, archived_at=datetime.now(UTC)))
         await gth_session.commit()
 
         fetcher = _make_fetcher({"BHP": "BHP Group"})
@@ -77,8 +79,8 @@ class TestSyncMarketArchive:
         assert stock.archived_at is not None
 
     async def test_already_archived_not_double_archived(self, gth_session):
-        from datetime import datetime, timezone
-        ts = datetime.now(timezone.utc)
+        from datetime import datetime
+        ts = datetime.now(UTC)
         gth_session.add(Stock(symbol="DEL", market="ASX", name="Delisted",
                           is_active=False, archived_at=ts))
         await gth_session.commit()

@@ -15,7 +15,7 @@ import argparse
 import asyncio
 import getpass
 import sys
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from greentechhub_core.users import UserAccount, UserExists
 
@@ -24,22 +24,22 @@ from ..core.users import create_account
 __all__ = ["UserExists", "create_user", "main"]
 
 
-async def create_user(username: str, password: str, *, email: Optional[str] = None,
-                      display_name: Optional[str] = None) -> UserAccount:
+async def create_user(username: str, password: str, *, email: str | None = None,
+                      display_name: str | None = None) -> UserAccount:
     """Create an active account with a bcrypt-hashed password. Raises
     UserExists for a taken username or email, ValueError for a blank
     username/password or a malformed email."""
     return await create_account(username, password, email=email, display_name=display_name)
 
 
-async def _run(username: str, password: str, email: Optional[str]) -> UserAccount:
+async def _run(username: str, password: str, email: str | None) -> UserAccount:
     from ..db.session import init_db
 
     await init_db()
     return await create_user(username, password, email=email)
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Create a PyFinBot user.")
     parser.add_argument("username", help="the login name")
     parser.add_argument("--email", default=None, help="their email address (optional)")

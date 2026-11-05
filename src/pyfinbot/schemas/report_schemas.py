@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from datetime import date
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 from pydantic import BaseModel
 
 
-class CostMethod(str, Enum):
+class CostMethod(StrEnum):
     """How a holding or a sell is costed: AVERAGE, the weighted average buy
     price (the default), or FIFO, parcels matched first in, first out."""
     AVERAGE = "average"
@@ -54,13 +53,13 @@ class DividendItem(BaseModel):
     symbol: str
     name: str
     ex_date: date
-    pay_date: Optional[date] = None
+    pay_date: date | None = None
     amount_per_share: float
     units_held_at_ex_date: float
     amount_received: float
 
 
 class DividendsReport(BaseModel):
-    fy: Optional[int] = None
+    fy: int | None = None
     total_dividends_received: float
     items: list[DividendItem]

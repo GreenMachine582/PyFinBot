@@ -1,7 +1,7 @@
-from typing import Optional, List, TYPE_CHECKING
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Optional
 
-from sqlmodel import SQLModel, Field, UniqueConstraint, select, Relationship
+from sqlmodel import Field, Relationship, SQLModel, UniqueConstraint, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 if TYPE_CHECKING:
@@ -18,28 +18,28 @@ class Stock(SQLModel, table=True):
     __table_args__ = (
         UniqueConstraint("symbol", "market", name="unique_symbol_market"),
     )
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     symbol: str = Field(index=True, max_length=CODE_MAX, description="Stock symbol")
     market: str = Field(index=True, max_length=CODE_MAX, description="Stock market")
     name: str = Field(index=True, description="Full name of the stock")
 
-    create_datetime: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    write_datetime: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    create_datetime: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    write_datetime: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     is_active: bool = Field(default=True)
-    archived_at: Optional[datetime] = None
+    archived_at: datetime | None = None
 
     # relationships
-    transactions: List["Transaction"] = Relationship(back_populates="stock")
-    dividends: List["Dividend"] = Relationship(back_populates="stock")
+    transactions: list["Transaction"] = Relationship(back_populates="stock")
+    dividends: list["Dividend"] = Relationship(back_populates="stock")
 
-    def set_active(self, active: bool, now: Optional[datetime] = None) -> bool:
+    def set_active(self, active: bool, now: datetime | None = None) -> bool:
         """Activate or archive this stock: the one archive rule for the web
         form, bulk archive, the API and market sync. archived_at is stamped
         when archiving (an existing stamp is kept) and cleared on
         reactivation, so it never lingers on an active stock. Returns
         whether is_active changed."""
-        now = now or datetime.now(timezone.utc)
+        now = now or datetime.now(UTC)
         changed = self.is_active != active
         self.is_active = active
         self.archived_at = None if active else (self.archived_at or now)

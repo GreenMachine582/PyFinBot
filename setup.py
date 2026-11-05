@@ -1,7 +1,6 @@
 import os
 
-from setuptools import setup, find_packages
-
+from setuptools import find_packages, setup
 
 dir_path = os.path.abspath(os.path.dirname(__file__))
 
@@ -9,7 +8,7 @@ version_contents = {}
 with open(os.path.join(dir_path, "src", "pyfinbot", "version.py"), encoding="utf-8") as f:
     exec(f.read(), version_contents)
 
-with open(os.path.join(dir_path, "README.md"), "r", encoding="utf-8") as file:
+with open(os.path.join(dir_path, "README.md"), encoding="utf-8") as file:
     long_description = file.read()
 
 

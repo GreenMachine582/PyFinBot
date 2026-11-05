@@ -1,7 +1,7 @@
 """Bulk archive / unarchive on the Stocks table (gth_data_table's bulk bar
 posts the checked rows as repeated `ids`), and Stock.set_active — the one
 archive rule the web form, the bulk routes, the API and market sync share."""
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlmodel import select
 
@@ -10,8 +10,8 @@ from pyfinbot.models.stock_models import Stock
 from .conftest import create_stock, hx_triggers, web_login
 
 HX = {"HX-Request": "true"}
-T1 = datetime(2025, 1, 1, tzinfo=timezone.utc)
-T2 = datetime(2025, 2, 1, tzinfo=timezone.utc)
+T1 = datetime(2025, 1, 1, tzinfo=UTC)
+T2 = datetime(2025, 2, 1, tzinfo=UTC)
 
 
 async def _stock(session, stock_id: int) -> Stock:

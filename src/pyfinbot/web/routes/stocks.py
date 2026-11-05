@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request
@@ -108,12 +108,16 @@ async def new_stock_form(request: Request):
 async def edit_stock_form(request: Request, stock_id: int, session: AsyncSession = Depends(get_session)):
     stock = await get_owned_or_404(session, Stock, stock_id)
     values = {"name": stock.name, "is_active": stock.is_active}
-    return templates.TemplateResponse(request, "_stock_form_modal.html", {"stock": stock, "values": values, "errors": {}})
+    return templates.TemplateResponse(
+        request, "_stock_form_modal.html", {"stock": stock, "values": values, "errors": {}}
+    )
 
 
 def _form_error(request: Request, stock: Stock | None, values: dict, errors: dict):
     return templates.TemplateResponse(
-        request, "_stock_form.html", {"stock": stock, "values": values, "errors": errors},
+        request,
+        "_stock_form.html",
+        {"stock": stock, "values": values, "errors": errors},
         status_code=422,
     )
 
@@ -124,7 +128,9 @@ async def create_stock(request: Request, session: AsyncSession = Depends(get_ses
     market = values.get("market", "").strip().upper()
     symbol = values.get("symbol", "").strip().upper()
     name = values.get("name", "").strip()
-    errors = {f: ["This field is required."] for f, v in (("market", market), ("symbol", symbol), ("name", name)) if not v}
+    errors = {
+        f: ["This field is required."] for f, v in (("market", market), ("symbol", symbol), ("name", name)) if not v
+    }
     for field, code in (("market", market), ("symbol", symbol)):
         if len(code) > CODE_MAX:
             errors[field] = [f"At most {CODE_MAX} characters."]
@@ -161,7 +167,7 @@ async def _bulk_set_active(request: Request, session: AsyncSession, active: bool
     them as repeated `ids`). Counts only the stocks whose state changed."""
     ids = [int(v) for v in (await request.form()).getlist("ids") if isinstance(v, str) and v.isdigit()]
     stocks = (await session.exec(select(Stock).where(col(Stock.id).in_(ids)))).all() if ids else []
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     changed = 0
     for stock in stocks:
         if stock.set_active(active, now):
@@ -198,11 +204,13 @@ async def delete_stock(stock_id: int, session: AsyncSession = Depends(get_sessio
     label = f"{stock.market}:{stock.symbol}"
     # Transaction.stock_id has no cascade — deleting a referenced stock would
     # fail on the FK, so refuse up front and point at archiving instead.
-    in_use = (await session.exec(
-        select(func.count()).select_from(Transaction).where(Transaction.stock_id == stock.id)
-    )).one()
+    in_use = (
+        await session.exec(select(func.count()).select_from(Transaction).where(Transaction.stock_id == stock.id))
+    ).one()
     if in_use:
-        return hx_response(f"{label} has {pluralise(in_use, 'transaction')} — archive it instead.", "danger", title="Can't delete")
+        return hx_response(
+            f"{label} has {pluralise(in_use, 'transaction')} — archive it instead.", "danger", title="Can't delete"
+        )
 
     await session.delete(stock)
     await session.commit()
@@ -210,8 +218,12 @@ async def delete_stock(stock_id: int, session: AsyncSession = Depends(get_sessio
 
 
 @router.post("/sync/{market}")
-async def sync_market(request: Request, market: str, session: AsyncSession = Depends(get_session),
-                      identity: Identity = Depends(page_identity)):
+async def sync_market(
+    request: Request,
+    market: str,
+    session: AsyncSession = Depends(get_session),
+    identity: Identity = Depends(page_identity),
+):
     market = market.upper()
     if market not in MARKET_FETCHERS:
         return hx_response(f"Sync for market '{market}' is not supported.", "danger")
@@ -224,8 +236,7 @@ async def sync_market(request: Request, market: str, session: AsyncSession = Dep
         except Exception:  # network/parse failures: log the detail, toast a summary
             logger.exception("%s market sync failed", market)
             return hx_response(f"{market} sync failed — see the server logs.", "danger", title="Sync failed")
-    await audit_events.market_synced(request, market, created, updated, archived,
-                                     recipient=identity.subject)
+    await audit_events.market_synced(request, market, created, updated, archived, recipient=identity.subject)
     changed = len(created) + len(updated) + len(archived)
     return hx_response(
         f"{len(created)} created, {len(updated)} updated, {len(archived)} archived",

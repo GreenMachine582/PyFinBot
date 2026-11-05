@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from greentechhub_core.dates import fiscal_year_label
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -45,7 +45,7 @@ def months_between(start: date, end: date) -> list[date]:
     return out
 
 
-async def cost_base_by_month(session: AsyncSession, user_id: Optional[str], today: date,
+async def cost_base_by_month(session: AsyncSession, user_id: str | None, today: date,
                              months: int = 12) -> Series:
     """The cost base at average cost at each of the last `months` month-ends,
     the last point being `today` itself."""
@@ -70,7 +70,7 @@ def dividends_by_month(items: Iterable[Any], start: date, end: date) -> Series:
     return [(_month_label(m), v) for m, v in totals.items()]
 
 
-async def gains_by_fy(session: AsyncSession, user_id: Optional[str], fys: Sequence[int],
+async def gains_by_fy(session: AsyncSession, user_id: str | None, fys: Sequence[int],
                       method: CostMethod = CostMethod.AVERAGE) -> Series:
     """The net realised gain/loss of each FY in `fys`, oldest first."""
     series: Series = []

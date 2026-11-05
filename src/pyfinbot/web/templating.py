@@ -4,15 +4,15 @@ from pathlib import Path
 import greentechhub_ui
 from fastapi.templating import Jinja2Templates
 from greentechhub_core.dates import fiscal_year_label
-
-from ..core.permissions import AUDIT_VIEW, USERS_MANAGE
-from ..models.stock_models import CODE_MAX
-from ..models.transaction_models import NOTES_MAX
 from greentechhub_fastapi.admin import admin_nav_item
 from greentechhub_fastapi.audit import AuditViews
 from greentechhub_fastapi.permissions import RoleAdminViews
 from greentechhub_fastapi.settings import settings_context
 from greentechhub_fastapi.templating import ui_context
+
+from ..core.permissions import AUDIT_VIEW, USERS_MANAGE
+from ..models.stock_models import CODE_MAX
+from ..models.transaction_models import NOTES_MAX
 
 # ui_context supplies current_path, so the navbar marks the active page;
 # settings_context (register_settings, pyfinbot.py) the signed-in user, the

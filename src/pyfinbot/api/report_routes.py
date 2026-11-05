@@ -11,12 +11,11 @@ GET /api/reports/dividends         — Dividend income, optionally for one fisca
 from __future__ import annotations
 
 from datetime import date
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
-from sqlmodel.ext.asyncio.session import AsyncSession
 from greentechhub_core.identity import Identity
 from greentechhub_fastapi.dependencies import get_current_identity
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..core import reports
 from ..db.session import get_session
@@ -30,7 +29,7 @@ METHOD_QUERY = Query(default=CostMethod.AVERAGE,
 
 @router.get("/holdings", response_model=HoldingsReport)
 async def get_holdings(
-    as_of: Optional[date] = Query(default=None, description="Snapshot date (default: today)"),
+    as_of: date | None = Query(default=None, description="Snapshot date (default: today)"),
     method: CostMethod = METHOD_QUERY,
     session: AsyncSession = Depends(get_session),
     identity: Identity = Depends(get_current_identity),
@@ -70,7 +69,7 @@ async def get_capital_gains(
 
 @router.get("/dividends", response_model=DividendsReport)
 async def get_dividends_report(
-    fy: Optional[int] = Query(default=None, description="AU fiscal year filter (by ex_date); omit for all-time"),
+    fy: int | None = Query(default=None, description="AU fiscal year filter (by ex_date); omit for all-time"),
     session: AsyncSession = Depends(get_session),
     identity: Identity = Depends(get_current_identity),
 ):

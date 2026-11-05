@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Numeric
 from sqlmodel import Field, Relationship, SQLModel, UniqueConstraint
@@ -25,16 +25,16 @@ class Dividend(SQLModel, table=True):
     __table_args__ = (
         UniqueConstraint("stock_id", "ex_date", name="unique_stock_ex_date"),
     )
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     stock_id: int = Field(foreign_key="stock.id", index=True, description="FK to stock; no cascade")
 
     ex_date: date = Field(index=True, description="Ex-dividend date")
-    pay_date: Optional[date] = Field(default=None, description="Payment date, if known")
+    pay_date: date | None = Field(default=None, description="Payment date, if known")
     amount_per_share: Decimal = Field(sa_type=Numeric(18, 6), description="Cash dividend per share")
     source: str = Field(default="yfinance", description="Data source of this record")
 
-    create_datetime: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    write_datetime: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    create_datetime: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    write_datetime: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # relationships
     stock: Stock = Relationship(back_populates="dividends")

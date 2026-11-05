@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
-from datetime import UTC, datetime, timedelta
-
 import importlib
 import pkgutil
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime, timedelta
 
 import greentechhub_ui
 from fastapi import Depends, FastAPI
@@ -18,8 +17,8 @@ from greentechhub_core.sqlalchemy import (
     SQLAlchemySettingsStore,
 )
 from greentechhub_fastapi import (
-    register_api_tokens,
     register_admin,
+    register_api_tokens,
     register_audit,
     register_auth,
     register_core,
@@ -38,13 +37,13 @@ from greentechhub_fastapi import (
 from greentechhub_fastapi.api_tokens import ApiTokenViews
 from greentechhub_fastapi.auth import bearer_scheme
 from greentechhub_fastapi.auth.csrf import require_cookie_csrf
-from greentechhub_fastapi.notifications import NotificationViews
 from greentechhub_fastapi.exceptions import register_api_error_handlers, register_exception_handlers
+from greentechhub_fastapi.notifications import NotificationViews
 from greentechhub_fastapi.settings import SettingsViews
 from greentechhub_fastapi.templating import mount_static_dirs
 from greentechhub_fastapi.users import account_address, account_profile
 
-from . import version, api
+from . import api, version
 from .core.login_throttle import LOGIN_THROTTLE
 from .core.permissions import ROLES, SETTINGS_MANAGE
 from .core.settings import settings
@@ -58,18 +57,32 @@ from .models.settings_models import (
     ROLE_GRANTS_TABLE,
     SETTINGS_TABLE,
 )
-from .web.templating import ADMIN_VIEWS, AUDIT_VIEWS, templates
-from .web.routes.account_email import RESET_VIEWS, VERIFY_VIEWS
 from .web.routes import (
     auth as web_auth,
+)
+from .web.routes import (
     dashboard as web_dashboard,
+)
+from .web.routes import (
     dividends as web_dividends,
+)
+from .web.routes import (
     emails as web_emails,
-    reports as web_reports,
+)
+from .web.routes import (
     imports as web_imports,
+)
+from .web.routes import (
+    reports as web_reports,
+)
+from .web.routes import (
     stocks as web_stocks,
+)
+from .web.routes import (
     transactions as web_transactions,
 )
+from .web.routes.account_email import RESET_VIEWS, VERIFY_VIEWS
+from .web.templating import ADMIN_VIEWS, AUDIT_VIEWS, templates
 
 
 def csp_frame_src(config) -> list[str]:

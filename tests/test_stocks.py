@@ -20,7 +20,9 @@ class TestCreateStock:
         assert "id" in data
 
     async def test_uppercases_symbol_and_market(self, gth_client):
-        resp = await gth_client.post("/api/stocks/", json={"symbol": "cba", "market": "asx", "name": "Commonwealth Bank"})
+        resp = await gth_client.post(
+            "/api/stocks/", json={"symbol": "cba", "market": "asx", "name": "Commonwealth Bank"}
+        )
         assert resp.status_code == 201
         data = resp.json()
         assert data["symbol"] == "CBA"
@@ -45,6 +47,7 @@ class TestListStocks:
         await _post_stock(gth_client)
         await gth_client.post("/api/stocks/", json={"symbol": "AAPL", "market": "NASDAQ", "name": "Apple"})
         import json
+
         filters = json.dumps([{"field": "market", "op": "==", "value": "ASX"}])
         resp = await gth_client.get("/api/stocks/", params={"filters": filters})
         assert resp.status_code == 200

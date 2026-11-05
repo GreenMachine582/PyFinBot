@@ -162,7 +162,9 @@ class TestList:
         resp = await gth_client.get("/transactions", headers=HX, params={"date_from": "2024-01-01"})
         assert "cba-sell" in resp.text and "bhp-buy" not in resp.text
 
-        resp = await gth_client.get("/transactions", headers=HX, params={"date_to": "2024-01-01", "date_from": "not-a-date"})
+        resp = await gth_client.get(
+            "/transactions", headers=HX, params={"date_to": "2024-01-01", "date_from": "not-a-date"}
+        )
         assert "bhp-buy" in resp.text and "cba-sell" not in resp.text
 
         resp = await gth_client.get("/transactions", headers=HX, params={"sort": "transaction_date", "dir": "asc"})
@@ -197,9 +199,17 @@ class TestEdit:
         transaction_id = await _only_transaction_id(gth_client, "web-txn")
         before = await _api_get(gth_client, "web-txn", transaction_id)
 
-        resp = await gth_client.post(f"/transactions/{transaction_id}", data=_form(
-            cba["id"], type="Sell", units="4", price="100", fees="10", transaction_date="2024-07-01",
-        ))
+        resp = await gth_client.post(
+            f"/transactions/{transaction_id}",
+            data=_form(
+                cba["id"],
+                type="Sell",
+                units="4",
+                price="100",
+                fees="10",
+                transaction_date="2024-07-01",
+            ),
+        )
         assert resp.status_code == 204
         assert hx_triggers(resp)["showToast"]["message"] == "Saved Sell CBA"
 

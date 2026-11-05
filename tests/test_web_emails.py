@@ -2,9 +2,9 @@
 with test_email_sync.py)."""
 from unittest.mock import patch
 
-from pyfinbot.core.email_sync import NOT_CONFIGURED, EmailNotConfiguredError
 from greentechhub_core.background import held_lock, lock_name
 
+from pyfinbot.core.email_sync import NOT_CONFIGURED, EmailNotConfiguredError
 from pyfinbot.core.settings import settings
 from pyfinbot.web.routes.emails import EMAIL_SYNC_LOCK
 
