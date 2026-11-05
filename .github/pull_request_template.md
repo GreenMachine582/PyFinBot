@@ -1,8 +1,9 @@
 ## Summary
 
-<!-- What changes and why. The PR title must be a conventional commit (feat: …, fix(scope): …, docs: …) —
-     PRs into dev are squash-merged and the title becomes the changelog line. Add ! for a breaking change
-     (feat!: …) and explain it below. -->
+<!-- What changes and why. PRs are merged with a merge commit, so every commit must be a conventional commit
+     (feat: …, fix(scope): …, docs: …, test: …) and the changelog comes from them, not from this title. Use ! and a
+     BREAKING CHANGE: footer on the commit for a breaking change, and explain it below. Chained PR? Say which PR this
+     builds on. -->
 
 ## How it was verified
 
