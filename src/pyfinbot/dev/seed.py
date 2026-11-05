@@ -17,20 +17,20 @@ import argparse
 import asyncio
 import random
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from typing import Optional, Sequence, cast
+from typing import cast
 
+from greentechhub_core.security import hash_password
+from greentechhub_core.users import new_account
 from sqlalchemy import CursorResult, delete, func
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from greentechhub_core.security import hash_password
-from greentechhub_core.users import new_account
-
-from ..core.settings import settings
 from ..core.permissions import ADMIN
+from ..core.settings import settings
 from ..models.dividend_models import Dividend
 from ..models.settings_models import ROLE_GRANTS_TABLE, USER_IDENTITIES_TABLE, USERS_TABLE
 from ..models.stock_models import Stock
@@ -58,7 +58,7 @@ class DemoStock:
     symbol: str
     name: str
     base_price: Decimal
-    archived_on: Optional[date] = None  # sold out before this date, then archived
+    archived_on: date | None = None  # sold out before this date, then archived
 
 
 DEMO_STOCKS: tuple[DemoStock, ...] = (
@@ -101,7 +101,7 @@ class SeedSummary:
 
 
 async def seed_demo(session: AsyncSession, *, reset: bool = False,
-                    environment: Optional[str] = None) -> SeedSummary:
+                    environment: str | None = None) -> SeedSummary:
     """Create the demo rows that don't exist yet (see the module docstring)
     and commit. With reset=True, delete the seed's own rows first."""
     environment = settings.environment if environment is None else environment
@@ -168,7 +168,7 @@ async def _ensure_users(session: AsyncSession, summary: SeedSummary) -> dict[str
         if username in ids:
             continue
         display_name, email = DEMO_PROFILES[username]
-        account = new_account(username, now=datetime.now(timezone.utc), email=email,
+        account = new_account(username, now=datetime.now(UTC), email=email,
                               email_verified=True, display_name=display_name,
                               password_hash=hash_password(password))
         await session.execute(USERS_TABLE.insert().values(
@@ -197,7 +197,7 @@ async def _ensure_stocks(session: AsyncSession, summary: SeedSummary) -> dict[st
             if demo.archived_on:
                 stock.is_active = False
                 stock.archived_at = datetime.combine(demo.archived_on, datetime.min.time(),
-                                                     tzinfo=timezone.utc)
+                                                     tzinfo=UTC)
             session.add(stock)
             summary.stocks_created += 1
         stocks[demo.symbol] = stock
@@ -222,7 +222,7 @@ async def _ensure_transactions(session: AsyncSession, username: str, user_id: st
     held: dict[str, Decimal] = {d.symbol: Decimal(0) for d in DEMO_STOCKS}
     rows: list[Transaction] = []
 
-    def add(demo: DemoStock, on: date, kind: TypeEnum, units: Decimal, note: Optional[str] = None) -> None:
+    def add(demo: DemoStock, on: date, kind: TypeEnum, units: Decimal, note: str | None = None) -> None:
         stock_id = stocks[demo.symbol].id
         assert stock_id is not None  # flushed in _ensure_stocks
         rows.append(Transaction(
@@ -282,7 +282,7 @@ async def _run(reset: bool) -> SeedSummary:
         return await seed_demo(session, reset=reset)
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Seed PyFinBot with demo data (development only).")
     parser.add_argument("--reset", action="store_true", help="delete the demo rows first, then seed")
     args = parser.parse_args(argv)

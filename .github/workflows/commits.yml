@@ -1,0 +1,62 @@
+# PRs are merged with a merge commit, so every commit in a PR reaches dev, then
+# main, and release-please reads each one for the changelog. Each commit has to
+# be a conventional commit. Merge commits are skipped, so merging the base
+# branch into a PR is fine. There's no branch filter, so chained PRs (based on
+# another feature branch) are checked too. See CONTRIBUTING.md.
+#
+# The PR title must NOT be a conventional commit. GitHub puts it in the merge
+# commit's body (MERGE_MESSAGE + PR_TITLE is the only merge setting it accepts
+# with the "Merge pull request #N" subject), and release-please reads
+# conventional lines in a body as extra changes, so a "feat: …" title lists the
+# change twice in the changelog (it did in greentechhub-fastapi v0.19.0).
+name: commits
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+jobs:
+  commits:
+    runs-on: ubuntu-latest
+    steps:
+      - name: The PR title is free text, not a conventional commit
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          shopt -s nocasematch
+          re='^(feat|fix|perf|refactor|docs|test|build|ci|chore|style|revert)(\([^)]*\))?!?:'
+          if [[ "$TITLE" =~ $re ]]; then
+            echo "::error::The PR title \"$TITLE\" is a conventional commit, so release-please would count it twice (it becomes the merge commit's body). Use plain text, e.g. \"FolderPickerViews\" or \"Folder picker views\". See CONTRIBUTING.md#pull-requests."
+            exit 1
+          fi
+          echo "ok: $TITLE"
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Every commit is a conventional commit
+        env:
+          BASE: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          re='^(feat|fix|perf|refactor|docs|test|build|ci|chore|style|revert)(\([^)]+\))?!?: .+'
+          bad=0
+          while IFS= read -r line; do
+            sha="${line%% *}"
+            subject="${line#* }"
+            if ! [[ "$subject" =~ $re ]]; then
+              echo "::error::$sha is not a conventional commit: $subject"
+              bad=1
+            elif [ "${#subject}" -gt 100 ]; then
+              echo "::error::$sha first line is over 100 characters: $subject"
+              bad=1
+            else
+              echo "ok $sha $subject"
+            fi
+          done < <(git log --no-merges --format='%h %s' "origin/$BASE..$HEAD_SHA")
+          if [ "$bad" -ne 0 ]; then
+            echo "Reword those commits and push with --force-with-lease. See CONTRIBUTING.md#pull-requests."
+          fi
+          exit "$bad"

@@ -1,8 +1,8 @@
 
 import asyncio
+from collections.abc import Callable
 from contextlib import AbstractContextManager
-from datetime import datetime, timezone
-from typing import Callable, Dict, List, Optional, Tuple
+from datetime import UTC, datetime
 
 import pandas as pd
 from greentechhub_core.background import held_lock
@@ -12,11 +12,10 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from ..models.stock_models import Stock
 from .settings import settings
 
-
 ASX_CSV_URL = "https://asx.api.markitdigital.com/asx-research/1.0/companies/directory/file"
 
 
-def fetchASXListed() -> Dict[str, str]:
+def fetchASXListed() -> dict[str, str]:
     """
     Download the ASX-listed companies CSV and return a mapping
     { SYMBOL -> COMPANY NAME }.
@@ -51,7 +50,9 @@ def market_sync_guard(market: str) -> AbstractContextManager[bool]:
     return held_lock(settings, f"market-sync-{market.upper()}", ttl=SYNC_LOCK_TTL_SECONDS)
 
 
-async def syncMarket(session: AsyncSession, market: str, fetch_data: Optional[Callable] = None) -> Tuple[List[str], List[str], List[str]]:
+async def syncMarket(
+    session: AsyncSession, market: str, fetch_data: Callable | None = None
+) -> tuple[list[str], list[str], list[str]]:
     """
     Upsert all Market tickers:
       - create new
@@ -70,10 +71,10 @@ async def syncMarket(session: AsyncSession, market: str, fetch_data: Optional[Ca
     # Load existing ASX stocks
     result = await session.exec(select(Stock).where(col(Stock.market) == market.upper()))
     stocks = result.all()
-    existing: Dict[str, Stock] = {s.symbol: s for s in stocks}
+    existing: dict[str, Stock] = {s.symbol: s for s in stocks}
 
     created, updated, archived = [], [], []
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Upsert records
     for sym in symbols:
@@ -88,11 +89,7 @@ async def syncMarket(session: AsyncSession, market: str, fetch_data: Optional[Ca
                 session.add(stock)
                 updated.append(sym)
         else:
-            new = Stock(
-                symbol=sym,
-                market=market.upper(),
-                name=company_name
-            )
+            new = Stock(symbol=sym, market=market.upper(), name=company_name)
             session.add(new)
             created.append(sym)
 

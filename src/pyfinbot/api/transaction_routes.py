@@ -1,26 +1,25 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, status
 from fastapi_pagination import Page
+from greentechhub_core.identity import Identity
 from greentechhub_core.query.envelope import to_envelope
 from greentechhub_core.query.types import Sort
 from greentechhub_core.sqlalchemy.query import page
 from greentechhub_core.types import BadRequestError, NotFoundError
+from greentechhub_fastapi.dependencies import get_current_identity
 from greentechhub_fastapi.query import PageParams, get_owned_or_404
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
-from greentechhub_core.identity import Identity
-from greentechhub_fastapi.dependencies import get_current_identity
 
 from ..api.stock_routes import _searchForStock
+from ..db.session import get_session
 from ..models.transaction_models import Transaction
 from ..schemas.transaction_schemas import TransactionCreate, TransactionRead, TransactionUpdate
-from ..db.session import get_session
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
@@ -47,7 +46,7 @@ DEFAULT_SORT = (Sort(field="transaction_date", direction="desc"), Sort(field="id
 
 
 async def fetchTransaction(session: AsyncSession, transaction_id: int,
-                         user_id: Optional[str] = None) -> Optional[Transaction]:
+                         user_id: str | None = None) -> Transaction | None:
     """Fetch a transaction by ID."""
     stmt = (
         select(Transaction)
@@ -147,7 +146,7 @@ async def update_transaction(
     for key, value in changes.items():
         setattr(transaction, key, value)
     transaction.recompute()
-    transaction.write_datetime = datetime.now(timezone.utc)
+    transaction.write_datetime = datetime.now(UTC)
 
     session.add(transaction)
     try:

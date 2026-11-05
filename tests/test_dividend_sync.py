@@ -112,7 +112,9 @@ class TestSyncDividendsErrors:
         def broken_fetcher(symbol, market):
             raise ValueError("upstream failure")
 
-        created, updated, errors = await syncDividends(gth_session, stock_ids=[stock_id], fetch_for_symbol=broken_fetcher)
+        created, updated, errors = await syncDividends(
+            gth_session, stock_ids=[stock_id], fetch_for_symbol=broken_fetcher
+        )
         assert created == []
         assert len(errors) == 1
         assert "upstream failure" in errors[0]

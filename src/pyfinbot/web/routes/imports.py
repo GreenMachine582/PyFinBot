@@ -57,12 +57,18 @@ async def upload(request: Request, file: UploadFile | None = File(None),
     elif not summary.skipped:
         kind, message = "success", f"Imported {greentechhub_ui.pluralise(summary.created, 'transaction')}."
     elif summary.created:
-        kind, message = "warning", f"Imported {greentechhub_ui.pluralise(summary.created, 'transaction')}; {summary.skipped} skipped."
+        kind, message = (
+            "warning",
+            f"Imported {greentechhub_ui.pluralise(summary.created, 'transaction')}; {summary.skipped} skipped.",
+        )
     else:
         kind, message = "warning", f"Nothing imported; {summary.skipped} skipped."
-    trigger = greentechhub_ui.toast(message, kind, title=TITLE,
-                                    events=(TRANSACTIONS_CHANGED,) if summary.created else ())
+    trigger = greentechhub_ui.toast(
+        message, kind, title=TITLE, events=(TRANSACTIONS_CHANGED,) if summary.created else ()
+    )
     return templates.TemplateResponse(
-        request, "_import_result.html", {"summary": summary, "filename": filename},
+        request,
+        "_import_result.html",
+        {"summary": summary, "filename": filename},
         headers={"HX-Trigger": trigger},
     )

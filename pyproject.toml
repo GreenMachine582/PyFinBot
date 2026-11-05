@@ -1,5 +1,10 @@
 [tool.ruff]
+line-length = 120
+target-version = "py312"
 extend-exclude = ["src/pyfinbot/alembic"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
 
 [tool.mypy]
 python_version = "3.12"

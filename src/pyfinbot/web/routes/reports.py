@@ -104,7 +104,9 @@ async def export_csv(kind: str, as_of: str | None = None, fy: str | None = None,
     method_suffix = "" if cost_method == CostMethod.AVERAGE else f"-{cost_method.value}"
     if kind == "holdings":
         snapshot = optional_date(as_of, date.today())
-        rows = report_rows.holdings_rows(await reports.holdings_report(session, identity.subject, snapshot, cost_method))
+        rows = report_rows.holdings_rows(
+            await reports.holdings_report(session, identity.subject, snapshot, cost_method)
+        )
         suffix = snapshot.isoformat() + method_suffix
     elif kind == "gains":
         year, _ = await _gains_fy(session, identity, fy)

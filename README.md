@@ -77,8 +77,11 @@ src/pyfinbot/
 ```bash
 git clone https://github.com/GreenMachine582/PyFinBot.git
 cd PyFinBot
-pip install -r requirements.txt
+uv venv --seed
+uv pip install -r requirements.txt
 ```
+
+This uses [uv](https://docs.astral.sh/uv/); `pip install -r requirements.txt` in any Python 3.12+ environment works too.
 
 ### Configuration
 Copy [`.env.example`](.env.example) to `.env` in the project root and fill in your values:

@@ -91,7 +91,9 @@ class TestApiTransactions:
 
         # Filtering on another user's id can only narrow the user's own rows.
         other = json.dumps([{"field": "user_id", "op": "eq", "value": "query-b"}])
-        assert (await gth_client.get("/api/transactions/", headers=mine, params={"filters": other})).json()["total"] == 0
+        assert (await gth_client.get("/api/transactions/", headers=mine, params={"filters": other})).json()[
+            "total"
+        ] == 0
         by_date = json.dumps([{"field": "date", "op": "gte", "value": "2024-08-15"}])
         resp = await gth_client.get("/api/transactions/", headers=mine, params={"filters": by_date, "sort": "date"})
         assert [t["transaction_date"] for t in resp.json()["items"]] == ["2024-09-01"]
@@ -105,7 +107,8 @@ class TestWebTables:
         resp = await gth_client.get("/stocks", headers=HX, params={"q": "TIE", "sort": "name", "size": 10})
         page = resp.text
         assert page.index("TIEA") < page.index("TIEB") < page.index("TIEC")  # then market, symbol
-        resp = await gth_client.get("/stocks", headers=HX, params={"q": "TIE", "sort": "name", "dir": "desc",
-                                                               "size": 10})
+        resp = await gth_client.get(
+            "/stocks", headers=HX, params={"q": "TIE", "sort": "name", "dir": "desc", "size": 10}
+        )
         page = resp.text
         assert page.index("TIEC") < page.index("TIEB") < page.index("TIEA")

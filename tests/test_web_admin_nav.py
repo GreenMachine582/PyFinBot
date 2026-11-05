@@ -56,8 +56,9 @@ async def test_admins_get_the_group_and_others_dont(gth_client):
 
 
 def test_the_audit_page_is_mounted_once():
-    from pyfinbot.pyfinbot import app
     from starlette.routing import Match
+
+    from pyfinbot.pyfinbot import app
 
     scope = {"type": "http", "path": "/admin/audit", "method": "GET", "root_path": "",
              "headers": [], "query_string": b""}

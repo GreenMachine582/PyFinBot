@@ -1,5 +1,4 @@
 
-from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -22,11 +21,11 @@ class StockRead(StockBase):
 
 
 class StockUpdate(BaseModel):
-    name: Optional[str] = None
+    name: str | None = None
     is_active: bool = True
 
 
 class SyncResult(BaseModel):
-    created: List[str]
-    updated: List[str]
-    archived: List[str]
+    created: list[str]
+    updated: list[str]
+    archived: list[str]

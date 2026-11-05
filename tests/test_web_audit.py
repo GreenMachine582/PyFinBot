@@ -82,7 +82,8 @@ async def test_a_market_sync_is_recorded(gth_client, recorded):
         resp = await gth_client.post("/stocks/sync/asx", headers=HX)
     assert resp.status_code == 204, resp.text  # a toast only
     entry = await recorded("stocks.market_synced", "audit-market")
-    assert (entry.target_type, entry.target_id) == ("market", "ASX") and entry.summary == "ASX: 2 created, 1 updated, 0 archived"
+    assert (entry.target_type, entry.target_id) == ("market", "ASX")
+    assert entry.summary == "ASX: 2 created, 1 updated, 0 archived"
 
 
 async def test_the_audit_page_is_for_admins(gth_client):

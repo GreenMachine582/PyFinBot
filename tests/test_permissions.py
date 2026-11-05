@@ -16,6 +16,7 @@ from pyfinbot.admin.create_user import UserExists, create_user
 from pyfinbot.core.permissions import ADMIN, AUDIT_VIEW, ROLES, SETTINGS_MANAGE, USERS_MANAGE
 from pyfinbot.dev.seed import DEMO_ADMIN, seed_demo
 from pyfinbot.models.settings_models import ROLE_GRANTS_TABLE
+
 from .conftest import account_row, make_admin, register_and_login, user_id, web_login
 
 HTML = {"Accept": "text/html"}

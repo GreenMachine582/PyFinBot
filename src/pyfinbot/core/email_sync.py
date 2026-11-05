@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from email.message import Message
-from typing import List, Optional, Tuple
 
 from greentechhub_core.email import IMAPConfig, ImapReader
 
@@ -34,7 +33,7 @@ class EmailAccount:
     password are both set; its password is kept out of repr, and never put in
     a template) and the sender Commsec confirmations come from."""
 
-    imap: Optional[IMAPConfig] = None
+    imap: IMAPConfig | None = None
     commsec_sender: str = COMMSEC_SENDER
 
     @property
@@ -54,7 +53,7 @@ def _config(account: EmailAccount) -> IMAPConfig:
     return account.imap
 
 
-def fetch_commsec_emails(account: EmailAccount, *, only_unseen: bool = True) -> List[Tuple[bytes, Message]]:
+def fetch_commsec_emails(account: EmailAccount, *, only_unseen: bool = True) -> list[tuple[bytes, Message]]:
     """
     `account`'s Commsec confirmations (UNSEEN only by default) as (uid,
     email.message.Message) pairs. Synchronous — run via asyncio.to_thread.
@@ -64,7 +63,7 @@ def fetch_commsec_emails(account: EmailAccount, *, only_unseen: bool = True) -> 
     return ImapReader(_config(account)).fetch(commsec_criteria(account, only_unseen=only_unseen))
 
 
-def mark_seen(account: EmailAccount, uids: List[bytes]) -> None:
+def mark_seen(account: EmailAccount, uids: list[bytes]) -> None:
     """Mark the given message UIDs \\Seen in `account`'s mailbox after a
     successful sync."""
     ImapReader(_config(account)).mark_seen(uids)

@@ -8,6 +8,7 @@ import bcrypt
 from greentechhub_core.security import hash_password, verify_password
 
 import pyfinbot
+
 from .conftest import insert_account, post_login
 
 HTML = {"Accept": "text/html"}
