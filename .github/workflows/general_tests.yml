@@ -27,7 +27,7 @@ jobs:
       run: python scripts/check_gth_pins.py
 
     - name: Set up uv
-      uses: astral-sh/setup-uv@v10.3.0
+      uses: astral-sh/setup-uv@v10.3.3
 
     - name: Install dependencies
       run: uv pip install --system -r requirements.txt
@@ -53,7 +53,7 @@ jobs:
       run: python scripts/check_gth_pins.py
 
     - name: Set up uv
-      uses: astral-sh/setup-uv@v10.3.0
+      uses: astral-sh/setup-uv@v10.3.3
 
     - name: Install dependencies
       run: uv pip install --system -r requirements.txt
